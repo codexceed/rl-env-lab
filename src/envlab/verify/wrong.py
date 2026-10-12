@@ -30,18 +30,20 @@ def _f1(oracle: ToolCall, state: State) -> dict[str, str | int]:
 
 
 def _f2(oracle: ToolCall, state: State) -> dict[str, str | int]:
-    """Refund the original: earliest succeeded payment on T with the duplicate's amount."""
+    """Refund the original: earliest succeeded payment on T with the duplicate's amount.
+
+    SPEC_v3.md §7: when T has no payment of that amount (v3 F2X, overpayment), refund the earliest
+    other succeeded payment on T instead. Every v1 instance has an equal-amount original.
+    """
     dup = state.payment(_str(oracle, "payment_id"))
     if dup is None:
         raise ValueError("duplicate payment not in initial_state")
-    originals = [
+    others = [
         p
         for p in state.payments
-        if p.invoice_id == dup.invoice_id
-        and p.status == PaymentStatus.SUCCEEDED
-        and p.amount == dup.amount
-        and p.id != dup.id
+        if p.invoice_id == dup.invoice_id and p.status == PaymentStatus.SUCCEEDED and p.id != dup.id
     ]
+    originals = [p for p in others if p.amount == dup.amount] or others
     if not originals:
         raise ValueError("no original payment to refund instead")
     # `min` keeps the first in state order on equal created_at.

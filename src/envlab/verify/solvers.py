@@ -183,7 +183,14 @@ SOLVERS: dict[str, Callable[[TaskInstance], list[ToolCall]]] = {
 
 
 def solve(instance: TaskInstance) -> list[ToolCall]:
-    """Every call the request admits under `params` + `initial_state` (SPEC §4 Solver lines)."""
-    if instance.family not in SOLVERS:
+    """Every call the request admits under `params` + `initial_state` (SPEC §4 Solver lines).
+
+    v3 templates (ADR 0007) go to `envlab.verify.solvers_v3` (SPEC_v3.md §4 Solver lines).
+    """
+    from envlab.tasks.v3 import is_v3_template
+    from envlab.verify.solvers_v3 import SOLVERS_V3
+
+    solvers = SOLVERS_V3 if is_v3_template(instance.template) else SOLVERS
+    if instance.family not in solvers:
         raise ValueError(f"unknown family {instance.family!r}")
-    return SOLVERS[instance.family](instance)
+    return solvers[instance.family](instance)

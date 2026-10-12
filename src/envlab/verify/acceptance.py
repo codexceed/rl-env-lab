@@ -5,6 +5,11 @@
 Prints JSON: per split pass counts per gate, broken rejected count, valid pass rate.
 Exits 1 if acceptance fails: any broken instance passes all gates, valid pass rate < 99%,
 or a split file is missing.
+
+The valid splits follow the data set's ``manifest.json``: a v3 manifest (ADR 0007, SPEC_v3.md §7)
+means ``train``, ``heldout`` and ``sametype``; anything else means v1's frozen §9 splits.
+
+    python -m envlab.verify.acceptance --data data/v3
 """
 
 from __future__ import annotations
@@ -21,6 +26,8 @@ from envlab.verify.gates import run_gates
 
 # Frozen §9 splits only. ADR 0005 exploratory splits (`sametype`) are not part of §7 acceptance.
 VALID_SPLITS: tuple[str, ...] = ("train", "train_hard", "heldout")
+# v3 (SPEC_v3.md §7): no train_hard; its same-type split is built and gated like the others.
+V3_VALID_SPLITS: tuple[str, ...] = ("train", "heldout", "sametype")
 BROKEN_SPLIT = "broken"
 MIN_VALID_PASS_RATE = 0.99
 MAX_LISTED_FAILURES = 20
@@ -47,10 +54,19 @@ def _gate_summary(instances: list[TaskInstance]) -> dict[str, Any]:
     }
 
 
+def valid_splits_for(data_dir: Path) -> tuple[str, ...]:
+    """v3 splits if ``data_dir/manifest.json`` says spec v3, else v1's."""
+    manifest = data_dir / "manifest.json"
+    if manifest.exists() and str(json.loads(manifest.read_text()).get("spec_version", "")).startswith("v3"):
+        return V3_VALID_SPLITS
+    return VALID_SPLITS
+
+
 def run_acceptance(data_dir: Path) -> dict[str, Any]:
-    report: dict[str, Any] = {"splits": {}, "missing": []}
+    valid_splits = valid_splits_for(data_dir)
+    report: dict[str, Any] = {"splits": {}, "missing": [], "valid_splits": list(valid_splits)}
     valid_n = valid_pass = 0
-    for split in (*VALID_SPLITS, BROKEN_SPLIT):
+    for split in (*valid_splits, BROKEN_SPLIT):
         path = data_dir / f"{split}.jsonl"
         if not path.exists():
             report["missing"].append(path.name)
