@@ -1,4 +1,15 @@
 {
   "run_id": "v2-2b-rob-s2",
-  "steps": []
+  "steps": [
+    {
+      "eval": "done",
+      "final": false,
+      "step": 50
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 100
+    }
+  ]
 }

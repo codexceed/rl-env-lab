@@ -1,4 +1,20 @@
 {
   "run_id": "v2-2b-leak-s1",
-  "steps": []
+  "steps": [
+    {
+      "eval": "done",
+      "final": false,
+      "step": 50
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 100
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 150
+    }
+  ]
 }
