@@ -225,6 +225,7 @@ Wed 18 →   N1 [ 4B P2 (rob, then leak) ......] [ spare→eval ] [  eval  ]
 ```
 runs/<run_id>/
   status.json                     coordinator
+  run_manifest.json               trainer, at start: config hash minus reward, data + base-model fingerprints
   train_metrics.jsonl             trainer, one line per step (reward, robust/leaky means, …)
   eval/step-NNNNN/ + COMPLETE     trainer; COMPLETE written last; "final": true on the last step
   recovery/checkpoint-N/          trainer; rolling keep-2 once resume is verified
