@@ -60,7 +60,7 @@ def test_pair_on_different_gpus_matches(tmp_path):
     assert rob["config_sha256"] == leak["config_sha256"]
     assert rob["reward_weights"] != leak["reward_weights"]
     assert "reward" not in rob["config"] and "run_id" not in rob["config"]
-    assert rob["max_steps"] == 300 and rob["seed"] == 1
+    assert rob["max_steps"] == 1000 and rob["seed"] == 1
     assert rob["data"]["sha256"] and rob["data"]["spec_version"] == "1.0"
     assert rob["base_model"]["id"] == "Qwen/Qwen3.5-2B"
 
@@ -107,6 +107,6 @@ def test_resume_keeps_first_manifest_and_flags_changes(tmp_path):
     changed = manifest_for(tmp_path, "robust", extra=("--max-steps", "10"))
     assert write_run_manifest(run, changed, resume_from="recovery/checkpoint-100") == ["max_steps", "config_sha256"]
     m = json.loads((run / MANIFEST_FILE).read_text())
-    assert m["max_steps"] == 300  # the first start stays authoritative
+    assert m["max_steps"] == 1000  # the first start stays authoritative
     assert resume_mismatches(m) == ["max_steps", "config_sha256"]
     assert read_run_manifest(tmp_path / "nope") is None

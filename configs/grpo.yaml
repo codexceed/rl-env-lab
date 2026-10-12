@@ -24,7 +24,7 @@ budget:  # the common per-step budget (PROGRESSION "Common budget across sizes")
   learning_rate: 1.0e-6      # DECISIONS #6: only LR that passed the 2B toy sweep; 3e-6 and 1e-5 collapsed
   lr_scheduler_type: constant
   warmup_steps: 0
-  max_steps: 300             # PLACEHOLDER until DECISIONS #7 (benchmark, §0.4)
+  max_steps: 1000            # DECISIONS #7: 4 passes over 2,000 train tasks; 2B ~1.7 h at 6.2 s/step
   loss_type: dapo            # TRL 1.15 default, pinned so a TRL upgrade cannot change it silently
   scale_rewards: group       # TRL 1.15 default, pinned
   bf16: true                 # bf16 autocast compute ...

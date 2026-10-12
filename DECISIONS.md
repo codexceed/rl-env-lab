@@ -12,9 +12,9 @@ Format: one row per decision. A changed decision gets a new row; the old row is 
 | 4 | 2026-10-12 | Main model | Qwen3.5-2B | All 3 pairs fit in one block | Pending §2.2 band check |
 | 5 | 2026-10-12 | Weights updated | Full fine-tune, all sizes | Fair size comparison | Pending Mon confirm |
 | 6 | 2026-10-12 | Learning rate | **1e-6**, constant, all sizes | 2B toy (11-digit addition, 100 steps): 1e-6 reward 0.82→0.87, no entropy collapse; 3e-6 collapsed at step ~28, 1e-5 at step 3, each after vLLM-vs-trainer logprob gaps of 10+ nats. The gap is now logged per step | Locked (owner) |
-| 7 | — | Step count | `____` (common across sizes) | | Pending §0.4 benchmark |
-| 8 | — | Generation backend | `____` (vLLM preferred; HF fallback for train + eval) | | Pending §0.3 |
-| 9 | — | 4B GPU layout | ~~1 vLLM server + 3 train~~ infeasible (64 ∤ 3 ranks); candidates 1 server + 2 train, or 4-GPU colocated | | Pending §0.4 benchmark |
+| 7 | 2026-10-12 | Step count | **1,000**, all sizes | Benchmark: 300 steps = 22–40 min per run; 1,000 = 4 passes over 2,000 tasks, matrix ~5 h | Locked · ADR 0003 |
+| 8 | 2026-10-12 | Generation backend | **vLLM, colocated**; HF generate fallback for train + eval | Compat: generation + weight sync pass at all sizes and in server mode | Locked · ADR 0003 |
+| 9 | 2026-10-12 | 4B GPU layout | **4 ZeRO-3 ranks, colocated vLLM** (1 server + 3 train infeasible: 64 ∤ 3) | 4.4 s/step vs 8.1 s for 1 server + 2 train | Locked · ADR 0003 |
 | 10 | 2026-10-12 | Hypotheses | H1, H2, H5 tested; H3 exploratory; H4 cut | Deadline | Locked |
 | 11 | 2026-10-12 | Scope cuts | Triage classifier, multi-turn cut; ablations optional | Deadline | Locked |
 | 12 | 2026-10-12 | Node shutdown | Coordinator only, after training + eval + transfers | Runs share nodes | Superseded by #13 |

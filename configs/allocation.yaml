@@ -65,21 +65,17 @@ eval:
   max_restarts: 5
 
 sizes:
-  # Timeouts are ~2x the unvalidated estimates (0.8B ~2 h, 2B ~4 h, 4B ~8 h); revisit after §0.4.
+  # Timeouts are ~2x the §0.4 benchmark at 1,000 steps (0.8B ~1.2 h, 2B ~1.7 h, 4B ~1.2 h), worst-case lengths.
   0.8b:
     gpus_per_run: 1
-    run_timeout_s: 14400
+    run_timeout_s: 10800
   2b:
     gpus_per_run: 1
-    run_timeout_s: 28800
+    run_timeout_s: 14400
   4b:
     gpus_per_run: 4
-    run_timeout_s: 57600
-    layout: {vllm_server_gpus: 1, train_gpus: 3}  # 1 vLLM server + 3 training (ZeRO-3)
-    train_command: >-
-      uv run python train/grpo.py --run-id {run_id} --size {size} --reward {reward}
-      --seed {seed} --gpus {gpus} --vllm-server-gpus {vllm_gpus} --train-gpus {train_gpus}
-      --output-dir {run_dir}
+    run_timeout_s: 10800
+    # 4 ZeRO-3 ranks with colocated vLLM (DECISIONS #9); the default train_command applies.
 
 runs:
   2b-rob-s1: {size: 2b, reward: robust, seed: 1}
@@ -108,14 +104,14 @@ nodes:
     gpus: [0, 1, 2, 3, 4, 5, 6, 7]
     eval_gpus: [6, 7]
     groups:
-      # Block 1 (~4 h): six 2B runs, 1 GPU each
+      # Block 1 (~2 h): six 2B runs, 1 GPU each
       - {name: n1-g0, gpus: [0], queue: [2b-rob-s1]}
       - {name: n1-g1, gpus: [1], queue: [2b-leak-s1]}
       - {name: n1-g2, gpus: [2], queue: [2b-rob-s2]}
       - {name: n1-g3, gpus: [3], queue: [2b-leak-s2]}
       - {name: n1-g4, gpus: [4], queue: [2b-rob-s3]}
       - {name: n1-g5, gpus: [5], queue: [2b-leak-s3]}
-      # Blocks 2-3 (~16 h): 4B P2, robust then leaky (matched pair, sequential).
+      # Blocks 2-3 (~3 h): 4B P2, robust then leaky (matched pair, sequential).
       # GPU 4-5 are then spare and join eval via lend_idle_gpus.
       - name: n1-4b
         gpus: [0, 1, 2, 3]
@@ -125,14 +121,14 @@ nodes:
     gpus: [0, 1, 2, 3, 4, 5, 6, 7]
     eval_gpus: [6, 7]  # eval overflow during 0.8B; taken back when the 4B leaky queue starts
     groups:
-      # Block 1 (~4 h): six 0.8B runs, 1 GPU each
+      # Block 1 (~2 h): six 0.8B runs, 1 GPU each
       - {name: n2-g0, gpus: [0], queue: [0.8b-rob-s1]}
       - {name: n2-g1, gpus: [1], queue: [0.8b-leak-s1]}
       - {name: n2-g2, gpus: [2], queue: [0.8b-rob-s2]}
       - {name: n2-g3, gpus: [3], queue: [0.8b-leak-s2]}
       - {name: n2-g4, gpus: [4], queue: [0.8b-rob-s3]}
       - {name: n2-g5, gpus: [5], queue: [0.8b-leak-s3]}
-      # Blocks 2-3 (~16 h): 4B P1 then P3, robust on GPU 0-3, leaky on GPU 4-7
+      # Blocks 2-3 (~3 h): 4B P1 then P3, robust on GPU 0-3, leaky on GPU 4-7
       - name: n2-4b-rob
         gpus: [0, 1, 2, 3]
         after: [n2-g0, n2-g1, n2-g2, n2-g3]

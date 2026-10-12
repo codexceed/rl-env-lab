@@ -203,7 +203,7 @@ def test_repo_allocation_config_matches_plan():
     four_b = next(g for g in n1.groups if g.name == "n1-4b")
     assert four_b.queue == ("4b-rob-s2", "4b-leak-s2")  # robust then leaky, sequential
     spec = n1.runs["4b-rob-s2"]
-    assert spec.gpus == (0, 1, 2, 3) and spec.vllm_server_gpus == 1
+    assert spec.gpus == (0, 1, 2, 3) and spec.vllm_server_gpus == 0  # colocate-4train
     assert n1.eval_gpus == (6, 7)
     assert n1.settings.shutdown_cmd is None  # release is opt-in
     assert n1.settings.deadline_ts == datetime(2026, 10, 16, 6, 0).timestamp()

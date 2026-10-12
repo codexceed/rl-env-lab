@@ -43,7 +43,7 @@ def test_budget_matches_progression():
     assert b["param_dtype"] == "float32"
     assert b["enable_thinking"] is False
     assert b["learning_rate"] == pytest.approx(1e-6)  # DECISIONS #6
-    assert b["max_steps"] == 300
+    assert b["max_steps"] == 1000  # DECISIONS #7
     c = cfg["checkpoints"]
     assert (c["eval_every"], c["recovery_every"], c["keep_last"]) == (50, 50, 2)
     assert c["pruning_enabled"] is False
@@ -62,7 +62,7 @@ def test_sizes_differ_only_in_layout():
     common = {k: v for k, v in cfgs["2b"].items() if k not in ("layout", "size", "model")}
     for size, cfg in cfgs.items():
         assert {k: v for k, v in cfg.items() if k not in ("layout", "size", "model")} == common, size
-    assert cfgs["4b"]["layout"]["generation"] == "server"
+    assert cfgs["4b"]["layout"]["generation"] == "colocate"  # DECISIONS #9
     assert cfgs["2b"]["layout"]["generation"] == "colocate"
 
 
@@ -175,9 +175,24 @@ def test_layout_1gpu_colocate():
     assert lay.accelerate_config is None
 
 
-def test_layout_4b_server_from_coordinator_flags():
+def _server_4b_config(tmp_path: Path) -> Path:
+    cfg_path = tmp_path / "grpo.yaml"
+    shutil.copy(DEFAULT_CONFIG, cfg_path)
+    (tmp_path / "sizes").mkdir()
+    layout = {"generation": "server", "train_ranks": 2, "vllm_server_gpus": 1}
+    (tmp_path / "sizes" / "4b.yaml").write_text(yaml.safe_dump({"layout": layout}))
+    return cfg_path
+
+
+def test_layout_4b_default_is_colocate_4train():
+    lay = resolve_layout(load_config(DEFAULT_CONFIG, "4b"), args_for("4b", "0,1,2,3"))
+    assert (lay.generation, lay.train_gpus, lay.server_gpus, lay.idle_gpus) == ("colocate", (0, 1, 2, 3), (), ())
+    assert lay.accelerate_config is not None and lay.accelerate_config.name == "zero3_4gpu.yaml"
+
+
+def test_layout_4b_server_from_coordinator_flags(tmp_path):
     a = args_for("4b", "4,5,6,7", ["--vllm-server-gpus", "4", "--train-gpus", "5,6,7"])
-    lay = resolve_layout(load_config(DEFAULT_CONFIG, "4b"), a)
+    lay = resolve_layout(load_config(_server_4b_config(tmp_path), "4b"), a)
     assert (lay.generation, lay.server_gpus, lay.train_gpus, lay.idle_gpus) == ("server", (4,), (5, 6), (7,))
     assert lay.batch["completions_per_step"] == 64  # never changed for H5
     assert lay.batch["per_device_train_batch_size"] * lay.batch["gradient_accumulation_steps"] * 2 == 64
@@ -186,8 +201,8 @@ def test_layout_4b_server_from_coordinator_flags():
     assert lay.accelerate_config.exists()
 
 
-def test_layout_4b_server_without_split_flags():
-    lay = resolve_layout(load_config(DEFAULT_CONFIG, "4b"), args_for("4b", "0,1,2,3"))
+def test_layout_4b_server_without_split_flags(tmp_path):
+    lay = resolve_layout(load_config(_server_4b_config(tmp_path), "4b"), args_for("4b", "0,1,2,3"))
     assert (lay.server_gpus, lay.train_gpus, lay.idle_gpus) == ((0,), (1, 2), (3,))
 
 
@@ -233,7 +248,7 @@ def test_worker_command_pins_layout():
     lay = resolve_layout(load_config(DEFAULT_CONFIG, "4b"), a)
     cmd = worker_command(a, ["--size", "4b"], lay)
     assert cmd[1:4] == ["launch", "--config_file", str(lay.accelerate_config)]
-    assert cmd[cmd.index("--num_processes") + 1] == "2"
+    assert cmd[cmd.index("--num_processes") + 1] == "4"  # colocate-4train (DECISIONS #9)
     assert cmd[cmd.index("--main_process_port") + 1] == "29500"
     assert cmd[-1] == "--worker"
     assert cmd[cmd.index("--gpus") + 1] == "0,1,2,3"

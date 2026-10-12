@@ -1,20 +1,15 @@
-# Qwen3.5-4B: GPU layout only (configs/grpo.yaml holds the common budget). DECISIONS #9 pending.
+# Qwen3.5-4B: GPU layout only (configs/grpo.yaml holds the common budget). DECISIONS #9.
 #
-# The run gets 4 GPUs from the coordinator (--gpus, --vllm-server-gpus, --train-gpus).
-# 64 completions per step (8 x 8) must split evenly over the training ranks, so 3 ranks is
-# impossible without changing the budget (never done, H5). Two supported layouts:
+# The run gets 4 GPUs from the coordinator (--gpus). 64 completions per step (8 x 8) must split
+# evenly over the training ranks, so 3 ranks is impossible without changing the budget (never done, H5).
 #
-#   server-2train (default): 1 GPU `trl vllm-serve` + 2 ZeRO-3 training ranks; the 4th GPU idles.
-#   colocate-4train:         4 ZeRO-3 ranks, each with a colocated vLLM engine. Use:
-#       generation: colocate
-#       train_ranks: 4
-#       vllm_server_gpus: 0
-#       vllm_gpu_memory_utilization: 0.25
-#
-# Pick the faster one from `make bench` (runs/bench/summary.json) and record it in DECISIONS #9.
+#   colocate-4train (chosen): 4 ZeRO-3 ranks, each with a colocated vLLM engine. 4.4 s/step.
+#   server-2train:            1 GPU `trl vllm-serve` + 2 ZeRO-3 ranks; 4th GPU idle. 8.1 s/step.
+#                             To switch back: generation: server, train_ranks: 2, vllm_server_gpus: 1,
+#                             and give the run a layout in configs/allocation.yaml.
 layout:
-  generation: server
-  train_ranks: 2
+  generation: colocate
+  train_ranks: 4
   hf_train_ranks: 4          # HF fallback: 4 GPUs training, in-process generation (PROGRESSION)
-  vllm_server_gpus: 1
-  vllm_server_gpu_memory_utilization: 0.9
+  vllm_server_gpus: 0
+  vllm_gpu_memory_utilization: 0.25
