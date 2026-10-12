@@ -43,7 +43,7 @@ def _index(records: tuple[Any, ...], id: str) -> int | None:
 
 def _put(records: tuple[Any, ...], i: int, record: Any) -> tuple[Any, ...]:
     """Replace the record at position i, keeping tuple order."""
-    return records[:i] + (record,) + records[i + 1 :]
+    return (*records[:i], record, *records[i + 1 :])
 
 
 def _post(
@@ -65,7 +65,7 @@ def _post(
         amount=amount,
         memo=memo,
     )
-    return state.ledger + (entry,)
+    return (*state.ledger, entry)
 
 
 def _apply_credit(state: State, invoice_id: str, amount: int, reason: str) -> State:
@@ -223,8 +223,7 @@ def _void_invoice(state: State, invoice_id: str, reason: str) -> State:
     if inv.status != InvoiceStatus.OPEN:
         raise _ToolError(ErrorCode.INVALID_STATUS, f"invoice {inv.id} is {inv.status}")
     has_payments = any(
-        p.invoice_id == inv.id and p.status in (PaymentStatus.SUCCEEDED, PaymentStatus.REFUNDED)
-        for p in state.payments
+        p.invoice_id == inv.id and p.status in (PaymentStatus.SUCCEEDED, PaymentStatus.REFUNDED) for p in state.payments
     )
     if has_payments or inv.amount_due != inv.amount_billed:
         raise _ToolError(ErrorCode.HAS_ACTIVITY, f"invoice {inv.id} has payments or credits")
@@ -288,6 +287,4 @@ def apply_tool(state: State, call: ToolCall) -> tuple[State, ToolResult]:
     except Exception as exc:  # contract: never raise, whatever the input
         # No error code fits an internal failure (e.g. a state of the wrong shape).
         # Reading: report it as bad_arguments, with the exception type in the message.
-        return state, ToolResult(
-            ok=False, error=ErrorCode.BAD_ARGUMENTS, message=f"internal:{type(exc).__name__}"
-        )
+        return state, ToolResult(ok=False, error=ErrorCode.BAD_ARGUMENTS, message=f"internal:{type(exc).__name__}")

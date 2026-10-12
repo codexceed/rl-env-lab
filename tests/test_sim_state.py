@@ -6,11 +6,11 @@ from dataclasses import fields, replace
 from enum import Enum
 
 import pytest
-from sim_factory import make_state
 
 from envlab.calls import ToolCall
 from envlab.sim.entities import LineItem, State
 from envlab.sim.state_hash import canonical_dict, state_hash
+from sim_factory import make_state
 
 GROUPS = ("customers", "invoices", "payments", "cases", "ledger")
 TEXT_FIELDS = {"invoices": "note", "payments": "note", "cases": "note", "ledger": "memo"}
@@ -29,23 +29,20 @@ def _other(value):
     if value is None:
         return 1
     if isinstance(value, tuple):
-        return value + (LineItem("Add-on: extra", 1, 1),)
+        return (*value, LineItem("Add-on: extra", 1, 1))
     raise TypeError(type(value))
 
 
 def _set(state: State, group: str, i: int, record) -> State:
     recs = getattr(state, group)
-    return replace(state, **{group: recs[:i] + (record,) + recs[i + 1 :]})
+    return replace(state, **{group: (*recs[:i], record, *recs[i + 1 :])})
 
 
 def test_hash_is_stable_across_runs():
     # Pinned values: any change to serialization or hashing breaks this test on purpose.
     s = make_state()
     assert state_hash(s) == "6b3f2e1c367f63903b329233c6ae660e00ef62dff2f146991a05e657ec9c5d00"
-    assert (
-        state_hash(s, mask_text=True)
-        == "43bc7501a1bb610ceabf69e988758a3a8d3231756ffcd6b8673fda77c7cd4fcf"
-    )
+    assert state_hash(s, mask_text=True) == "43bc7501a1bb610ceabf69e988758a3a8d3231756ffcd6b8673fda77c7cd4fcf"
 
 
 def test_hash_definition():

@@ -43,7 +43,7 @@ def _strip_one_newline(value: str) -> str:
 def _parse_native(inner: str) -> tuple[str, dict[str, Any]]:
     m = _FUNCTION_RE.fullmatch(inner)
     if m is None:
-        raise _Fail(ParseError.MALFORMED, "expected <function=NAME>…</function>")
+        raise _Fail(ParseError.MALFORMED, "expected <function=NAME>...</function>")
     name, body = m.group(1), m.group(2)
     args: dict[str, Any] = {}
     pos = 0

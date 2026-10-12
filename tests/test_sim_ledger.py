@@ -3,7 +3,6 @@
 from dataclasses import replace
 
 import pytest
-from sim_factory import customers, invoices, make_state, payments
 
 from envlab.sim.entities import (
     CaseStatus,
@@ -22,6 +21,7 @@ from envlab.sim.ledger import (
     derive_invoice_status,
     next_ledger_id,
 )
+from sim_factory import customers, invoices, make_state, payments
 
 K = LedgerKind
 
@@ -32,9 +32,7 @@ def _inv(status: InvoiceStatus, due: int) -> Invoice:
 
 def _with(state: State, group: str, i: int, **changes) -> State:
     records = getattr(state, group)
-    return replace(
-        state, **{group: records[:i] + (replace(records[i], **changes),) + records[i + 1 :]}
-    )
+    return replace(state, **{group: (*records[:i], replace(records[i], **changes), *records[i + 1 :])})
 
 
 def _has(violations: list[str], prefix: str) -> bool:
@@ -68,10 +66,7 @@ def test_next_ledger_id():
 
 
 def test_build_ledger_order_and_contents():
-    got = [
-        (e.id, e.customer_id, e.invoice_id, e.payment_id, e.kind, e.amount, e.memo)
-        for e in make_state().ledger
-    ]
+    got = [(e.id, e.customer_id, e.invoice_id, e.payment_id, e.kind, e.amount, e.memo) for e in make_state().ledger]
     assert got == [
         ("L0001", "C0001", "INV-00001", None, K.CHARGE, 5999, "Invoice issued"),
         ("L0002", "C0001", "INV-00002", None, K.CHARGE, 4999, "Invoice issued"),
@@ -183,7 +178,7 @@ def test_l4_status_flipped_to_failed_keeps_entries():
 def test_l4_succeeded_payment_with_refund_entry():
     s = make_state()
     extra = LedgerEntry("L0016", "C0001", "INV-00006", "PAY-00007", K.REFUND, 4000, "x")
-    s = replace(s, ledger=s.ledger + (extra,))
+    s = replace(s, ledger=(*s.ledger, extra))
     assert _has(check_ledger(s), "L4: succeeded payment PAY-00007")
 
 
@@ -241,7 +236,7 @@ def test_s2_negative_resolution():
 def test_s3_duplicate_customer_id():
     # SPEC §8 env_bug F5: append a second customer with C's id.
     s = make_state()
-    s = replace(s, customers=s.customers + (replace(s.customers[0], name="Other"),))
+    s = replace(s, customers=(*s.customers, replace(s.customers[0], name="Other")))
     assert _has(check_invariants(s), "S3: duplicate customer id C0001")
 
 
@@ -249,7 +244,7 @@ def test_s3_duplicate_customer_id():
 def test_s3_duplicate_ids(group):
     s = make_state()
     records = getattr(s, group)
-    s = replace(s, **{group: records + (records[-1],)})
+    s = replace(s, **{group: (*records, records[-1])})
     assert _has(check_invariants(s), "S3: duplicate")
 
 

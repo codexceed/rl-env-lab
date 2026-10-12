@@ -50,6 +50,7 @@ def fails(text: str, reason: ParseError) -> None:
 
 def test_spec_example():
     got = parse_tool_call(SPEC_EXAMPLE)
+    assert isinstance(got, ToolCall)
     assert got == EXPECTED
     assert list(got.arguments) == list(PARAM_TYPES["apply_credit"])
     assert type(got.arguments["amount"]) is int
@@ -103,6 +104,7 @@ def test_values_are_stripped_and_only_one_newline_dropped():
 
 def test_int_with_surrounding_whitespace():
     got = parse_tool_call(native("apply_credit", invoice_id="I", amount="  42 ", reason=""))
+    assert isinstance(got, ToolCall)
     assert got.arguments["amount"] == 42
     assert got.arguments["reason"] == ""
 
@@ -110,6 +112,7 @@ def test_int_with_surrounding_whitespace():
 def test_parameter_order_does_not_matter():
     text = native("apply_credit", reason="r", amount="5", invoice_id="I")
     got = parse_tool_call(text)
+    assert isinstance(got, ToolCall)
     assert got == ToolCall("apply_credit", {"invoice_id": "I", "amount": 5, "reason": "r"})
     assert list(got.arguments) == ["invoice_id", "amount", "reason"]
 
@@ -136,7 +139,7 @@ def test_json_fallback_numeric_string_and_whitespace():
 
 
 def test_json_fallback_with_surrounding_text():
-    args = {"payment_id": "PAY-1", "reason": "r"}
+    args: dict[str, str | int] = {"payment_id": "PAY-1", "reason": "r"}
     got = parse_tool_call("ok " + as_json("refund_payment", args) + " done")
     assert got == ToolCall("refund_payment", args)
 
@@ -215,18 +218,14 @@ def test_missing_argument():
 
 def test_unexpected_argument():
     fails(native("void_invoice", invoice_id="I", reason="r", force="1"), P.UNEXPECTED_ARGUMENT)
-    fails(
-        as_json("void_invoice", {"invoice_id": "I", "reason": "r", "x": 1}), P.UNEXPECTED_ARGUMENT
-    )
+    fails(as_json("void_invoice", {"invoice_id": "I", "reason": "r", "x": 1}), P.UNEXPECTED_ARGUMENT)
 
 
 def test_missing_reported_before_unexpected():
     fails(native("void_invoice", invoice_id="I", why="r"), P.MISSING_ARGUMENT)
 
 
-@pytest.mark.parametrize(
-    "amount", ["12.50", "1,250", "$12", "+5", "twelve", "", "1e3", "0x10", "12 50", "--1"]
-)
+@pytest.mark.parametrize("amount", ["12.50", "1,250", "$12", "+5", "twelve", "", "1e3", "0x10", "12 50", "--1"])
 def test_bad_int_text(amount):
     fails(native("apply_credit", invoice_id="I", amount=amount, reason="r"), P.BAD_ARGUMENT_TYPE)
 

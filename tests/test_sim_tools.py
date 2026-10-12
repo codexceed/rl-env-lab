@@ -3,11 +3,11 @@
 from dataclasses import replace
 
 import pytest
-from sim_factory import make_state
 
 from envlab.calls import ErrorCode, ToolCall, ToolResult
 from envlab.sim.entities import (
     CaseStatus,
+    Invoice,
     InvoiceStatus,
     LedgerEntry,
     LedgerKind,
@@ -18,6 +18,7 @@ from envlab.sim.ledger import check_invariants
 from envlab.sim.schemas import PARAM_TYPES, TOOL_NAMES
 from envlab.sim.state_hash import state_hash
 from envlab.sim.tools import apply_tool
+from sim_factory import make_state
 
 E = ErrorCode
 
@@ -42,6 +43,12 @@ def err(state: State, c: ToolCall, code: ErrorCode) -> None:
     assert new is state  # same object on error
     assert res.ok is False and res.error == code, res
     assert state_hash(state) == before
+
+
+def invoice(state: State, invoice_id: str) -> Invoice:
+    inv = state.invoice(invoice_id)
+    assert inv is not None
+    return inv
 
 
 def changed(old: State, new: State) -> dict[str, list[int]]:
@@ -132,7 +139,7 @@ def test_refund_duplicate(s):
 
 def test_refund_reopens_paid_invoice(s):
     new = ok(s, call("refund_payment", payment_id="PAY-00004", reason="r"))
-    inv = new.invoice("INV-00004")
+    inv = invoice(new, "INV-00004")
     assert (inv.amount_due, inv.status) == (3000, InvoiceStatus.OPEN)
 
 
@@ -149,13 +156,13 @@ def test_refund_errors(s, payment_id, code):
 
 
 def test_refund_payment_invoice_missing(s):
-    s = replace(s, payments=(replace(s.payments[0], invoice_id="INV-99999"),) + s.payments[1:])
+    s = replace(s, payments=(replace(s.payments[0], invoice_id="INV-99999"), *s.payments[1:]))
     err(s, call("refund_payment", payment_id="PAY-00002", reason="r"), E.NOT_FOUND)
 
 
 def test_refund_on_void_invoice(s):
     inv = replace(s.invoices[1], status=InvoiceStatus.VOID, amount_due=0)
-    s = replace(s, invoices=(s.invoices[0], inv) + s.invoices[2:])
+    s = replace(s, invoices=(s.invoices[0], inv, *s.invoices[2:]))
     err(s, call("refund_payment", payment_id="PAY-00002", reason="r"), E.INVALID_STATUS)
 
 
@@ -173,14 +180,12 @@ def test_adjust_down(s):
     )
     assert inv.line_items == s.invoices[0].line_items
     assert changed(s, new) == {"invoices": [0]}
-    assert new.ledger[-1] == LedgerEntry(
-        "L0016", "C0001", "INV-00001", None, LedgerKind.ADJUSTMENT, -1000, "Fix"
-    )
+    assert new.ledger[-1] == LedgerEntry("L0016", "C0001", "INV-00001", None, LedgerKind.ADJUSTMENT, -1000, "Fix")
 
 
 def test_adjust_paid_invoice_up_reopens(s):
     new = ok(s, call("adjust_invoice", invoice_id="INV-00004", new_amount=3500, reason="r"))
-    inv = new.invoice("INV-00004")
+    inv = invoice(new, "INV-00004")
     assert (inv.amount_billed, inv.amount_due, inv.status) == (3500, 500, InvoiceStatus.OPEN)
     assert new.ledger[-1].amount == 500
 
@@ -266,9 +271,7 @@ def test_resolve_case_with_adjustment(s):
     assert (inv.amount_due, inv.status, inv.note) == (5000, InvoiceStatus.OPEN, "")
     assert changed(s, new) == {"invoices": [2], "cases": [0]}
     assert new.ledger[len(s.ledger) :] == (
-        LedgerEntry(
-            "L0016", "C0002", "INV-00003", None, LedgerKind.DISPUTE_CREDIT, -1500, "Approved"
-        ),
+        LedgerEntry("L0016", "C0002", "INV-00003", None, LedgerKind.DISPUTE_CREDIT, -1500, "Approved"),
     )
 
 
@@ -305,14 +308,14 @@ def test_resolve_case_errors(s, args, code):
 
 
 def test_resolve_case_invoice_missing(s):
-    s = replace(s, cases=(replace(s.cases[0], invoice_id="INV-99999"),) + s.cases[1:])
+    s = replace(s, cases=(replace(s.cases[0], invoice_id="INV-99999"), *s.cases[1:]))
     err(s, call("resolve_case", case_id="CS-0001", adjustment=0, note="n"), E.NOT_FOUND)
 
 
 def test_resolve_case_zero_on_overpaid_invoice_exceeds(s):
     # Literal SPEC reading: 0 > amount_due (-4999) -> exceeds_amount_due.
     case = replace(s.cases[2], invoice_id="INV-00002", customer_id="C0001")
-    s = replace(s, cases=s.cases[:2] + (case,))
+    s = replace(s, cases=(*s.cases[:2], case))
     err(s, call("resolve_case", case_id="CS-0003", adjustment=0, note="n"), E.EXCEEDS_AMOUNT_DUE)
 
 
@@ -329,14 +332,12 @@ def test_void_invoice(s):
         "Issued in error",
     )
     assert changed(s, new) == {"invoices": [0]}
-    assert new.ledger[-1] == LedgerEntry(
-        "L0016", "C0001", "INV-00001", None, LedgerKind.VOID, -5999, "Issued in error"
-    )
+    assert new.ledger[-1] == LedgerEntry("L0016", "C0001", "INV-00001", None, LedgerKind.VOID, -5999, "Issued in error")
 
 
 def test_void_invoice_with_only_failed_payment(s):
     new = ok(s, call("void_invoice", invoice_id="INV-00007", reason="r"))
-    assert new.invoice("INV-00007").status == InvoiceStatus.VOID
+    assert invoice(new, "INV-00007").status == InvoiceStatus.VOID
 
 
 @pytest.mark.parametrize(
@@ -364,7 +365,7 @@ def test_void_already_void(s):
 def test_void_refunded_payment_counts_as_activity(s):
     # Open invoice whose only payment was refunded: amount_due == amount_billed, still activity.
     s = ok(s, call("refund_payment", payment_id="PAY-00004", reason="r"))
-    assert s.invoice("INV-00004").status == InvoiceStatus.OPEN
+    assert invoice(s, "INV-00004").status == InvoiceStatus.OPEN
     err(s, call("void_invoice", invoice_id="INV-00004", reason="r"), E.HAS_ACTIVITY)
 
 
@@ -422,7 +423,8 @@ def test_bad_arguments(s, name, label, args):
 
 
 def test_arguments_not_a_dict(s):
-    err(s, ToolCall("apply_credit", [("invoice_id", "INV-00001")]), E.BAD_ARGUMENTS)
+    not_a_dict = [("invoice_id", "INV-00001")]
+    err(s, ToolCall("apply_credit", not_a_dict), E.BAD_ARGUMENTS)  # pyright: ignore[reportArgumentType]
 
 
 def test_bad_arguments_precede_lookup(s):
@@ -435,16 +437,15 @@ def test_ids_are_stripped_before_lookup(s):
 
 
 def test_corrupt_state_never_raises():
-    new, res = apply_tool(None, call("apply_credit", invoice_id="x", amount=1, reason="r"))
+    c = call("apply_credit", invoice_id="x", amount=1, reason="r")
+    new, res = apply_tool(None, c)  # pyright: ignore[reportArgumentType]
     assert new is None and res.ok is False
 
 
 def test_duplicate_ids_act_on_first(s):
     dup = replace(s.invoices[0], note="second")
-    s2 = replace(s, invoices=s.invoices + (dup,))
-    new, res = apply_tool(
-        s2, call("adjust_invoice", invoice_id="INV-00001", new_amount=1, reason="r")
-    )
+    s2 = replace(s, invoices=(*s.invoices, dup))
+    new, res = apply_tool(s2, call("adjust_invoice", invoice_id="INV-00001", new_amount=1, reason="r"))
     assert res.ok
     assert new.invoices[0].amount_billed == 1 and new.invoices[-1] == dup
 

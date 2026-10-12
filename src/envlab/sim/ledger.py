@@ -41,7 +41,7 @@ def build_ledger(
     invoices: tuple[Invoice, ...],
     payments: tuple[Payment, ...],
 ) -> tuple[LedgerEntry, ...]:
-    """Initial ledger in §2 order, numbered L0001….
+    """Initial ledger in §2 order, numbered L0001, L0002, ...
 
     For each customer in order: `account_credit` (if credit_balance > 0); then for each of the
     customer's invoices in order: `charge`, then that invoice's payments sorted by `created_at`
@@ -64,18 +64,12 @@ def build_ledger(
         for inv in invoices:
             if inv.customer_id != cust.id:
                 continue
-            rows.append(
-                (cust.id, inv.id, None, LedgerKind.CHARGE, inv.amount_billed, "Invoice issued")
-            )
-            inv_payments = sorted(
-                (p for p in payments if p.invoice_id == inv.id), key=lambda p: p.created_at
-            )
+            rows.append((cust.id, inv.id, None, LedgerKind.CHARGE, inv.amount_billed, "Invoice issued"))
+            inv_payments = sorted((p for p in payments if p.invoice_id == inv.id), key=lambda p: p.created_at)
             for p in inv_payments:
                 if p.status not in _LEDGER_PAYMENT_STATUSES:
                     continue
-                rows.append(
-                    (cust.id, inv.id, p.id, LedgerKind.PAYMENT, -p.amount, "Payment received")
-                )
+                rows.append((cust.id, inv.id, p.id, LedgerKind.PAYMENT, -p.amount, "Payment received"))
                 if p.status == PaymentStatus.REFUNDED:
                     rows.append((cust.id, inv.id, p.id, LedgerKind.REFUND, p.amount, p.note))
     return tuple(
@@ -93,7 +87,7 @@ def build_ledger(
 
 
 def check_ledger(state: State) -> list[str]:
-    """L1–L5 violations; an empty list means the ledger balances."""
+    """L1-L5 violations; an empty list means the ledger balances."""
     out: list[str] = []
     ledger = state.ledger
 
@@ -115,9 +109,7 @@ def check_ledger(state: State) -> list[str]:
     for cust in state.customers:
         total = -by_customer.get(cust.id, 0)
         if cust.credit_balance != total:
-            out.append(
-                f"L2: customer {cust.id} credit_balance {cust.credit_balance} != ledger {total}"
-            )
+            out.append(f"L2: customer {cust.id} credit_balance {cust.credit_balance} != ledger {total}")
 
     # L3: an entry's customer matches its invoice's and its payment's customer.
     # Reading: a reference that does not resolve cannot match, so it is a violation too.
@@ -127,19 +119,13 @@ def check_ledger(state: State) -> list[str]:
             if inv is None:
                 out.append(f"L3: entry {e.id} references unknown invoice {e.invoice_id}")
             elif inv.customer_id != e.customer_id:
-                out.append(
-                    f"L3: entry {e.id} customer {e.customer_id} != invoice {inv.id} "
-                    f"customer {inv.customer_id}"
-                )
+                out.append(f"L3: entry {e.id} customer {e.customer_id} != invoice {inv.id} customer {inv.customer_id}")
         if e.payment_id is not None:
             pay = state.payment(e.payment_id)
             if pay is None:
                 out.append(f"L3: entry {e.id} references unknown payment {e.payment_id}")
             elif pay.customer_id != e.customer_id:
-                out.append(
-                    f"L3: entry {e.id} customer {e.customer_id} != payment {pay.id} "
-                    f"customer {pay.customer_id}"
-                )
+                out.append(f"L3: entry {e.id} customer {e.customer_id} != payment {pay.id} customer {pay.customer_id}")
 
     # L4: payment/refund entries agree with payment status.
     # Reading: a succeeded payment must also have no refund entry, and a failed payment has
@@ -158,7 +144,7 @@ def check_ledger(state: State) -> list[str]:
         if len(ref_entries) != want_refunds or any(e.amount != p.amount for e in ref_entries):
             out.append(f"L4: {p.status} payment {p.id} needs {want_refunds} refund entry(ies)")
 
-    # L5: ids are exactly L0001…L{n} in tuple order.
+    # L5: ids are exactly L0001...L{n} in tuple order.
     for i, e in enumerate(ledger, start=1):
         if e.id != ledger_id(i):
             out.append(f"L5: entry at position {i} has id {e.id}, expected {ledger_id(i)}")
@@ -171,7 +157,7 @@ def _dupes(ids: list[str]) -> list[str]:
 
 
 def check_invariants(state: State) -> list[str]:
-    """L1–L5 plus S1–S4 violations; an empty list means the state is valid."""
+    """L1-L5 plus S1-S4 violations; an empty list means the state is valid."""
     out = check_ledger(state)
 
     # S1: invoice status agrees with amount_due.
@@ -212,8 +198,7 @@ def check_invariants(state: State) -> list[str]:
                 out.append(f"S3: {label} {r.id} references unknown invoice {r.invoice_id}")
             elif inv.customer_id != r.customer_id:
                 out.append(
-                    f"S3: {label} {r.id} customer {r.customer_id} != invoice {inv.id} "
-                    f"customer {inv.customer_id}"
+                    f"S3: {label} {r.id} customer {r.customer_id} != invoice {inv.id} customer {inv.customer_id}"
                 )
     for e in state.ledger:
         if e.customer_id not in customer_ids:

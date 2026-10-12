@@ -166,6 +166,4 @@ def cases() -> tuple[Case, ...]:
 
 def make_state() -> State:
     cs, inv, pay = customers(), invoices(), payments()
-    return State(
-        customers=cs, invoices=inv, payments=pay, cases=cases(), ledger=build_ledger(cs, inv, pay)
-    )
+    return State(customers=cs, invoices=inv, payments=pay, cases=cases(), ledger=build_ledger(cs, inv, pay))
