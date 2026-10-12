@@ -1,0 +1,795 @@
+{
+  "assumptions": {
+    "checkpoint_every_steps": 50,
+    "concurrent_runs_per_eval_pool": {
+      "0.8B": 6,
+      "2B": 6,
+      "4B": 2
+    },
+    "eval_samples_per_checkpoint": 1000
+  },
+  "eval_keeps_pace": {
+    "0.8B": {
+      "capacity_ckpts_per_h": 57.971014492753625,
+      "needed_ckpts_per_h": 97.43367508943341
+    },
+    "2B": {
+      "capacity_ckpts_per_h": 58.53658536585366,
+      "needed_ckpts_per_h": 69.68719178756585
+    },
+    "4B": {
+      "capacity_ckpts_per_h": 50.2092050209205,
+      "needed_ckpts_per_h": 32.80055410311281
+    }
+  },
+  "jobs": [
+    {
+      "exit": 0,
+      "log": "/teamspace/studios/this_studio/rl-env-lab/runs/bench/logs/Qwen3.5-0.8B-1gpu-colocate.log",
+      "name": "Qwen3.5-0.8B-1gpu-colocate",
+      "seconds": 188.2
+    },
+    {
+      "exit": 0,
+      "log": "/teamspace/studios/this_studio/rl-env-lab/runs/bench/logs/Qwen3.5-2B-1gpu-colocate.log",
+      "name": "Qwen3.5-2B-1gpu-colocate",
+      "seconds": 202.2
+    },
+    {
+      "exit": 0,
+      "log": "/teamspace/studios/this_studio/rl-env-lab/runs/bench/logs/Qwen3.5-4B-server-2train.log",
+      "name": "Qwen3.5-4B-server-2train",
+      "seconds": 120.8
+    },
+    {
+      "exit": 0,
+      "log": "/teamspace/studios/this_studio/rl-env-lab/runs/bench/logs/Qwen3.5-4B-colocate-4train.log",
+      "name": "Qwen3.5-4B-colocate-4train",
+      "seconds": 214.0
+    },
+    {
+      "exit": 0,
+      "log": "/teamspace/studios/this_studio/rl-env-lab/runs/bench/logs/eval-Qwen3.5-0.8B-2gpu.log",
+      "name": "eval-Qwen3.5-0.8B-2gpu",
+      "seconds": 82.9
+    },
+    {
+      "exit": 0,
+      "log": "/teamspace/studios/this_studio/rl-env-lab/runs/bench/logs/eval-Qwen3.5-2B-2gpu.log",
+      "name": "eval-Qwen3.5-2B-2gpu",
+      "seconds": 81.7
+    },
+    {
+      "exit": 0,
+      "log": "/teamspace/studios/this_studio/rl-env-lab/runs/bench/logs/eval-Qwen3.5-4B-2gpu.log",
+      "name": "eval-Qwen3.5-4B-2gpu",
+      "seconds": 92.5
+    }
+  ],
+  "markdown": "| Bench | Train GPUs | Completions/step | Step time (s) | Step time @64 (s) | Est. h @ 300 steps | Peak alloc / GPU (GB) |\n|---|---|---|---|---|---|---|\n| Qwen3.5-0.8B-1gpu-colocate | 1 | 64 | 4.4 | 4.4 | 0.37 | 63.3 |\n| Qwen3.5-2B-1gpu-colocate | 1 | 64 | 6.2 | 6.2 | 0.52 | 82.5 |\n| Qwen3.5-4B-server-2train | 2 | 64 | 8.1 | 8.1 | 0.67 | 41.1 |\n| Qwen3.5-4B-colocate-4train | 4 | 64 | 4.4 | 4.4 | 0.37 | 59.0 |\n\n| Eval (2 GPUs) | Samples/s | Engine load (s) | s per checkpoint (1,000 samples) | Keeps pace? |\n|---|---|---|---|---|\n| Qwen/Qwen3.5-0.8B | 159.56 | 55.8 | 62.1 | NO (58.0 vs 97.4/h) |\n| Qwen/Qwen3.5-2B | 175.75 | 55.8 | 61.5 | NO (58.5 vs 69.7/h) |\n| Qwen/Qwen3.5-4B | 98.15 | 61.5 | 71.7 | yes (50.2 vs 32.8/h) |",
+  "results": {
+    "Qwen3.5-0.8B-1gpu-colocate": {
+      "backend": "colocate",
+      "completion_tokens": {
+        "max": 128.0,
+        "mean": 128.0,
+        "median": 128.0,
+        "min": 128.0,
+        "n": 5
+      },
+      "est_hours_at_64": {
+        "100": 0.12,
+        "200": 0.25,
+        "300": 0.37
+      },
+      "kind": "train",
+      "layout": {
+        "completions_per_step": 64,
+        "gradient_accumulation_steps": 8,
+        "num_processes": 1,
+        "per_device_train_batch_size": 8
+      },
+      "measured_steps": 5,
+      "model": "Qwen/Qwen3.5-0.8B",
+      "nvidia_smi_at_end": [
+        {
+          "index": 0,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 65.06,
+          "util_pct": 100.0
+        },
+        {
+          "index": 1,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 2,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 3,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 4,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 5,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 6,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 7,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        }
+      ],
+      "param_dtype": "float32",
+      "per_rank_memory": [
+        {
+          "device_used_gb": 65.059,
+          "peak_allocated_gb": 63.301,
+          "peak_reserved_gb": 63.879,
+          "rank": 0
+        }
+      ],
+      "prompt_tokens": {
+        "max": 1536.0,
+        "mean": 1536.0,
+        "median": 1536.0,
+        "min": 1536.0,
+        "n": 64
+      },
+      "prompts_per_step": 8,
+      "slow_kernels": false,
+      "step_time_at_64_completions_s": 4.433785337599875,
+      "step_time_s": {
+        "max": 4.647490742999707,
+        "mean": 4.433785337599875,
+        "median": 4.423848173999886,
+        "min": 4.294883357000344,
+        "n": 5
+      },
+      "tag": "Qwen3.5-0.8B-1gpu-colocate",
+      "train_ranks": 1,
+      "trl_step_time_s": {
+        "max": 4.340794886999902,
+        "mean": 4.11318113139996,
+        "median": 4.0830476889996135,
+        "min": 3.958004066000285,
+        "n": 5
+      },
+      "versions": {
+        "accelerate": "1.15.0",
+        "causal-conv1d": "1.7.0",
+        "datasets": "5.1.0",
+        "deepspeed": "0.19.7",
+        "fla-core": "0.5.2",
+        "flash-linear-attention": "0.5.2",
+        "torch": "2.13.0",
+        "transformers": "5.17.0",
+        "triton": "3.7.1",
+        "trl": "1.15.0",
+        "vllm": "0.31.0"
+      },
+      "vllm_server_url": null,
+      "warmup_steps": 2
+    },
+    "Qwen3.5-2B-1gpu-colocate": {
+      "backend": "colocate",
+      "completion_tokens": {
+        "max": 128.0,
+        "mean": 128.0,
+        "median": 128.0,
+        "min": 128.0,
+        "n": 5
+      },
+      "est_hours_at_64": {
+        "100": 0.17,
+        "200": 0.34,
+        "300": 0.52
+      },
+      "kind": "train",
+      "layout": {
+        "completions_per_step": 64,
+        "gradient_accumulation_steps": 8,
+        "num_processes": 1,
+        "per_device_train_batch_size": 8
+      },
+      "measured_steps": 5,
+      "model": "Qwen/Qwen3.5-2B",
+      "nvidia_smi_at_end": [
+        {
+          "index": 0,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 85.57,
+          "util_pct": 100.0
+        },
+        {
+          "index": 1,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 2,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 3,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 4,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 5,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 6,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 7,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        }
+      ],
+      "param_dtype": "float32",
+      "per_rank_memory": [
+        {
+          "device_used_gb": 85.567,
+          "peak_allocated_gb": 82.473,
+          "peak_reserved_gb": 84.387,
+          "rank": 0
+        }
+      ],
+      "prompt_tokens": {
+        "max": 1536.0,
+        "mean": 1536.0,
+        "median": 1536.0,
+        "min": 1536.0,
+        "n": 64
+      },
+      "prompts_per_step": 8,
+      "slow_kernels": false,
+      "step_time_at_64_completions_s": 6.199130556399905,
+      "step_time_s": {
+        "max": 6.261296992000098,
+        "mean": 6.199130556399905,
+        "median": 6.2090979380000135,
+        "min": 6.139761826999802,
+        "n": 5
+      },
+      "tag": "Qwen3.5-2B-1gpu-colocate",
+      "train_ranks": 1,
+      "trl_step_time_s": {
+        "max": 5.7335994469999605,
+        "mean": 5.672880876999534,
+        "median": 5.68113439499939,
+        "min": 5.615341847999844,
+        "n": 5
+      },
+      "versions": {
+        "accelerate": "1.15.0",
+        "causal-conv1d": "1.7.0",
+        "datasets": "5.1.0",
+        "deepspeed": "0.19.7",
+        "fla-core": "0.5.2",
+        "flash-linear-attention": "0.5.2",
+        "torch": "2.13.0",
+        "transformers": "5.17.0",
+        "triton": "3.7.1",
+        "trl": "1.15.0",
+        "vllm": "0.31.0"
+      },
+      "vllm_server_url": null,
+      "warmup_steps": 2
+    },
+    "Qwen3.5-4B-colocate-4train": {
+      "backend": "colocate",
+      "completion_tokens": {
+        "max": 128.0,
+        "mean": 128.0,
+        "median": 128.0,
+        "min": 128.0,
+        "n": 5
+      },
+      "est_hours_at_64": {
+        "100": 0.12,
+        "200": 0.24,
+        "300": 0.37
+      },
+      "kind": "train",
+      "layout": {
+        "completions_per_step": 64,
+        "gradient_accumulation_steps": 2,
+        "num_processes": 4,
+        "per_device_train_batch_size": 8
+      },
+      "measured_steps": 5,
+      "model": "Qwen/Qwen3.5-4B",
+      "nvidia_smi_at_end": [
+        {
+          "index": 0,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 69.85,
+          "util_pct": 55.0
+        },
+        {
+          "index": 1,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 70.06,
+          "util_pct": 100.0
+        },
+        {
+          "index": 2,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 69.52,
+          "util_pct": 96.0
+        },
+        {
+          "index": 3,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 69.58,
+          "util_pct": 79.0
+        },
+        {
+          "index": 4,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 5,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 6,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 7,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        }
+      ],
+      "param_dtype": "float32",
+      "per_rank_memory": [
+        {
+          "device_used_gb": 69.849,
+          "peak_allocated_gb": 58.984,
+          "peak_reserved_gb": 65.744,
+          "rank": 0
+        },
+        {
+          "device_used_gb": 70.056,
+          "peak_allocated_gb": 58.984,
+          "peak_reserved_gb": 65.951,
+          "rank": 1
+        },
+        {
+          "device_used_gb": 69.522,
+          "peak_allocated_gb": 58.985,
+          "peak_reserved_gb": 65.418,
+          "rank": 2
+        },
+        {
+          "device_used_gb": 69.585,
+          "peak_allocated_gb": 58.985,
+          "peak_reserved_gb": 65.48,
+          "rank": 3
+        }
+      ],
+      "prompt_tokens": {
+        "max": 1536.0,
+        "mean": 1536.0,
+        "median": 1536.0,
+        "min": 1536.0,
+        "n": 64
+      },
+      "prompts_per_step": 8,
+      "slow_kernels": false,
+      "step_time_at_64_completions_s": 4.390169737600081,
+      "step_time_s": {
+        "max": 4.540771088999918,
+        "mean": 4.390169737600081,
+        "median": 4.326540639000086,
+        "min": 4.264667116000055,
+        "n": 5
+      },
+      "tag": "Qwen3.5-4B-colocate-4train",
+      "train_ranks": 4,
+      "trl_step_time_s": {
+        "max": 4.537562396999874,
+        "mean": 4.387110858799952,
+        "median": 4.323647492000418,
+        "min": 4.261822187999769,
+        "n": 5
+      },
+      "versions": {
+        "accelerate": "1.15.0",
+        "causal-conv1d": "1.7.0",
+        "datasets": "5.1.0",
+        "deepspeed": "0.19.7",
+        "fla-core": "0.5.2",
+        "flash-linear-attention": "0.5.2",
+        "torch": "2.13.0",
+        "transformers": "5.17.0",
+        "triton": "3.7.1",
+        "trl": "1.15.0",
+        "vllm": "0.31.0"
+      },
+      "vllm_server_url": null,
+      "warmup_steps": 2
+    },
+    "Qwen3.5-4B-server-2train": {
+      "backend": "server",
+      "completion_tokens": {
+        "max": 128.0,
+        "mean": 128.0,
+        "median": 128.0,
+        "min": 128.0,
+        "n": 5
+      },
+      "est_hours_at_64": {
+        "100": 0.22,
+        "200": 0.45,
+        "300": 0.67
+      },
+      "kind": "train",
+      "layout": {
+        "completions_per_step": 64,
+        "gradient_accumulation_steps": 4,
+        "num_processes": 2,
+        "per_device_train_batch_size": 8
+      },
+      "measured_steps": 5,
+      "model": "Qwen/Qwen3.5-4B",
+      "nvidia_smi_at_end": [
+        {
+          "index": 0,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 130.96,
+          "util_pct": 0.0
+        },
+        {
+          "index": 1,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 56.6,
+          "util_pct": 0.0
+        },
+        {
+          "index": 2,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 51.98,
+          "util_pct": 51.0
+        },
+        {
+          "index": 3,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 4,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 5,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 6,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        },
+        {
+          "index": 7,
+          "name": "NVIDIA H200",
+          "total_gb": 140.4,
+          "used_gb": 0.0,
+          "util_pct": 0.0
+        }
+      ],
+      "param_dtype": "float32",
+      "per_rank_memory": [
+        {
+          "device_used_gb": 56.6,
+          "peak_allocated_gb": 41.115,
+          "peak_reserved_gb": 54.162,
+          "rank": 0
+        },
+        {
+          "device_used_gb": 51.975,
+          "peak_allocated_gb": 41.115,
+          "peak_reserved_gb": 50.043,
+          "rank": 1
+        }
+      ],
+      "prompt_tokens": {
+        "max": 1536.0,
+        "mean": 1536.0,
+        "median": 1536.0,
+        "min": 1536.0,
+        "n": 64
+      },
+      "prompts_per_step": 8,
+      "slow_kernels": false,
+      "step_time_at_64_completions_s": 8.086115573999905,
+      "step_time_s": {
+        "max": 8.387548325999887,
+        "mean": 8.086115573999905,
+        "median": 8.049029078999865,
+        "min": 7.821914775000096,
+        "n": 5
+      },
+      "tag": "Qwen3.5-4B-server-2train",
+      "train_ranks": 2,
+      "trl_step_time_s": {
+        "max": 8.38406126100017,
+        "mean": 8.082723429600174,
+        "median": 8.045200361999832,
+        "min": 7.818800616000317,
+        "n": 5
+      },
+      "versions": {
+        "accelerate": "1.15.0",
+        "causal-conv1d": "1.7.0",
+        "datasets": "5.1.0",
+        "deepspeed": "0.19.7",
+        "fla-core": "0.5.2",
+        "flash-linear-attention": "0.5.2",
+        "torch": "2.13.0",
+        "transformers": "5.17.0",
+        "triton": "3.7.1",
+        "trl": "1.15.0",
+        "vllm": "0.31.0"
+      },
+      "vllm_server_url": "http://localhost:8011",
+      "warmup_steps": 2
+    },
+    "eval-Qwen3.5-0.8B-2gpu": {
+      "engine_load_s": 55.8,
+      "eval_seconds_per_checkpoint": 62.1,
+      "forced_full_length": true,
+      "generated_tokens_per_s": 20424.0,
+      "gpus": [
+        "0",
+        "1"
+      ],
+      "kind": "eval",
+      "max_tokens": 128,
+      "mode": "data-parallel (one vLLM engine per GPU)",
+      "model": "Qwen/Qwen3.5-0.8B",
+      "prompt_tokens": {
+        "max": 1536.0,
+        "mean": 1535.996,
+        "median": 1536.0,
+        "min": 1535.0,
+        "n": 250
+      },
+      "prompts": 250,
+      "samples_per_prompt": 4,
+      "samples_per_s": 159.56,
+      "tag": "eval-Qwen3.5-0.8B-2gpu",
+      "temperature": 0.7,
+      "versions": {
+        "accelerate": "1.15.0",
+        "causal-conv1d": "1.7.0",
+        "datasets": "5.1.0",
+        "deepspeed": "0.19.7",
+        "fla-core": "0.5.2",
+        "flash-linear-attention": "0.5.2",
+        "torch": "2.13.0",
+        "transformers": "5.17.0",
+        "triton": "3.7.1",
+        "trl": "1.15.0",
+        "vllm": "0.31.0"
+      },
+      "workers": [
+        {
+          "end": 1791814388.9817226,
+          "load_s": 55.81049358399969,
+          "prompts": 125,
+          "samples": 500,
+          "start": 1791814382.7145746,
+          "tokens": 64000
+        },
+        {
+          "end": 1791814388.723888,
+          "load_s": 55.630713703999845,
+          "prompts": 125,
+          "samples": 500,
+          "start": 1791814383.0074723,
+          "tokens": 64000
+        }
+      ]
+    },
+    "eval-Qwen3.5-2B-2gpu": {
+      "engine_load_s": 55.8,
+      "eval_seconds_per_checkpoint": 61.5,
+      "forced_full_length": true,
+      "generated_tokens_per_s": 22495.4,
+      "gpus": [
+        "0",
+        "1"
+      ],
+      "kind": "eval",
+      "max_tokens": 128,
+      "mode": "data-parallel (one vLLM engine per GPU)",
+      "model": "Qwen/Qwen3.5-2B",
+      "prompt_tokens": {
+        "max": 1536.0,
+        "mean": 1535.996,
+        "median": 1536.0,
+        "min": 1535.0,
+        "n": 250
+      },
+      "prompts": 250,
+      "samples_per_prompt": 4,
+      "samples_per_s": 175.75,
+      "tag": "eval-Qwen3.5-2B-2gpu",
+      "temperature": 0.7,
+      "versions": {
+        "accelerate": "1.15.0",
+        "causal-conv1d": "1.7.0",
+        "datasets": "5.1.0",
+        "deepspeed": "0.19.7",
+        "fla-core": "0.5.2",
+        "flash-linear-attention": "0.5.2",
+        "torch": "2.13.0",
+        "transformers": "5.17.0",
+        "triton": "3.7.1",
+        "trl": "1.15.0",
+        "vllm": "0.31.0"
+      },
+      "workers": [
+        {
+          "end": 1791814471.2025013,
+          "load_s": 55.831777539000086,
+          "prompts": 125,
+          "samples": 500,
+          "start": 1791814465.512448,
+          "tokens": 64000
+        },
+        {
+          "end": 1791814471.014567,
+          "load_s": 55.84748873399985,
+          "prompts": 125,
+          "samples": 500,
+          "start": 1791814465.5285745,
+          "tokens": 64000
+        }
+      ]
+    },
+    "eval-Qwen3.5-4B-2gpu": {
+      "engine_load_s": 61.5,
+      "eval_seconds_per_checkpoint": 71.7,
+      "forced_full_length": true,
+      "generated_tokens_per_s": 12563.2,
+      "gpus": [
+        "0",
+        "1"
+      ],
+      "kind": "eval",
+      "max_tokens": 128,
+      "mode": "data-parallel (one vLLM engine per GPU)",
+      "model": "Qwen/Qwen3.5-4B",
+      "prompt_tokens": {
+        "max": 1536.0,
+        "mean": 1535.996,
+        "median": 1536.0,
+        "min": 1535.0,
+        "n": 250
+      },
+      "prompts": 250,
+      "samples_per_prompt": 4,
+      "samples_per_s": 98.15,
+      "tag": "eval-Qwen3.5-4B-2gpu",
+      "temperature": 0.7,
+      "versions": {
+        "accelerate": "1.15.0",
+        "causal-conv1d": "1.7.0",
+        "datasets": "5.1.0",
+        "deepspeed": "0.19.7",
+        "fla-core": "0.5.2",
+        "flash-linear-attention": "0.5.2",
+        "torch": "2.13.0",
+        "transformers": "5.17.0",
+        "triton": "3.7.1",
+        "trl": "1.15.0",
+        "vllm": "0.31.0"
+      },
+      "workers": [
+        {
+          "end": 1791814563.1814706,
+          "load_s": 61.52316907700015,
+          "prompts": 125,
+          "samples": 500,
+          "start": 1791814553.1608446,
+          "tokens": 64000
+        },
+        {
+          "end": 1791814563.3493536,
+          "load_s": 61.54323038400025,
+          "prompts": 125,
+          "samples": 500,
+          "start": 1791814553.1811366,
+          "tokens": 64000
+        }
+      ]
+    }
+  }
+}

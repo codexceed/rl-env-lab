@@ -1,0 +1,11 @@
+{"ts": 1791818430.694, "iso": "2026-10-12T15:20:30+00:00", "node": "node1", "event": "coordinator_start", "pid": 475957, "dry_run": false, "shutdown_opt_in": false, "deadline": "2026-10-16T06:00:00+00:00"}
+{"ts": 1791818430.699, "iso": "2026-10-12T15:20:30+00:00", "node": "node1", "event": "eval_lease", "gen": 1, "gpus": [6, 7], "drain": false}
+{"ts": 1791818430.702, "iso": "2026-10-12T15:20:30+00:00", "node": "node1", "event": "watcher_start", "pid": 475971, "restarts": 0}
+{"ts": 1791818430.702, "iso": "2026-10-12T15:20:30+00:00", "node": "node1", "event": "gate_blocked", "count": 8, "blockers": ["2b-rob-s1: pending", "2b-leak-s1: pending", "2b-rob-s2: pending", "2b-leak-s2: pending", "2b-rob-s3: pending", "2b-leak-s3: pending", "4b-rob-s2: pending", "4b-leak-s2: pending"]}
+{"ts": 1791818445.709, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "launch", "run_id": "2b-rob-s1", "gpus": [0], "attempt": 1, "pid": 476844, "resume_from": null}
+{"ts": 1791818445.713, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "launch", "run_id": "2b-leak-s1", "gpus": [1], "attempt": 1, "pid": 476846, "resume_from": null}
+{"ts": 1791818445.717, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "launch", "run_id": "2b-rob-s2", "gpus": [2], "attempt": 1, "pid": 476848, "resume_from": null}
+{"ts": 1791818445.721, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "launch", "run_id": "2b-leak-s2", "gpus": [3], "attempt": 1, "pid": 476850, "resume_from": null}
+{"ts": 1791818445.725, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "launch", "run_id": "2b-rob-s3", "gpus": [4], "attempt": 1, "pid": 476852, "resume_from": null}
+{"ts": 1791818445.729, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "launch", "run_id": "2b-leak-s3", "gpus": [5], "attempt": 1, "pid": 476855, "resume_from": null}
+{"ts": 1791818445.729, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "gate_blocked", "count": 8, "blockers": ["2b-rob-s1: running", "2b-leak-s1: running", "2b-rob-s2: running", "2b-leak-s2: running", "2b-rob-s3: running", "2b-leak-s3: running", "4b-rob-s2: pending", "4b-leak-s2: pending"]}
