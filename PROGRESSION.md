@@ -136,7 +136,7 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Weight sync trainer → vLLM works (generations change after an update)
 - [ ] Save → resume restores model, optimizer, scheduler, RNG, trainer state; loss continues smoothly
 - [ ] Thinking mode disabled cleanly via chat template
-- [~] Native tool-call format identified: **XML** `<tool_call><function=NAME><parameter=ARG>…` from HF chat templates (owner approved 2026-10-12); confirm with real tokenizer on GPU
+- [ ] Native tool-call format identified: **XML** `<tool_call><function=NAME><parameter=ARG>…` from HF chat templates (owner approved 2026-10-12); confirm with real tokenizer on GPU
 - [ ] Memory and throughput recorded per size (feeds §0.4)
 - [ ] Decision rule:
   - vLLM fails → HF generate for **training and eval**; model family unchanged
