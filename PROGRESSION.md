@@ -433,3 +433,4 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | Exploratory follow-up proposed: same-type eval + thinking-on v2 (ADR 0005, Proposed) | Held-out failures mix hacking with missing arithmetic | [x] #20 |
 | 2026-10-12 | Recovery checkpoints asynchronous (snapshot to CPU, background write, skip a save while one is in flight); 4B recovery every 100 steps (eval stays 50). Block 1 runs keep the old code | Synchronous saves paused training ~10 min per 50 steps; 4B saves are 55 GB | [ ] |
 | 2026-10-12 | ADR 0005 accepted (PR #16) | Owner merged | [x] #20 |
+| 2026-10-12 | v2 moved up: n1 runs the v2 2B round (ADR 0005) right after its 2B block; n1's 4B pair (P2) moved to the end of n2's 4B queues. On a no-go the pair returns to n1 | v2 results ~3 h sooner; 4B still ends well before the cutoff | [ ] |

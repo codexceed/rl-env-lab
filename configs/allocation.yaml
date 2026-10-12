@@ -113,12 +113,9 @@ nodes:
       - {name: n1-g3, gpus: [3], queue: [2b-leak-s2]}
       - {name: n1-g4, gpus: [4], queue: [2b-rob-s3]}
       - {name: n1-g5, gpus: [5], queue: [2b-leak-s3]}
-      # Blocks 2-3 (~3 h): 4B P2, robust then leaky (matched pair, sequential).
-      # GPU 4-5 are then spare and join eval via lend_idle_gpus.
-      - name: n1-4b
-        gpus: [0, 1, 2, 3]
-        after: [n1-g0, n1-g1, n1-g2, n1-g3]
-        queue: [4b-rob-s2, 4b-leak-s2]
+      # Block 2: v2 2B runs (ADR 0005), added here once the thinking-on base check says go.
+      # The 4B pair that ran here (P2) moved to node2's 4B queues (PROGRESSION Change log 2026-10-12);
+      # on no-go it comes back: name n1-4b, gpus [0, 1, 2, 3], after n1-g0..g3, queue [4b-rob-s2, 4b-leak-s2].
   node2:
     gpus: [0, 1, 2, 3, 4, 5, 6, 7]
     eval_gpus: [6, 7]  # eval overflow during 0.8B; taken back when the 4B leaky queue starts
@@ -130,12 +127,12 @@ nodes:
       - {name: n2-g3, gpus: [3], queue: [0.8b-leak-s2]}
       - {name: n2-g4, gpus: [4], queue: [0.8b-rob-s3]}
       - {name: n2-g5, gpus: [5], queue: [0.8b-leak-s3]}
-      # Blocks 2-3 (~3 h): 4B P1 then P3, robust on GPU 0-3, leaky on GPU 4-7
+      # Blocks 2-4: all three 4B pairs (P1, P3, then P2 moved from node1), robust on GPU 0-3, leaky on GPU 4-7
       - name: n2-4b-rob
         gpus: [0, 1, 2, 3]
         after: [n2-g0, n2-g1, n2-g2, n2-g3]
-        queue: [4b-rob-s1, 4b-rob-s3]
+        queue: [4b-rob-s1, 4b-rob-s3, 4b-rob-s2]
       - name: n2-4b-leak
         gpus: [4, 5, 6, 7]
         after: [n2-g4, n2-g5]
-        queue: [4b-leak-s1, 4b-leak-s3]
+        queue: [4b-leak-s1, 4b-leak-s3, 4b-leak-s2]

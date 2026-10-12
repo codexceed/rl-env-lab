@@ -199,10 +199,11 @@ def test_repo_allocation_config_matches_plan():
     ids = set(n1.runs) | set(n2.runs)
     expected = {f"{size}-{r}-s{s}" for size in ("2b", "0.8b", "4b") for r in ("rob", "leak") for s in (1, 2, 3)}
     assert ids == expected and not set(n1.runs) & set(n2.runs)
-    assert {r for r in n1.runs if r.startswith("4b")} == {"4b-rob-s2", "4b-leak-s2"}
-    four_b = next(g for g in n1.groups if g.name == "n1-4b")
-    assert four_b.queue == ("4b-rob-s2", "4b-leak-s2")  # robust then leaky, sequential
-    spec = n1.runs["4b-rob-s2"]
+    assert not any(r.startswith("4b") for r in n1.runs)  # all 4B on node2; node1 runs v2 (ADR 0005)
+    groups = {g.name: g for g in n2.groups}
+    assert groups["n2-4b-rob"].queue == ("4b-rob-s1", "4b-rob-s3", "4b-rob-s2")
+    assert groups["n2-4b-leak"].queue == ("4b-leak-s1", "4b-leak-s3", "4b-leak-s2")  # pairs run side by side
+    spec = n2.runs["4b-rob-s2"]
     assert spec.gpus == (0, 1, 2, 3) and spec.vllm_server_gpus == 0  # colocate-4train
     assert n1.eval_gpus == (6, 7)
     assert n1.settings.shutdown_cmd is None  # release is opt-in
@@ -493,7 +494,7 @@ def test_end_to_end_with_watcher_reclaims_eval_gpu_before_launch(env):
 
 def test_cli_print_plan(tmp_path):
     out = subprocess.run(
-        [PY, str(REPO / "train" / "coordinator.py"), "--node", "node1", "--print-plan"],
+        [PY, str(REPO / "train" / "coordinator.py"), "--node", "node2", "--print-plan"],
         cwd=REPO,
         capture_output=True,
         text=True,
