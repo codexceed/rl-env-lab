@@ -20,7 +20,8 @@ We measure true success against exploits (samples that pass leaky but fail robus
 | `docs/adr/` | **Architecture Decision Records**: the reasoning behind major decisions | Agents draft, owner accepts |
 | `DECISIONS.md` | One-line ledger of decisions, linking to ADRs | Owner signs off on changes |
 | `INSTRUCTIONS.md` | Original plan. **Never edit.** Inherited unless overridden in PROGRESSION | Nobody |
-| `SPEC.md` | Environment contract: entities, tools, templates, graders, gates | Agent drafts, owner signs off |
+| `SPEC.md` | Environment contract: entities, tools, templates, graders, gates (project v1/v2) | Agent drafts, owner signs off |
+| `SPEC_v3.md` | v3 task set only (templates, splits, counts); everything else inherited from `SPEC.md` (ADR 0007) | Agent drafts, owner signs off |
 | `PREREG.md` | Hypotheses, thresholds, eval protocol. Frozen before task training | Owner |
 | `reports/learnings.md` | **Living record of lessons** from results, issues and decisions; seed of the final knowledge piece | Everyone, per "Updating `reports/learnings.md`" |
 
@@ -101,6 +102,7 @@ CI runs one required check per lint tool plus the tests. **The CI environment ha
 
 **Updating `reports/learnings.md`**
 - Add a lesson when a result, incident or decision teaches something non-obvious: one line, the lesson in bold, then the evidence (numbers, run ids, ADR). Put it in the matching section.
+- Tag every lesson with its **project version**: v1 (pre-registered study, SPEC.md tasks), v2 (thinking on, same tasks, ADR 0005/0006) or v3 (new task set, ADR 0007). Never compare numbers across versions without saying so.
 - Label its source: *pre-registered*, *training-time* or *exploratory*. Never present an exploratory or training-time number as a verdict.
 - When later data changes a lesson, correct it in place and say why. Bump **Last updated**.
 - The integrator updates it at least at each gate (block done, verdicts in) and when closing an incident. Parallel workstreams report candidate lessons in their summary instead of editing it.

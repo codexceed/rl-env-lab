@@ -19,10 +19,10 @@
 
 | | |
 |---|---|
-| **Phase** | P0 — Setup done except node 2 and CI box; P1 code and P2 acceptance done early. Next: 10-step dry runs, base evals |
+| **Phase** | P3 — v1 matrix (18 runs) trained and evaluated; v2 2B done, v2 0.8B training on N1. Next: verdicts (`make report`), **project version v3** build (ADR 0007, §3.6) |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
 | **Compute** | 2 × 8 H200 (Lightning AI, `[teamspace]`, `bare-metal`) · node 1 `rl-env-lab-n1` on 8× H200 · node 2 `rl-env-lab-n2` created before training |
-| **Next gate** | 🚦 G-Setup |
+| **Next gate** | 🚦 v3 calibration gate (§3.6) |
 | **Blockers** | — |
 
 ---
@@ -324,12 +324,12 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 0.8B P1 | N2 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
 | 0.8B P2 | N2 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
 | 0.8B P3 | N2 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
-| 4B P1 | N2 · 2 | [x] / [x] | [ ] / [ ] (eval catch-up on N2) |
-| 4B P2 | N2 · 4 (moved from N1, Change log 2026-10-12) | [x] / [x] | [ ] / [ ] (eval catch-up on N2) |
-| 4B P3 | N2 · 3 | [x] / [x] | [ ] / [ ] (eval catch-up on N2) |
+| 4B P1 | N2 · 2 | [x] / [x] | [x] / [x] (20 / 20) |
+| 4B P2 | N2 · 4 (moved from N1, Change log 2026-10-12) | [x] / [x] | [x] / [x] (20 / 20) |
+| 4B P3 | N2 · 3 | [x] / [x] | [x] / [x] (20 / 20) |
 
 - [x] 🚦 G-core (end of block 1): all six main-model runs finished and evaluated — 2026-10-12 20:45, 1,000 steps each, 20 eval checkpoints each
-- [ ] 🚦 G-ladder (end of block 3): all 0.8B and 4B runs finished and evaluated — all 18 runs trained by 2026-10-12 22:55; 4B evals catching up on N2 (no eval GPU while 4B trained)
+- [x] 🚦 G-ladder (end of block 3): all 0.8B and 4B runs finished and evaluated — 2026-10-12 22:40, 4B evals 20 / 20 each (caught up on N2 after training)
 - [ ] Recovery checkpoints pruned only after the run's final artifacts pass integrity check
 
 ### 3.4 Live analysis (as results land)
@@ -340,6 +340,17 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [ ] **Provisional verdicts** for H1, H2 (after G-core) and H5 (after G-ladder) written into `reports/results.md`
 - [ ] Exploit gallery: 10–20 real leaky-pass / robust-fail samples, grouped by type
 - [ ] Limits section drafted
+
+### 3.6 Project version v3: harder, larger task set (ADR 0007, exploratory)
+- [ ] ADR 0007 accepted by the owner
+- [ ] `SPEC_v3.md`: 15 train templates (A–C per family), 5 near + 5 far held-out, counts, gates
+- [ ] v3 generators, solvers, wrong-value calls, broken variants; `data/v3/` + its manifest; v1 `data/manifest.json` byte-identical
+- [ ] v3 acceptance: ≥ 99% of valid instances pass G1–G3, every broken instance fails a gate
+- [ ] `--variant v3` (thinking on, cap 1,024, `data/v3`, prompt budget 2,048, context 3,072); eval reports near and far separately
+- [ ] 🚦 v3 calibration gate: thinking-on base diagnostic on v3 train split: 4B ≥ 9 / 15 in band and leaky pass ≤ 90%; 2B ≥ 6 / 15 in band (one tuning pass allowed)
+- [ ] v3 dry run (4B, 12 steps): memory and step time at the longer prompts
+- [ ] v3 runs: 4B × 6 and 2B × 6 (start by Wed 14 Oct evening)
+- [ ] `reports/v3.md`: near vs far, robust vs leaky, labelled v3 exploratory
 
 ### 3.5 Spare blocks (after block 3 until the cutoff, only after G-core)
 - [ ] Priority 1: reruns of any unhealthy/failed run

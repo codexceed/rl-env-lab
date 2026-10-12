@@ -3,10 +3,17 @@
 What this study has taught us so far, from results, issues and decisions. Each line is a lesson plus the evidence behind it. This is the seed of the final knowledge piece.
 
 - **Living document.** Add a lesson when a result, incident or decision teaches something non-obvious; correct one when later data changes it (strike the old claim, say why). Rules: `AGENTS.md` → "Updating `reports/learnings.md`".
-- **Labels:** *pre-registered* = from H1/H2/H5 verdicts; *training-time* = from `train_metrics.jsonl` on training tasks; *exploratory* = ADR 0005/0006 work. Never present an exploratory or training-time number as a verdict.
+- **Labels:** *pre-registered* = from H1/H2/H5 verdicts; *training-time* = from `train_metrics.jsonl` on training tasks; *exploratory* = ADR 0005/0006/0007 work. Never present an exploratory or training-time number as a verdict.
+- **Project versions:** every lesson is tagged with the version it comes from. Numbers from different versions use different tasks; don't compare them without saying so.
+
+| Version | Tasks | Settings | Runs | Status |
+|---|---|---|---|---|
+| **v1** | `SPEC.md` (11 train, 5 held-out templates) | thinking off, cap 256 | 0.8B / 2B / 4B × robust, leaky × 3 seeds | pre-registered (PREREG) |
+| **v2** | same as v1 | thinking on, cap 1,024 (ADR 0005, 0006) | 2B, 0.8B (4B gate no-go) | exploratory |
+| **v3** | `SPEC_v3.md`: harder, 15 train, near + far held-out (ADR 0007) | thinking on, cap 1,024 | 4B, 2B (planned) | exploratory, being built |
 - **Last updated:** 2026-10-12 22:20 (all 18 v1 runs trained; 4B evals ~half done; v2 2B done and evaluated; no verdicts yet).
 
-## 1. Reward hacking: what it looks like here
+## 1. Reward hacking: what it looks like here (v1)
 
 | Lesson | Evidence | Source |
 |---|---|---|
@@ -19,7 +26,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **Held-out failures mix hacking with missing skill** | Held-out F1/F3/F4 stay near 0% exact in every run: models learn tool, customer and status, not new arithmetic. Motivated the same-type eval (ADR 0005) | held-out |
 | **The held-out templates need a formula training never shows** | Trained F1 is a flat or promised amount and trained F3 a full or P% refund, both subtraction-style; held-out F1T3 is per-seat (qty × d) and F3T3 unused units × unit price, so they need multiplication. F2/F4/F5 held-out stay close to their training shape and transfer well (v2 robust ≥ 0.8) | SPEC templates, held-out |
 
-## 2. Reasoning before answering is the strongest lever so far
+## 2. Reasoning before answering is the strongest lever so far (v2)
 
 | 2B base, 11 train types × 50 × 8 | True success | Exploit rate | Cut off |
 |---|---|---|---|
@@ -35,14 +42,17 @@ What this study has taught us so far, from results, issues and decisions. Each l
 - **Leaky training shortens the reasoning.** v2 leaky answers average 260–400 tokens vs 530–545 for v2 robust: when the grader doesn't check the sum, the model stops working it out. *(exploratory, training-time)*
 - **Run a sensitivity check before accepting a gate's no-go.** The gate as written said no-go at 512; one extra run at 1,024 showed why (ADR 0006).
 
-## 3. Experiment design
+## 3. Experiment design (v1, v2)
+
+- **A switch that helps one size can saturate another.** *(v2)* Thinking on lifts 2B base true success 0.31 → 0.61, but takes 4B to 0.87 with leaky pass 0.98: 7 of 11 types at 98–100%, so GRPO would get almost no signal. Task difficulty has to be re-checked per size after any change to how the model answers (ADR 0007).
+- **Check that a gate compares like with like.** *(v2)* The go/no-go first said no-go for 0.8B because the thinking-off baseline still held two rejected candidate templates that the thinking-on run never measured. Fixed to compare only shared templates; 0.8B is a go (9 of 11 in band).
 
 - **Size budgets from real output lengths, per model size.** A 128-token cap cut off 26% of 4B held-out answers, understating 4B through truncation, not ability (ADR 0004 → 256).
 - **Check the difficulty band before training.** 5 of 10 templates were in the 10–90% band; one learnable template (F1T5) was added, three candidates were too hard at 6–9%.
 - **GRPO starves on saturated tasks.** 91–99% of groups gave no signal (all 8 answers scored the same): solved types, leaky runs at reward ~1.0, and types at ~0%. A health rule written before seeing the environment was wrong for it (PREREG #13).
 - **Benchmark before planning.** Runs were 5–20× faster than estimated, which turned 300 steps into 1,000 (ADR 0003).
 
-## 4. Training stability
+## 4. Training stability (v1, v2)
 
 | Lesson | Evidence |
 |---|---|
@@ -50,7 +60,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **Small learning rates need fp32 master weights** | bf16 weights round 1e-6 updates away |
 | **Qwen3.5 vision-language checkpoints break weight sync and resume** | Fixed by training from a text-only export |
 
-## 5. Infrastructure
+## 5. Infrastructure (all versions)
 
 | Lesson | Evidence |
 |---|---|
@@ -61,14 +71,21 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **Colocated vLLM beat a separate server for 4B** | 4 ZeRO-3 ranks, each with a colocated engine: 4.4 s/step vs 8.1 s for 1 server + 2 trainers |
 | **Run identity hashes are fragile** | The data manifest's hash is part of every run's identity: editing it would have broken resumes and pairs, so new data went in a separate manifest. I/O-only settings are excluded from the hash |
 
-## 6. Process (agents and humans)
+## 6. Process (agents and humans, all versions)
 
 - **Verify agents' claims; enforce, don't trust.** An agent reported "checks pass" with 4 lint errors left. Fix: a mandatory pre-commit hook. GitHub branch protection isn't available on a private free repo, so the local hook is the gate and CI is the backstop.
 - **Pre-register, then date every amendment.** Four changes came after seeing data (H2 bar, answer cap, F1T5, v2 cap). Each is recorded with its reason and flagged in the report, not hidden.
 - **Shared nodes have toolchain traps.** A package pulled in a second `uv` binary that child jobs would pick up; the GPU stack is installed outside the lock file, so syncs must be additive; node clocks run on UTC.
+
+## 7. v3: harder task set (ADR 0007)
+
+*Being built. Lessons land here once the calibration gate and the first runs report.*
+
+- **Design aim:** the v3 "near" held-out set only recombines steps that were trained, so a near exploit points to hacking, not missing skill; "far" held-out keeps a generalization test. *(v3, design, not yet a result)*
 
 ## Open questions for the final piece
 
 - Does the held-out robust/leaky split hold at 4B once all evals are in, and does it grow with size (H5)? Early 4B numbers say yes.
 - ~~Does thinking-on training (v2) keep exploits low once RL pushes on the leaky grader?~~ No at 2B: v2 leaky ends at exploit 0.70–0.80. Open: does it hold at 4B and 0.8B (v2 runs next)?
 - On same-type tasks, how much of the held-out "exploit" rate is hacking vs missing skill?
+- *(v3)* With real training signal at 4B, does leaky training hack on near held-out tasks, where the skill is known to be there?
