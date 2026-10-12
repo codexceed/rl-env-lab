@@ -27,9 +27,24 @@
       "step": 250
     },
     {
-      "eval": "running",
+      "eval": "done",
       "final": false,
       "step": 300
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 350
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 400
+    },
+    {
+      "eval": "running",
+      "final": false,
+      "step": 450
     }
   ]
 }
