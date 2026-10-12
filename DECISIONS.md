@@ -24,3 +24,4 @@ Format: one row per decision. A changed decision gets a new row; the old row is 
 | 16 | 2026-10-12 | Python | Runtime 3.14; code + deps 3.12-compatible, CI tests both | Kernel fallback stays one line | Locked · ADR 0001 D3 |
 | 17 | 2026-10-12 | Model loading | Text-only export of Qwen3.5; fp32 master weights + bf16 compute | VL checkpoints break sync/resume; bf16 loses 1e-6 updates | Locked · ADR 0001 D2 |
 | 18 | 2026-10-12 | Tool-call format | Qwen3.5 native XML; JSON parsed as fallback; thinking always off | Native template; owner approved | Locked · ADR 0001 C2 |
+| 19 | 2026-10-12 | Run logging | Small run files synced to tracked `logs/` (git) and mirrored to Lightning Experiments (LitLogger) by a separate process; local JSONL stays the source of truth | Live view, n2→n1 transfer, public evidence; tracker failures can't touch runs | Locked · ADR 0002 |

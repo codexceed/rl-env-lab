@@ -5,6 +5,7 @@ Each ADR records **why** a major decision was made, so nobody has to dig through
 | # | Title | Status | Date |
 |---|---|---|---|
 | [0001](0001-foundational-decisions.md) | Foundational decisions for the 4-day study | Accepted | 2026-10-12 |
+| [0002](0002-run-logs-in-repo-and-lightning-experiments.md) | Run logs in the repo, mirrored to Lightning Experiments | Accepted | 2026-10-12 |
 
 ## When to write one
 

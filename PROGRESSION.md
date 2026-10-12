@@ -425,3 +425,5 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Nodes on `bare-metal` ([rate] per 8× H200) instead of `public-cloud` ([rate], likely unavailable); setup on CPU before switching | Price + availability; owner approved | [ ] |
 | 2026-10-12 | ARCHITECTURE.md + docs/adr/ added; ADR 0001 records all decisions to date; major changes now get ADRs | Owner request (progressive disclosure) | [x] #14 |
 | 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
+| 2026-10-12 | Run logs committed under `logs/` and mirrored to Lightning Experiments by `train/logsync.py` (ADR 0002) | Owner: live tracking + public evidence | [x] #19 |
+| 2026-10-12 | Toy GRPO task 5 → 11 digits: base 2B scored 0.92 at 5 digits (83% groups dead), 0.69 at 11 (38%) | 5-digit sweep could not show reward rising | [ ] |
