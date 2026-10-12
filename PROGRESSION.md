@@ -215,9 +215,9 @@ Three agents in parallel; I integrate and review.
 - [x] Unit tests: every tool, error cases, ledger, hash stability — 2026-10-12, 525 sim tests, merged (#5)
 
 ### 1.2 Graders and gates — `src/envlab/verify/`
-- [ ] Robust grader; leaky grader
-- [ ] G1, G2, G3
-- [ ] Unit tests per family: correct, wrong amount, wrong record, side effect
+- [x] Robust grader; leaky grader
+- [x] G1, G2, G3
+- [x] Unit tests per family: correct, wrong amount, wrong record, side effect — 2026-10-12, 196 verify tests on the real sim, merged (#6)
 
 ### 1.3 Tasks and data — `src/envlab/tasks/`
 - [ ] F1–F5 generators, 3 templates each, seeded; harder variants for train templates
