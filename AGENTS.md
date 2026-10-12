@@ -39,9 +39,10 @@ train/       grpo.py  rewards.py  coordinator.py  async_recovery.py  checkpoints
              logsync.py  compat_check.py  smoke_toy.py  bench.py  LAYOUT.md (artifact contract)
 eval/        heldout.py  watcher.py  metrics.py  compare.py  gallery.py
              sametype_batch.py  sametype_report.py  v2_report.py   (exploratory, ADR 0005)
-configs/     grpo.yaml (+ sizes/: GPU layout, recovery interval; variants/: v2-think)  allocation.yaml
-scripts/     setup_gpu.sh  dry_runs.sh  gpu_checks.sh  base_evals.sh  studio.py
-reports/     acceptance.md  results.md  learnings.md  (+ sametype.md, v2.md when generated)
+             v3_report.py                                         (exploratory, ADR 0007)
+configs/     grpo.yaml (+ sizes/: GPU layout, recovery interval; variants/: v2-think, v3)  allocation.yaml
+scripts/     setup_gpu.sh  dry_runs.sh  dry_v3.sh  gpu_checks.sh  base_evals.sh  studio.py
+reports/     acceptance.md  results.md  learnings.md  (+ sametype.md, v2.md, v3.md when generated)
 logs/        run logs synced from the GPU nodes (train/logsync.py)
 tests/
 data/ runs/  gitignored (except data/manifest*.json, data/splits/)
