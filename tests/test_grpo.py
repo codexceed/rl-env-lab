@@ -37,7 +37,7 @@ def test_budget_matches_progression():
     cfg = load_config(DEFAULT_CONFIG, "2b")
     b = cfg["budget"]
     assert (b["prompts_per_step"], b["num_generations"]) == (8, 8)
-    assert (b["max_prompt_length"], b["max_completion_length"]) == (1536, 128)
+    assert (b["max_prompt_length"], b["max_completion_length"]) == (1536, 256)  # ADR 0004
     assert (b["temperature"], b["beta"]) == (1.0, 0.0)
     assert b["bf16"] is True and b["gradient_checkpointing"] is True
     assert b["param_dtype"] == "float32"
