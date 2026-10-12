@@ -34,6 +34,7 @@ wheels and must be built on the node (needs a CUDA 13.x nvcc matching torch 2.13
 from __future__ import annotations
 
 import argparse
+import contextlib
 import gc
 import json
 import math
@@ -49,10 +50,10 @@ from typing import Any
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import torch  # noqa: E402
+import torch
 
-from train import common  # noqa: E402
-from train.toy_utils import (  # noqa: E402
+from train import common
+from train.toy_utils import (
     extract_answer,
     make_addition_dataset,
     model_slug,
@@ -77,9 +78,7 @@ SAMPLE_TOOL = {
         },
     },
 }
-TOOL_CALL_RE = re.compile(
-    r"<tool_call>\s*<function=([^>\s]+)>(.*?)</function>\s*</tool_call>", re.S
-)
+TOOL_CALL_RE = re.compile(r"<tool_call>\s*<function=([^>\s]+)>(.*?)</function>\s*</tool_call>", re.S)
 PARAM_RE = re.compile(r"<parameter=([^>\s]+)>\n?(.*?)\n?</parameter>", re.S)
 
 
@@ -100,7 +99,7 @@ class Report:
             details = fn()
             passed = bool(details.pop("passed"))
             entry = {"passed": passed, "required": required, "details": details}
-        except Exception as exc:  # noqa: BLE001 - every failure is recorded, then we move on
+        except Exception as exc:
             entry = {
                 "passed": False,
                 "required": required,
@@ -253,8 +252,7 @@ def check_forward_backward(model, tokenizer, batch_size: int, seq_len: int) -> d
     with common.count_kernel_calls() as calls, common.capture_fallback_warnings() as warns:
         loss = step()  # warm-up (Triton autotuning) and gradient inspection
         grad_norms = {
-            k: float(params[n].grad.float().norm()) if params[n].grad is not None else None
-            for k, n in probes.items()
+            k: float(params[n].grad.float().norm()) if params[n].grad is not None else None for k, n in probes.items()
         }
         model.zero_grad(set_to_none=True)
         iters = 3
@@ -324,9 +322,7 @@ def check_hf_generate(model, tokenizer) -> dict[str, Any]:
         common.reset_peak_memory()
         torch.cuda.synchronize()
         t0 = time.perf_counter()
-        outs = greedy(
-            model, tokenizer, texts, max_new_tokens=128, min_new_tokens=128, do_sample=True
-        )
+        outs = greedy(model, tokenizer, texts, max_new_tokens=128, min_new_tokens=128, do_sample=True)
         torch.cuda.synchronize()
         elapsed = time.perf_counter() - t0
     new_tokens = sum(len(o) for o in outs)
@@ -352,9 +348,7 @@ def check_tool_call(model, tokenizer) -> dict[str, Any]:
         {
             "role": "assistant",
             "content": "",
-            "tool_calls": [
-                {"type": "function", "function": {"name": "apply_credit", "arguments": call}}
-            ],
+            "tool_calls": [{"type": "function", "function": {"name": "apply_credit", "arguments": call}}],
         },
     ]
     rendered = chat_text(
@@ -381,9 +375,7 @@ def check_tool_call(model, tokenizer) -> dict[str, Any]:
     parsed = None
     if match:
         parsed = {"name": match.group(1), "arguments": dict(PARAM_RE.findall(match.group(2)))}
-    expected_head = (
-        "<tool_call>\n<function=apply_credit>\n<parameter=invoice_id>\ninv_001\n</parameter>"
-    )
+    expected_head = "<tool_call>\n<function=apply_credit>\n<parameter=invoice_id>\ninv_001\n</parameter>"
     return {
         "passed": expected_head in assistant_turn,
         "format": "<tool_call>\\n<function=NAME>\\n<parameter=ARG>\\nVALUE\\n</parameter>\\n..."
@@ -439,9 +431,7 @@ def check_save_resume(export_dir: Path, tokenizer, workdir: Path, keep: bool) ->
 
         def on_log(self, args, state, control, logs=None, **kw):
             if logs and "loss" in logs:
-                self.logs[state.global_step] = {
-                    k: float(logs[k]) for k in ("loss", "reward", "entropy") if k in logs
-                }
+                self.logs[state.global_step] = {k: float(logs[k]) for k in ("loss", "reward", "entropy") if k in logs}
 
     def make(out: Path, probe: Probe):
         args = common.grpo_config(
@@ -494,8 +484,7 @@ def check_save_resume(export_dir: Path, tokenizer, workdir: Path, keep: bool) ->
         "optimizer": bool(a.get("optimizer"))
         and a.get("optimizer", {}).keys() == b.get("optimizer", {}).keys()
         and all(close(a["optimizer"][k], b["optimizer"][k]) for k in a["optimizer"]),
-        "scheduler": close(a.get("lr"), b.get("lr"))
-        and a.get("scheduler_last_epoch") == b.get("scheduler_last_epoch"),
+        "scheduler": close(a.get("lr"), b.get("lr")) and a.get("scheduler_last_epoch") == b.get("scheduler_last_epoch"),
         "rng": bool(a.get("rng")) and a.get("rng") == b.get("rng"),
         # Guard against a vacuous test: the weights must have moved before the checkpoint.
         "weights_trained_before_save": probe_a.at_start is not None
@@ -506,10 +495,7 @@ def check_save_resume(export_dir: Path, tokenizer, workdir: Path, keep: bool) ->
     }
     after = range(save_at + 1, total_steps + 1)
     diffs = {
-        k: [
-            abs(probe_a.logs.get(s, {}).get(k, math.nan) - probe_b.logs.get(s, {}).get(k, math.nan))
-            for s in after
-        ]
+        k: [abs(probe_a.logs.get(s, {}).get(k, math.nan) - probe_b.logs.get(s, {}).get(k, math.nan)) for s in after]
         for k in ("loss", "reward")
     }
     finite_b = all(
@@ -582,10 +568,8 @@ def check_vllm_generate(vg, tokenizer) -> dict[str, Any]:
     outs = vllm_gen(vg, prompts, n=8, temperature=1.0, max_tokens=128, min_tokens=128)
     elapsed = time.perf_counter() - t0
     arch = None
-    try:
-        arch = vg.llm.llm_engine.model_config.architectures  # colocate only
-    except AttributeError:
-        pass
+    with contextlib.suppress(AttributeError):  # colocate only
+        arch = vg.llm.llm_engine.model_config.architectures
     return {
         "passed": all(decoded) and len(outs) == 64,
         "mode": vg.mode,
@@ -782,15 +766,9 @@ def main() -> int:
         "tool_call_format": checks.get("tool_call_format", {}).get("details", {}).get("format"),
         "train_tokens_per_s": fb.get("train_tokens_per_s"),
         "train_peak_allocated_gb": fb.get("peak_allocated_gb"),
-        "hf_generate_tokens_per_s": checks.get("hf_generate", {})
-        .get("details", {})
-        .get("generate_tokens_per_s"),
-        "vllm_generate_tokens_per_s": checks.get("vllm_generate", {})
-        .get("details", {})
-        .get("generate_tokens_per_s"),
-        "checkpoint_size_gb": checks.get("save_resume", {})
-        .get("details", {})
-        .get("checkpoint_size_gb"),
+        "hf_generate_tokens_per_s": checks.get("hf_generate", {}).get("details", {}).get("generate_tokens_per_s"),
+        "vllm_generate_tokens_per_s": checks.get("vllm_generate", {}).get("details", {}).get("generate_tokens_per_s"),
+        "checkpoint_size_gb": checks.get("save_resume", {}).get("details", {}).get("checkpoint_size_gb"),
     }
     ok = report.finish()
     common.print_json("summary", {**report.data["summary"], **report.data["for_progression"]})

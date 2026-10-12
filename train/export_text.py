@@ -17,11 +17,11 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from train import common  # noqa: E402
+from train import common
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser = argparse.ArgumentParser(description="Export a clean text-only Qwen3.5 checkpoint.")
     parser.add_argument("--model", required=True, help="Hub id, e.g. Qwen/Qwen3.5-2B")
     parser.add_argument("--force", action="store_true", help="re-export even if present")
     args = parser.parse_args()

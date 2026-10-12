@@ -47,9 +47,7 @@ def toy_run_name(model_id: str, lr: float) -> str:
 # Toy task: two-number addition
 # --------------------------------------------------------------------------------------------
 
-ADDITION_PROMPT = (
-    "What is {a} + {b}? Reply with only the final number, with no words or punctuation."
-)
+ADDITION_PROMPT = "What is {a} + {b}? Reply with only the final number, with no words or punctuation."
 
 
 def make_addition_dataset(n: int, seed: int, digits: int = 5) -> list[dict[str, Any]]:
@@ -125,9 +123,7 @@ def extract_answer(text: str, strict: bool = True) -> int | None:
         return None
 
 
-def addition_rewards(
-    completions: Sequence[Any], answers: Sequence[Any], strict: bool = True
-) -> list[float]:
+def addition_rewards(completions: Sequence[Any], answers: Sequence[Any], strict: bool = True) -> list[float]:
     """1.0 when a completion's answer equals the exact sum, else 0.0."""
     if len(completions) != len(answers):
         raise ValueError(f"{len(completions)} completions but {len(answers)} answers")
@@ -148,9 +144,7 @@ def addition_reward(completions: list[Any], answer: list[Any], **kwargs: Any) ->
 # --------------------------------------------------------------------------------------------
 
 
-def dead_group_share(
-    rewards: Sequence[float], group_size: int, group_ids: Sequence[Any] | None = None
-) -> float:
+def dead_group_share(rewards: Sequence[float], group_size: int, group_ids: Sequence[Any] | None = None) -> float:
     """Share of prompt groups whose rewards are all equal (no learning signal in GRPO).
 
     Without `group_ids`, consecutive blocks of `group_size` rewards form a group (TRL's layout).
@@ -289,7 +283,7 @@ def grpo_batch_layout(
         candidates = [per_device_batch]
     else:
         # Prefer one prompt group per micro-batch, then smaller micro-batches.
-        candidates = [num_generations] + [d for d in range(num_generations - 1, 0, -1)]
+        candidates = [num_generations, *range(num_generations - 1, 0, -1)]
     for per_device in candidates:
         global_micro = per_device * num_processes
         if per_device >= 1 and total % global_micro == 0:
@@ -307,9 +301,7 @@ def grpo_batch_layout(
     )
 
 
-def smallest_valid_prompts_per_step(
-    min_prompts: int, num_generations: int, num_processes: int, limit: int = 64
-) -> int:
+def smallest_valid_prompts_per_step(min_prompts: int, num_generations: int, num_processes: int, limit: int = 64) -> int:
     """Smallest prompts-per-step >= `min_prompts` with a valid layout on `num_processes` ranks."""
     for prompts in range(min_prompts, min_prompts + limit):
         try:

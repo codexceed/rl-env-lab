@@ -295,9 +295,7 @@ def load_policy(export_dir: Path, dtype: str = "float32", device: str | None = N
     comes from autocast via `bf16=True`); full-FT updates at lr 1e-6 vanish in pure bf16 weights."""
     from transformers import AutoModelForCausalLM
 
-    model = AutoModelForCausalLM.from_pretrained(
-        str(export_dir), dtype=getattr(torch, dtype), device_map=None
-    )
+    model = AutoModelForCausalLM.from_pretrained(str(export_dir), dtype=getattr(torch, dtype), device_map=None)
     text_only_check(model)
     if device is not None:
         model.to(device)
@@ -318,16 +316,16 @@ def load_tokenizer(export_dir: Path):
 # --------------------------------------------------------------------------------------------
 
 
-def _closure_vars(fn: Callable) -> dict[str, Any]:
+def _closure_vars(fn: Callable | None) -> dict[str, Any]:
     """Closure variables of transformers' `use_kernel_func_from_hub_with_fallback` wrapper."""
-    seen = 0
-    while fn is not None and seen < 6:
+    for _ in range(6):
+        if fn is None:
+            break
         if getattr(fn, "__closure__", None):
-            nonlocals = inspect.getclosurevars(fn).nonlocals
+            nonlocals = dict(inspect.getclosurevars(fn).nonlocals)
             if "implementation" in nonlocals:
                 return nonlocals
         fn = getattr(fn, "__wrapped__", None)
-        seen += 1
     return {}
 
 
@@ -345,7 +343,7 @@ def kernel_report() -> dict[str, Any]:
                 "importable": True,
                 "version": getattr(module, "__version__", None),
             }
-        except Exception as exc:  # noqa: BLE001 - report any import failure
+        except Exception as exc:
             report["packages"][pkg] = {"importable": False, "error": repr(exc)}
 
     modeling = importlib.import_module(QWEN35_MODELING)
@@ -358,9 +356,7 @@ def kernel_report() -> dict[str, Any]:
             "package": pkg,
             "fast": bool(fast) if fast is not None else None,
             "implementation": (
-                f"{getattr(impl, '__module__', '?')}.{getattr(impl, '__qualname__', '?')}"
-                if impl is not None
-                else None
+                f"{getattr(impl, '__module__', '?')}.{getattr(impl, '__qualname__', '?')}" if impl is not None else None
             ),
         }
     report["slow_fallback"] = not all(f["fast"] is True for f in report["functions"].values())
@@ -449,9 +445,7 @@ def param_checksums(model: torch.nn.Module) -> dict[str, tuple[float, float]]:
     return out
 
 
-def compare_checksums(
-    before: dict[str, tuple[float, float]], after: dict[str, tuple[float, float]]
-) -> dict[str, Any]:
+def compare_checksums(before: dict[str, tuple[float, float]], after: dict[str, tuple[float, float]]) -> dict[str, Any]:
     changed = [n for n in before if n in after and before[n] != after[n]]
     return {
         "params_total": len(before),

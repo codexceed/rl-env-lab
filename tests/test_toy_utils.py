@@ -25,9 +25,7 @@ def test_model_slug():
     assert tu.model_slug("runs/models/Qwen3.5-4B-text/") == "Qwen3.5-4B-text"
 
 
-@pytest.mark.parametrize(
-    ("lr", "label"), [(1e-6, "1e-6"), (3e-6, "3e-6"), (1e-5, "1e-5"), (2.5e-5, "2.5e-5")]
-)
+@pytest.mark.parametrize(("lr", "label"), [(1e-6, "1e-6"), (3e-6, "3e-6"), (1e-5, "1e-5"), (2.5e-5, "2.5e-5")])
 def test_format_lr(lr, label):
     assert tu.format_lr(lr) == label
 
@@ -117,7 +115,7 @@ def test_addition_rewards_length_mismatch():
 
 
 def test_dead_group_share_consecutive():
-    rewards = [1, 1, 1, 1] + [0, 1, 0, 0] + [0, 0, 0, 0]
+    rewards = [1, 1, 1, 1, 0, 1, 0, 0, 0, 0, 0, 0]  # dead, live, dead
     assert tu.dead_group_share(rewards, group_size=4) == pytest.approx(2 / 3)
 
 
@@ -183,9 +181,7 @@ def test_toy_verdict_flags_nan():
 # --- batch layout -----------------------------------------------------------------------------
 
 
-@pytest.mark.parametrize(
-    ("procs", "per_device", "accum"), [(1, 8, 8), (2, 8, 4), (4, 8, 2), (8, 8, 1)]
-)
+@pytest.mark.parametrize(("procs", "per_device", "accum"), [(1, 8, 8), (2, 8, 4), (4, 8, 2), (8, 8, 1)])
 def test_grpo_batch_layout_8x8(procs, per_device, accum):
     layout = tu.grpo_batch_layout(8, 8, procs)
     assert layout["per_device_train_batch_size"] == per_device
