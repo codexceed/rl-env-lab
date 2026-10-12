@@ -7,6 +7,7 @@ import random
 from envlab.calls import ToolCall
 from envlab.sim.entities import Customer, LineItem
 from envlab.tasks.common import (
+    ADDONS,
     DISCOUNTS,
     PERIODS,
     Built,
@@ -30,7 +31,13 @@ _SHAPES: dict[tuple[str, str], tuple[tuple[int, int], tuple[int, int]]] = {
     ("F4T3", "base"): ((3, 4), (1, 12)),
     ("F4T1", "hard"): ((4, 5), (1, 9)),
     ("F4T2", "hard"): ((4, 5), (1, 24)),
+    ("F4T4", "base"): ((2, 2), (1, 1)),
+    ("F4T5", "base"): ((2, 2), (1, 1)),
+    ("F4T4", "hard"): ((3, 4), (1, 3)),
+    ("F4T5", "hard"): ((3, 4), (1, 3)),
 }
+# Medium-difficulty candidates (SPEC §4): every add-on unit is a whole-dollar amount.
+WHOLE_DOLLAR = ("F4T4", "F4T5")
 
 
 def inject_error(rng: random.Random, lines: list[LineItem]) -> int:
@@ -68,6 +75,13 @@ def mis_summed_lines(d: Draft, c: Customer, template: str, variant: str) -> list
     return [d.plan_line(c), *d.addons(d.rng.randint(lo, hi) - 1, qty=qty)]
 
 
+def whole_dollar_lines(d: Draft, c: Customer, template: str, variant: str) -> list[LineItem]:
+    """F4T4/F4T5: the plan (qty 1, at contract_rate) then add-ons with unit ``100*u``, u in [5, 50]."""
+    (lo, hi), qty = _SHAPES[(template, variant)]
+    names = d.rng.sample(ADDONS, d.rng.randint(lo, hi) - 1)
+    return [d.plan_line(c), *(LineItem(name, d.rng.randint(*qty), 100 * d.rng.randint(5, 50)) for name in names)]
+
+
 def discounted_lines(d: Draft, c: Customer) -> list[LineItem]:
     """F4T3: 3-4 positive lines (qty 1-12) then a discount of 5-20% of the positive subtotal."""
     pos = mis_summed_lines(d, c, "F4T3", "base")
@@ -79,10 +93,16 @@ def discounted_lines(d: Draft, c: Customer) -> list[LineItem]:
 def build(d: Draft, template: str, variant: str) -> Built:
     hard = variant == "hard"
     rng = d.rng
-    c = d.customer()
+    # F4T5: a whole-dollar flat contract rate (100*j, j in [20, 300]), so every line is whole dollars.
+    c = d.customer(rate=100 * rng.randint(20, 300)) if template == "F4T5" else d.customer()
     period = rng.choice(PERIODS)
 
-    if template == "F4T3":
+    if template in WHOLE_DOLLAR:
+        lines = whole_dollar_lines(d, c, template, variant)
+        s = line_sum(lines)
+        # F4T5: one line counted twice; F4T4: the family error injection.
+        billed = s + rng.choice(lines).total if template == "F4T5" else inject_error(rng, lines)
+    elif template == "F4T3":
         lines = discounted_lines(d, c)
         s = line_sum(lines)
         discount = lines[-1].total
@@ -101,6 +121,15 @@ def build(d: Draft, template: str, variant: str) -> Built:
     elif template == "F4T2":
         request = f"One of {c.name}'s open invoices has a total that doesn't match its line items. Correct it."
         params = {"customer_name": c.name}
+    elif template == "F4T4":
+        request = (
+            f"The total on {c.name}'s invoice {t.id} doesn't equal the sum of its line items. "
+            "Correct the invoice total."
+        )
+        params = {"invoice_id": t.id}
+    elif template == "F4T5":
+        request = f"Invoice {t.id} for {c.name} billed one of its line items twice. Correct the invoice total."
+        params = {"invoice_id": t.id}
     else:
         request = (
             f"Invoice {t.id} ({c.name}) has the wrong total. Recompute it from the line items, including discounts."
@@ -134,7 +163,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
     required: list[UnitSpec] = []
     if template == "F4T2":
         required = [unit_c, unit_a_open] if hard else [unit_a_open]
-    elif template == "F4T1" and hard:
+    elif template in ("F4T1", *WHOLE_DOLLAR) and hard:
         required = [unit_c]
 
     units = add_units(d, draw_k(rng, variant), required, [unit_a, unit_b, unit_c, z_unit(d)], hard=hard)

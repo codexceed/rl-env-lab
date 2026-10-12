@@ -21,6 +21,8 @@ from envlab.tasks.common import (
 
 FAMILY = "F1"
 REASON = "Credit overcharge versus contract rate"
+# Medium-difficulty candidates (SPEC §4): T has only the plan line and a whole-dollar overcharge.
+WHOLE_DOLLAR = ("F1T4", "F1T5")
 
 
 def overbilled_lines(d: Draft, c: Customer, n_addons: int) -> list[LineItem]:
@@ -42,6 +44,11 @@ def build(d: Draft, template: str, variant: str) -> Built:
         c = d.customer(basis=ContractBasis.PER_SEAT, rate=rate)
         seats, over = rng.randint(3, 40), rng.randint(25, 500)
         lines = [d.plan_line(c, seats=seats, unit=rate + over), *d.addons(rng.randint(1, 2))]
+    elif template in WHOLE_DOLLAR:
+        c = d.customer()
+        # Whole-dollar overcharge 100*m, m in [1, 20]; F1T5-hard uses any cents, D in [100, 5000].
+        over = rng.randint(100, 5000) if (template == "F1T5" and hard) else 100 * rng.randint(1, 20)
+        lines = [d.plan_line(c, unit=c.contract_rate + over), *d.addons(rng.randint(1, 2) if hard else 0)]
     else:
         c = d.customer()
         if template == "F1T1":
@@ -67,6 +74,18 @@ def build(d: Draft, template: str, variant: str) -> Built:
             f"{month_name(period)} invoice is higher. Credit the difference."
         )
         params = {"customer_name": c.name, "period": period}
+    elif template == "F1T4":
+        request = (
+            f"{c.name} ({c.id}) says the plan price on invoice {t.id} is above their contract rate. "
+            "Credit the difference."
+        )
+        params = {"customer_id": c.id, "invoice_id": t.id}
+    elif template == "F1T5":
+        request = (
+            f"{c.name} ({c.id}) was promised {dollars(c.contract_rate)} per month, but invoice {t.id} "
+            f"charged {dollars(lines[0].unit_price)} for the plan. Credit the difference."
+        )
+        params = {"customer_id": c.id, "invoice_id": t.id}
     else:
         request = (
             f"{c.name} ({c.id}) is on a per-seat contract. Invoice {t.id} charged more per "
@@ -105,7 +124,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
     required: list[UnitSpec] = []
     if template == "F1T2" and not hard:
         required = [unit_a()]
-    elif template == "F1T1" and hard:
+    elif template in ("F1T1", *WHOLE_DOLLAR) and hard:
         required = [unit_a(), unit_c]
     elif template == "F1T2" and hard:
         required = [

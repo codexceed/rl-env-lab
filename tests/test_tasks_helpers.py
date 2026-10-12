@@ -13,11 +13,16 @@ from envlab.tasks.generate import (
     FAMILIES,
     HELDOUT_TEMPLATES,
     SPLITS,
+    TEMPLATES,
     TRAIN_TEMPLATES,
     derive_seed,
     generate,
     instance_id,
+    template_counts,
 )
+
+ORIGINAL_TRAIN = ("F1T1", "F1T2", "F2T1", "F2T2", "F3T1", "F3T2", "F4T1", "F4T2", "F5T1", "F5T2")
+CANDIDATES = ("F1T4", "F1T5", "F4T4", "F4T5")
 
 
 def test_derive_seed_known_values():
@@ -27,16 +32,32 @@ def test_derive_seed_known_values():
 
 def test_template_sets():
     assert FAMILIES == ("F1", "F2", "F3", "F4", "F5")
-    assert TRAIN_TEMPLATES == ("F1T1", "F1T2", "F2T1", "F2T2", "F3T1", "F3T2", "F4T1", "F4T2", "F5T1", "F5T2")
+    # The registry holds the original T1/T2 plus any subset of the candidates (one can be dropped).
+    assert set(ORIGINAL_TRAIN) <= set(TRAIN_TEMPLATES) <= set(ORIGINAL_TRAIN) | set(CANDIDATES)
+    assert tuple(sorted(set(TRAIN_TEMPLATES))) == TRAIN_TEMPLATES  # family order, no duplicates
     assert HELDOUT_TEMPLATES == ("F1T3", "F2T3", "F3T3", "F4T3", "F5T3")
     assert not set(TRAIN_TEMPLATES) & set(HELDOUT_TEMPLATES)
+    assert not any(t.endswith("T3") for t in TRAIN_TEMPLATES)  # T3 is the only held-out number
+    assert tuple(sorted((*TRAIN_TEMPLATES, *HELDOUT_TEMPLATES))) == TEMPLATES
 
 
 def test_split_table():
-    assert SPLITS["train"] == (1001, TRAIN_TEMPLATES, 200, "base")
-    assert SPLITS["train_hard"] == (4004, TRAIN_TEMPLATES, 200, "hard")
-    assert SPLITS["heldout"] == (2002, HELDOUT_TEMPLATES, 50, "base")
+    assert SPLITS["train"] == (1001, TRAIN_TEMPLATES, 2000, "base")
+    assert SPLITS["train_hard"] == (4004, TRAIN_TEMPLATES, 2000, "hard")
+    assert SPLITS["heldout"] == (2002, HELDOUT_TEMPLATES, 250, "base")
     assert instance_id("F1T3", "heldout", 12) == "F1T3-heldout-00012"
+
+
+def test_template_counts_split_evenly():
+    full = (*ORIGINAL_TRAIN[:4], *CANDIDATES, *ORIGINAL_TRAIN[4:])
+    counts = template_counts(2000, full)
+    assert sum(counts.values()) == 2000
+    assert list(counts.values()) == [143] * 12 + [142] * 2
+    assert template_counts(2000, ORIGINAL_TRAIN) == dict.fromkeys(ORIGINAL_TRAIN, 200)
+    assert template_counts(250, HELDOUT_TEMPLATES) == dict.fromkeys(HELDOUT_TEMPLATES, 50)
+    for n in range(10, 15):  # any number of candidates kept
+        c = template_counts(2000, full[:n])
+        assert sum(c.values()) == 2000 and max(c.values()) - min(c.values()) <= 1
 
 
 def test_broken_sources_are_train_templates_only():

@@ -17,7 +17,7 @@ from envlab.sim.state_hash import state_hash
 from envlab.sim.tools import apply_tool
 from envlab.tasks.broken import BROKEN_TYPES, SOURCES, generate_broken, perturbed_call
 from envlab.tasks.build import build_dataset
-from envlab.tasks.generate import HELDOUT_TEMPLATES, TRAIN_TEMPLATES, generate_split
+from envlab.tasks.generate import HELDOUT_TEMPLATES, TRAIN_TEMPLATES, generate_split, template_counts
 from envlab.tasks.instance import TaskInstance, read_jsonl
 
 
@@ -31,7 +31,8 @@ def test_split_sizes_and_ids(splits):
     assert len(splits["train_hard"]) == 2000
     assert len(splits["heldout"]) == 250
     assert len(splits["broken"]) == 100
-    assert Counter(i.template for i in splits["train"]) == dict.fromkeys(TRAIN_TEMPLATES, 200)
+    assert Counter(i.template for i in splits["train"]) == template_counts(2000, TRAIN_TEMPLATES)
+    assert Counter(i.template for i in splits["train_hard"]) == template_counts(2000, TRAIN_TEMPLATES)
     assert Counter(i.template for i in splits["heldout"]) == dict.fromkeys(HELDOUT_TEMPLATES, 50)
     assert splits["train"][7].id == "F1T1-train-00007"
     assert splits["heldout"][12].id == "F1T3-heldout-00012"
