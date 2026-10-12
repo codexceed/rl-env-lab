@@ -2,7 +2,12 @@
 data/*
 !data/manifest.json
 !data/splits/
-runs/
+# anchored to the root: logs/runs/ and logs/evals/ are tracked (train/logsync.py)
+/runs/
+/evals/
+# logsync temp files from an interrupted copy
+/logs/**/.*
+lightning_logs/
 
 # Secrets
 .env
