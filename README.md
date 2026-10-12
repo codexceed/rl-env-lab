@@ -3,16 +3,17 @@
 A billing simulator used as an RL environment. Qwen3.5 models (0.8B, 2B, 4B) are trained
 with GRPO under two rewards: a **robust** one that checks the full simulator state, and a
 **leaky** one that checks only surface fields. We measure how often the leaky runs learn to
-pass the leaky check without doing the task (exploits). Plan: `PROGRESSION.md`. Rules for the
-verdicts: `PREREG.md`. Results: `reports/results.md`.
+pass the leaky check without doing the task (exploits).
+
+**Start here:** [`ARCHITECTURE.md`](ARCHITECTURE.md) (how it fits together) → [`SPEC.md`](SPEC.md) (environment contract) · [`PREREG.md`](PREREG.md) (verdict rules) · [`docs/adr/`](docs/adr/) (why) · [`PROGRESSION.md`](PROGRESSION.md) (live plan) · `reports/results.md` (results).
 
 ## Setup
 
-Needs [uv](https://docs.astral.sh/uv/) and Python 3.14. `make` alone lists every target.
+Needs [uv](https://docs.astral.sh/uv/) and Python 3.14 (code stays 3.12-compatible). `make` alone lists every target.
 
 ```bash
 make setup                               # dev env + pre-commit hooks (macOS or Linux)
-make setup-gpu                           # Linux GPU nodes: adds torch, trl, vllm, deepspeed
+make setup-gpu                           # Linux nodes (CPU is fine): GPU stack + causal-conv1d build
 uv sync --group dev --extra report       # optional: matplotlib, for the report figures
 make check && make test                  # lint, types, docstrings, imports; unit tests
 ```
@@ -20,9 +21,9 @@ make check && make test                  # lint, types, docstrings, imports; uni
 ## Run it
 
 ```bash
-make data                                # build train / held-out / broken splits   (coming in §1.3)
-make train RUN=2b-rob-s1                 # one GRPO run -> runs/2b-rob-s1/          (coming in §1.4)
-make eval RUN=2b-rob-s1 STEP=final       # held-out eval -> evals/2b-rob-s1/        (coming in §1.4)
+make data                                # build train / held-out / broken splits
+make train RUN=2b-rob-s1                 # one GRPO run -> runs/2b-rob-s1/
+make eval RUN=2b-rob-s1 STEP=final       # held-out eval -> evals/2b-rob-s1/
 make report                              # tables, verdicts, figures -> reports/results.md
 ```
 

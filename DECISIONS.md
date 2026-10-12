@@ -1,6 +1,6 @@
 # DECISIONS
 
-Locked decisions and every change to them. `PROGRESSION.md` is the execution plan; this file records *why* a locked decision is what it is.
+One-line ledger of decisions. **The reasoning lives in ADRs** (`docs/adr/`); everything up to 2026-10-12 is in [ADR 0001](docs/adr/0001-foundational-decisions.md). `PROGRESSION.md` is the execution plan.
 
 Format: one row per decision. A changed decision gets a new row; the old row is marked superseded.
 
@@ -19,3 +19,8 @@ Format: one row per decision. A changed decision gets a new row; the old row is 
 | 11 | 2026-10-12 | Scope cuts | Triage classifier, multi-turn cut; ablations optional | Deadline | Locked |
 | 12 | 2026-10-12 | Node shutdown | Coordinator only, after training + eval + transfers | Runs share nodes | Superseded by #13 |
 | 13 | 2026-10-12 | Node release | No auto-release. Coordinator stops runs at cutoff and marks idle; machines stay attached through dips; owner releases manually | Re-acquiring H200s costs more than idle time | Locked |
+| 14 | 2026-10-12 | Process | Major decisions recorded as ADRs in `docs/adr/`; agents prompt the owner for one on major architecture/planning/experiment-design changes | Progressive disclosure; decisions outlive chat | Locked · ADR 0001 |
+| 15 | 2026-10-12 | Compute account | `bare-metal` ([rate] per 8× H200), set up on CPU first | Half the price of public-prod, available | Locked · ADR 0001 D6 |
+| 16 | 2026-10-12 | Python | Runtime 3.14; code + deps 3.12-compatible, CI tests both | Kernel fallback stays one line | Locked · ADR 0001 D3 |
+| 17 | 2026-10-12 | Model loading | Text-only export of Qwen3.5; fp32 master weights + bf16 compute | VL checkpoints break sync/resume; bf16 loses 1e-6 updates | Locked · ADR 0001 D2 |
+| 18 | 2026-10-12 | Tool-call format | Qwen3.5 native XML; JSON parsed as fallback; thinking always off | Native template; owner approved | Locked · ADR 0001 C2 |

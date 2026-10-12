@@ -15,8 +15,10 @@ We measure true success against exploits (samples that pass leaky but fail robus
 
 | File | Role | Who edits |
 |---|---|---|
+| `ARCHITECTURE.md` | How the stack and its flows fit together (diagrams) | Update when a flow or contract changes |
 | `PROGRESSION.md` | **Authoritative execution plan and progress log** | Everyone, per its update rules |
-| `DECISIONS.md` | Locked decisions and why | Owner signs off on changes |
+| `docs/adr/` | **Architecture Decision Records**: the reasoning behind major decisions | Agents draft, owner accepts |
+| `DECISIONS.md` | One-line ledger of decisions, linking to ADRs | Owner signs off on changes |
 | `INSTRUCTIONS.md` | Original plan. **Never edit.** Inherited unless overridden in PROGRESSION | Nobody |
 | `SPEC.md` | Environment contract: entities, tools, templates, graders, gates | Agent drafts, owner signs off |
 | `PREREG.md` | Hypotheses, thresholds, eval protocol. Frozen before task training | Owner |
@@ -66,6 +68,11 @@ CI runs one required check per lint tool plus the tests. **The CI environment ha
 - **Versions:** hook versions are pinned in `.pre-commit-config.yaml`. The dev `ruff` pin matches the hook.
 
 ## Working rules
+
+**Decisions → ADRs**
+- When a request involves a **major architectural, planning or experiment-design change**, **ask the owner whether to record an ADR** before making the change. Examples: model or model family, hypotheses, thresholds or statistics, run matrix, compute or deadline, environment, grader or artifact contract, working process.
+- If yes, draft `docs/adr/NNNN-short-title.md` from the template in `docs/adr/README.md`, with status `Proposed`. Add a `DECISIONS.md` row and a PROGRESSION Change log row. Mark it `Accepted` once the owner agrees.
+- Never rewrite an accepted ADR. Supersede it with a new one.
 
 **Parallel work**
 - Use one git worktree per workstream. Stay inside the files your task owns. If you must touch a shared file (`pyproject.toml`, `SPEC.md`, `PROGRESSION.md`), keep the edit minimal and say so in the PR.

@@ -1,0 +1,48 @@
+# Architecture Decision Records
+
+Each ADR records **why** a major decision was made, so nobody has to dig through chat history to find out. `DECISIONS.md` is the one-line ledger; ADRs hold the reasoning.
+
+| # | Title | Status | Date |
+|---|---|---|---|
+| [0001](0001-foundational-decisions.md) | Foundational decisions for the 4-day study | Accepted | 2026-10-12 |
+
+## When to write one
+
+Write an ADR for a **major architectural, planning or experiment-design change**, for example:
+- a new model or model family
+- a change to hypotheses, thresholds or statistics
+- a change to the run matrix, compute or deadline
+- a change to the environment, grader or artifact contract
+- a change to how the work is run
+
+Small fixes and clarifications don't need one. Agents propose an ADR and the owner approves it (see `AGENTS.md`).
+
+## Rules
+
+- **File:** `NNNN-short-title.md`. Numbers are never reused.
+- **Status:** `Proposed` → `Accepted`, or later `Superseded by NNNN`. Never delete or rewrite an accepted ADR. Supersede it with a new one.
+- **Keep it short:** about one page. Link to `SPEC.md`, `PREREG.md` and `PROGRESSION.md` rather than repeating them.
+- **Cross-reference:** every ADR also gets a row in `DECISIONS.md` and a Change log row in `PROGRESSION.md`.
+
+## Template
+
+```markdown
+# NNNN. Title
+
+- **Status:** Proposed | Accepted | Superseded by NNNN
+- **Date:** YYYY-MM-DD
+- **Deciders:** owner (+ who proposed)
+
+## Context
+What forces the decision. 2–5 lines.
+
+## Decision
+What we do. Bullets or a table.
+
+## Alternatives considered
+| Option | Why not |
+|---|---|
+
+## Consequences
+What gets easier, what gets harder, and what we must now watch.
+```

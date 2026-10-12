@@ -6,7 +6,7 @@
 
 - Tick a box the moment its *done-when* is met; append `— YYYY-MM-DD HH:MM, note` if useful.
 - Never delete a task: mark it `[~]` (cut) or `[>]` (moved/replaced) with a one-line reason.
-- Any change to scope, model, config, schedule or statistics → row in **Change log**; if it touches a locked decision, also in `DECISIONS.md`.
+- Any change to scope, model, config, schedule or statistics → row in **Change log**; if it touches a locked decision, also in `DECISIONS.md`. Major architecture/planning/experiment-design changes get an ADR (`docs/adr/`, ask the owner first).
 - Keep **Status** current.
 
 **Legend:** `[ ]` todo · `[x]` done · `[~]` cut · `[>]` moved/replaced · `[!]` blocked · 🚦 gate (must pass before the next phase)
@@ -422,4 +422,5 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Train from a clean text-only export of each Qwen3.5 checkpoint; fp32 master weights + bf16 autocast | Hub repos are VL checkpoints (weight-sync/resume break); bf16 weights lose 1e-6 updates | [ ] |
 | 2026-10-12 | Code + deps kept Python 3.12-compatible (runtime 3.14); CI tests both | Kernel fallback stays a one-line switch | [ ] |
 | 2026-10-12 | Nodes on `bare-metal` ([rate] per 8× H200) instead of `public-cloud` ([rate], likely unavailable); setup on CPU before switching | Price + availability; owner approved | [ ] |
+| 2026-10-12 | ARCHITECTURE.md + docs/adr/ added; ADR 0001 records all decisions to date; major changes now get ADRs | Owner request (progressive disclosure) | [x] #14 |
 | 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
