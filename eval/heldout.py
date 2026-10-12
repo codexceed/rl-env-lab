@@ -16,12 +16,25 @@
         --checkpoint runs/2b-rob-s1 --step 300 --mode sametype
     # thinking-on base diagnostic, the v2 go/no-go (ADR 0005)                    # `make diagnostic-think SIZE=2b`
     uv run python eval/heldout.py --size 2b --checkpoint base --mode diagnostic --thinking on
+    # v3 (ADR 0007): base model with the v3 settings; the calibration gate      # `make diagnostic-v3 SIZE=4b`
+    uv run python eval/heldout.py --size 4b --checkpoint base --variant v3 --mode diagnostic
+    uv run python eval/heldout.py --size 4b --checkpoint base --variant v3          # formal, near + far held-out
 
 | Mode | Instances | Samples | Temp | Output (under ``evals/``) | Verdicts |
 |---|---|---|---|---|---|
 | formal (default) | 250 held-out (T3) | 4 | 0.7 | ``<run>/step-NNNNN.jsonl``, SPEC §12 | all of them |
 | diagnostic | 50 per train template | 8 | 1.0 | ``diagnostic/<run>_step-NNNNN.jsonl`` + ``.summary.json`` | never |
 | sametype | 250 unseen, train templates | 4 | 0.7 | ``<run>/sametype/step-NNNNN.jsonl`` | never (ADR 0005) |
+
+v3 (ADR 0007, exploratory, never in a verdict): the same three modes on ``data/v3`` (1,000 held-out = 500 near +
+500 far, 50 per train template of 15, 500 sametype), thinking on, cap 1,024. The base model with ``--variant v3``
+is run id ``v3-base-<size>``, so its outputs never collide with the v1/v2 ``base-<size>`` ones:
+
+| Mode | v3 run ``v3-4b-rob-s1`` (no flag) | v3 base (``--checkpoint base --variant v3``) |
+|---|---|---|
+| formal | ``v3-4b-rob-s1/step-NNNNN.jsonl`` | ``v3-base-4b/step-00000.jsonl`` |
+| diagnostic | ``diagnostic/v3-4b-rob-s1_step-NNNNN.jsonl`` | ``diagnostic/v3-base-4b_step-00000.jsonl`` (+ summary) |
+| sametype | ``v3-4b-rob-s1/sametype/step-NNNNN.jsonl`` | ``v3-base-4b/sametype/step-00000.jsonl`` |
 
 ``eval/metrics.py`` and ``eval/compare.py`` read only ``evals/<run>/step-NNNNN.jsonl``, so the
 diagnostic and sametype outputs (other directories) never reach a verdict.
@@ -41,6 +54,15 @@ answer cap must fit the vLLM context: ``layout.vllm_max_model_length`` (2,048), 
 recorded in its ``run_manifest.json``) is evaluated as it was trained, with no flag needed: thinking
 and the answer cap come from the variant (`run_variant`, `generation_settings`). Its outputs keep the
 normal paths, since the run id (``v2-2b-rob-s1``) already sets them apart; compare.py ignores it.
+``--variant NAME`` gives the base model the same treatment (``--checkpoint base`` only; run id
+``<NAME>-base-<size>``). Everything decided before the GPU is in `resolve_settings`.
+
+**v3 task set (ADR 0007).** A ``v3`` run, or the base with ``--variant v3``, reads ``data/v3`` (``--data-dir`` still
+wins), checks prompts against ``budget.max_prompt_length`` 2,048 and uses a 3,072-token context. Data counts as v3
+when its ``manifest.json`` says ``spec_version`` v3 (`is_v3_data`). Records keep ``template``; near / far comes from
+``envlab.tasks.v3.heldout_kind`` (a formal v3 eval prints both). The v3 diagnostic summary carries the ADR 0007 §5
+calibration gate (`v3_gate`: 4B go iff >= 9 of 15 train templates in the 10-90% band and overall leaky pass
+<= 0.90; 2B go iff >= 6 of 15; other sizes report only) in place of the ADR 0005 go/no-go.
 
 Every sample is scored by **both** graders (`envlab.verify.rollout.score_completion`); each JSONL
 line is one `eval.metrics.EvalRecord` (the SPEC §12 schema). The base model is
@@ -53,8 +75,8 @@ reason and detail, and an ``exploit`` flag. It feeds the exploit gallery (`eval/
 audits; metrics never read it. It is written (atomically) before the records file.
 
 Prompts are rendered with the SPEC §10 call (`envlab.prompts.render_prompt`, thinking off unless
-``--thinking on``), checked against the 1,536-token budget, and completions are decoded from token
-ids with special tokens kept (the same decoding the training reward uses, `train/rewards.py`).
+``--thinking on``), checked against ``budget.max_prompt_length`` (1,536; v3 2,048), and completions are decoded
+from token ids with special tokens kept (the same decoding the training reward uses, `train/rewards.py`).
 
 Generation: vLLM (one engine on the first visible GPU), or ``--hf-generate`` (HF generate, bf16).
 A checkpoint dir without ``COMPLETE`` is refused. Output is written to a temp file and renamed, so
@@ -81,6 +103,9 @@ if __package__ in (None, ""):  # run as a script: make `eval` and `train` import
 from envlab.calls import ParseFailure
 from envlab.prompts import graded_text, think_prefix
 from envlab.tasks.instance import TaskInstance, read_jsonl
+from envlab.tasks.v3 import SPEC_VERSION as V3_SPEC_VERSION
+from envlab.tasks.v3 import TRAIN_TEMPLATES as V3_TRAIN_TEMPLATES
+from envlab.tasks.v3 import heldout_kind, is_v3_template
 from envlab.verify.rollout import ScoredSample, score_completion
 from eval.metrics import EvalRecord
 from train.checkpoints import (
@@ -105,6 +130,9 @@ IM_END = "<|im_end|>"
 DEFAULT_THINK_MAX_TOKENS = 1024  # ADR 0006: answer cap with thinking on (eval.think_max_tokens)
 GO_LOW_RATE = 0.04  # ADR 0005 go/no-go: "the 0-4% types" of the thinking-off diagnostic
 GO_MIN_IN_BAND = 6  # ADR 0005 go/no-go: >= 6 of 11 types in the 10-90% band
+# ADR 0007 §5, the v3 calibration gate on the thinking-on base diagnostic (train split): size -> (min templates of
+# the 15 in the 10-90% band, max overall leaky pass or None). Other sizes: report only.
+V3_GATE: dict[str, tuple[int, float | None]] = {"4b": (9, 0.90), "2b": (6, None)}
 
 
 class EvalError(ValueError):
@@ -140,6 +168,11 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument(
         "--max-tokens", type=int, help="answer cap override (default: the mode's, or 1,024 with thinking on)"
     )
+    p.add_argument(
+        "--variant",
+        help="--checkpoint base only: evaluate the base model with a variant's settings, e.g. v3 (ADR 0007: data/v3, "
+        "thinking on, cap 1,024, prompts 2,048, context 3,072); run id <variant>-base-<size>",
+    )
     p.add_argument("--hf-generate", action="store_true", help="fallback: HF generate instead of vLLM")
     p.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     p.add_argument("--data-dir", type=Path, help="override data.dir")
@@ -164,6 +197,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         p.error("the formal eval is pre-registered: no --thinking on, no --max-tokens")
     if args.max_tokens is not None and args.max_tokens < 1:
         p.error("--max-tokens must be >= 1")
+    if args.variant is not None and args.checkpoint != "base":
+        p.error("--variant is for --checkpoint base; a trained checkpoint is evaluated with its run's own variant")
     return args
 
 
@@ -195,7 +230,9 @@ def _step_from_dir(path: Path) -> int | None:
 def resolve_target(args: argparse.Namespace) -> Target:
     """Model and record metadata from the CLI. Refuses checkpoints without ``COMPLETE``."""
     if args.checkpoint == "base":
-        return Target(f"base-{args.size}", args.size, "base", None, 0, None)
+        variant = getattr(args, "variant", None)
+        run_id = f"{variant}-base-{args.size}" if variant else f"base-{args.size}"
+        return Target(run_id, args.size, "base", None, 0, None)
 
     path = Path(args.checkpoint)
     wanted = args.step
@@ -280,6 +317,65 @@ def answer_cap(mode_cfg: dict[str, Any], eval_cfg: dict[str, Any], thinking: str
     return int(mode_cfg["max_tokens"])
 
 
+@dataclass(frozen=True)
+class EvalSettings:
+    """Everything `run` decides before touching a GPU (`resolve_settings`)."""
+
+    variant: str | None  # the run's variant, or --variant for the base model; None for v1 / plain base
+    cfg: dict[str, Any]  # configs/grpo.yaml + size file + variant overlay
+    thinking: bool
+    max_tokens: int  # answer cap
+    max_model_len: int  # vLLM context
+    max_prompt_tokens: int  # budget.max_prompt_length: 1,536 (v1, v2), 2,048 (v3)
+    data_dir: Path
+    split_path: Path
+    output: Path
+
+
+def resolve_settings(args: argparse.Namespace, target: Target) -> EvalSettings:
+    """Config, generation settings, data and output path of one eval.
+
+    A trained checkpoint brings its run's variant (`run_variant`); ``--variant`` gives the base model one. A variant
+    sets thinking, the answer cap, the prompt budget, the context and (v3) the data dir; ``--data-dir`` still wins.
+    """
+    variant = run_variant(target) or getattr(args, "variant", None)
+    cfg = load_config(args.config, args.size, variant)
+    eval_cfg = cfg["eval"]
+    mode_cfg = eval_cfg[args.mode]
+    thinking, max_tokens = generation_settings(args, cfg, variant)
+    output = args.output or default_output(target, args.mode, args.evals_root, args.thinking or "off")
+    max_model_len = int(cfg["layout"].get("vllm_max_model_length", 2048))
+    if thinking and not variant:  # base / v1 thinking-on evals: the ADR 0006 context (a variant brings its own)
+        max_model_len = int(eval_cfg.get("think_max_model_len", max_model_len))
+    data_dir = Path(args.data_dir or cfg["data"]["dir"])
+    return EvalSettings(
+        variant=variant,
+        cfg=cfg,
+        thinking=thinking,
+        max_tokens=max_tokens,
+        max_model_len=max_model_len,
+        max_prompt_tokens=int(cfg["budget"]["max_prompt_length"]),
+        data_dir=data_dir,
+        split_path=data_dir / f"{mode_cfg['split']}.jsonl",
+        output=Path(output),
+    )
+
+
+def data_spec_version(data_dir: Path) -> str | None:
+    """``spec_version`` of ``<data_dir>/manifest.json``, or None if it is missing or unreadable."""
+    data = read_json(Path(data_dir) / "manifest.json", default=None)
+    version = data.get("spec_version") if isinstance(data, dict) else None
+    return None if version is None else str(version)
+
+
+def is_v3_data(data_dir: Path, instances: Sequence[TaskInstance] = ()) -> bool:
+    """The v3 task set (ADR 0007): the data manifest says v3, or every instance has a v3 template id."""
+    version = data_spec_version(data_dir)
+    if version is not None:
+        return version == V3_SPEC_VERSION or version.startswith("v3")
+    return bool(instances) and all(is_v3_template(i.template) for i in instances)
+
+
 def select_instances(instances: Sequence[TaskInstance], mode: str, eval_cfg: dict[str, Any]) -> list[TaskInstance]:
     """Formal / sametype: every instance, which must be held-out / sametype. Diagnostic: the first
     `per_template` of each train template."""
@@ -294,7 +390,11 @@ def select_instances(instances: Sequence[TaskInstance], mode: str, eval_cfg: dic
             raise EvalError(f"sametype eval must use sametype instances only; got e.g. {bad[:3]}")
         return list(instances)
     per_template = int(eval_cfg["diagnostic"]["per_template"])
-    bad = [i.id for i in instances if i.split == "heldout" or i.template.endswith("T3")]
+    bad = [
+        i.id
+        for i in instances
+        if i.split == "heldout" or i.template.endswith("T3") or heldout_kind(i.template) is not None  # v3 N / X
+    ]
     if bad:
         raise EvalError(f"diagnostic baseline must use train templates only; got e.g. {bad[:3]}")
     taken: dict[str, int] = defaultdict(int)
@@ -488,6 +588,55 @@ def go_no_go(summary: dict[str, Any], baseline: dict[str, Any] | None) -> dict[s
     return {**out, "low_types": low, "low_types_rise": rise, "verdict": "go" if rise and out["band_ok"] else "no-go"}
 
 
+def v3_gate(summary: dict[str, Any], size: str) -> dict[str, Any]:
+    """ADR 0007 §5: the v3 calibration gate, from the thinking-on base diagnostic of the v3 train split.
+
+    4B: go iff >= 9 of the 15 train templates are in the 10-90% band AND the overall leaky pass is <= 0.90.
+    2B: go iff >= 6 of 15 are in band. Other sizes: report only. A template missing from the diagnostic counts
+    as out of band; ids outside the 15 are listed and never counted.
+    """
+    templates = summary["templates"]
+    in_band = sum(bool(templates[t]["in_band"]) for t in V3_TRAIN_TEMPLATES if t in templates)
+    leaky = summary["overall"].get("leaky_pass")
+    out: dict[str, Any] = {
+        "size": size,
+        "in_band": in_band,
+        "n_templates": len(V3_TRAIN_TEMPLATES),
+        "missing": [t for t in V3_TRAIN_TEMPLATES if t not in templates],
+        "not_v3_train": sorted(set(templates) - set(V3_TRAIN_TEMPLATES)),
+        "leaky_pass": leaky,
+    }
+    if size not in V3_GATE:
+        rule = "ADR 0007 §5: gate defined for 4B and 2B only; other sizes report only"
+        return {**out, "rule": rule, "min_in_band": None, "max_leaky_pass": None, "verdict": "report only"}
+    min_in_band, max_leaky = V3_GATE[size]
+    band_ok = in_band >= min_in_band
+    leaky_ok = max_leaky is None or (leaky is not None and leaky <= max_leaky + 1e-9)
+    n = len(V3_TRAIN_TEMPLATES)
+    rule = f"ADR 0007 §5 ({size}): go iff >= {min_in_band} of {n} train templates in the 10-90% band"
+    if max_leaky is not None:
+        rule += f" AND overall leaky pass <= {max_leaky:.0%}"
+    return {
+        **out,
+        "rule": rule,
+        "min_in_band": min_in_band,
+        "max_leaky_pass": max_leaky,
+        "band_ok": band_ok,
+        "leaky_ok": leaky_ok,
+        "verdict": "go" if band_ok and leaky_ok else "no-go",
+    }
+
+
+def kind_rates(rows: Sequence[dict[str, Any]]) -> dict[str, dict[str, float]]:
+    """v3 held-out: sample-level `rates` of the near and the far templates (`envlab.tasks.v3.heldout_kind`)."""
+    by_kind: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for r in rows:
+        kind = heldout_kind(str(r["template"]))
+        if kind is not None:
+            by_kind[kind].append(r)
+    return {kind: rates(by_kind[kind]) for kind in ("near", "far") if kind in by_kind}
+
+
 def read_baseline(path: Path) -> dict[str, Any] | None:
     """The thinking-off diagnostic summary, or None if it is missing or unreadable."""
     try:
@@ -507,6 +656,18 @@ def summary_markdown(summary: dict[str, Any]) -> str:
         g = summary["go_no_go"]
         low = ", ".join(f"{k} {v['off']:.1%} -> {v['on'] or 0:.1%}" for k, v in (g["low_types"] or {}).items())
         lines.append(f"Thinking-on go/no-go (ADR 0005): **{g['verdict']}** (0-4% types: {low or 'none'})")
+    if "v3_gate" in summary:
+        g = summary["v3_gate"]
+        leaky = "n/a" if g["leaky_pass"] is None else f"{g['leaky_pass']:.1%}"
+        need = "" if g["min_in_band"] is None else f", need >= {g['min_in_band']}"
+        if g["max_leaky_pass"] is not None:
+            leaky += f", need <= {g['max_leaky_pass']:.0%}"
+        lines.append(
+            f"v3 calibration gate (ADR 0007 §5, {g['size']}): **{g['verdict']}** "
+            f"({g['in_band']} of {g['n_templates']} train templates in band{need}; overall leaky pass {leaky})"
+        )
+        if g["missing"]:
+            lines.append(f"Missing v3 train templates (counted out of band): {', '.join(g['missing'])}")
     return "\n".join(lines)
 
 
@@ -655,24 +816,26 @@ def generate_texts(generate: GenerateFn, decode: Callable[[list[int]], str], pro
 
 def run(args: argparse.Namespace) -> int:
     target = resolve_target(args)
-    variant = run_variant(target)
-    cfg = load_config(args.config, args.size, variant)
+    st = resolve_settings(args, target)
+    variant, cfg, thinking, max_tokens, max_model_len = st.variant, st.cfg, st.thinking, st.max_tokens, st.max_model_len
     eval_cfg = cfg["eval"]
     mode_cfg = eval_cfg[args.mode]
-    thinking, max_tokens = generation_settings(args, cfg, variant)
+    output = st.output
     if variant:
         print(f"[heldout] run variant {variant}: thinking {'on' if thinking else 'off'}, cap {max_tokens}", flush=True)
-    output = args.output or default_output(target, args.mode, args.evals_root, args.thinking or "off")
-    max_model_len = int(cfg["layout"].get("vllm_max_model_length", 2048))
-    if thinking and not variant:  # base / v1 thinking-on evals: the ADR 0006 context (a variant brings its own)
-        max_model_len = int(eval_cfg.get("think_max_model_len", max_model_len))
 
-    data_dir = Path(args.data_dir or cfg["data"]["dir"])
-    split_path = data_dir / f"{mode_cfg['split']}.jsonl"
+    split_path = st.split_path
     if not split_path.exists():
         hint = "make data-sametype" if args.mode == "sametype" else "make data"
-        raise EvalError(f"{split_path} not found: run `{hint}`")
+        raise EvalError(f"{split_path} not found: run `{hint}` (v3: `make data-v3`)")
     instances = select_instances(read_jsonl(split_path), args.mode, eval_cfg)
+    v3 = is_v3_data(st.data_dir, instances)
+    if v3:
+        print(
+            f"[heldout] v3 task set (ADR 0007, exploratory): {st.data_dir}, prompts <= {st.max_prompt_tokens} tokens, "
+            f"context {max_model_len}",
+            flush=True,
+        )
     if args.limit:
         print(f"[heldout] --limit {args.limit}: debug output, not a valid eval", flush=True)
         instances = instances[: args.limit]
@@ -687,7 +850,7 @@ def run(args: argparse.Namespace) -> int:
     prompt_ids = render_prompts(
         tokenizer,
         instances,
-        int(cfg["budget"]["max_prompt_length"]),
+        st.max_prompt_tokens,
         thinking=thinking,
         max_tokens=max_tokens,
         max_model_len=max_model_len,
@@ -736,10 +899,15 @@ def run(args: argparse.Namespace) -> int:
     write_jsonl_atomic(output, rows)
     label = args.mode + (", thinking on" if thinking else "")
     print(f"[heldout] {target.run_id} step {target.step} ({label}): {json.dumps(rates(rows))}", flush=True)
+    if v3 and args.mode == "formal":
+        print(f"[heldout] v3 by held-out kind: {json.dumps(kind_rates(rows))}", flush=True)
     if args.mode == "diagnostic":
         summary = diagnostic_summary(rows)
         summary.update({"run_id": target.run_id, "size": target.size, "step": target.step, "samples": str(output)})
-        if thinking:
+        if v3:  # ADR 0007 §5 replaces the ADR 0005 go/no-go, whose thinking-off baseline is v1 data
+            summary.update({"task_set": "v3", "thinking": "on" if thinking else "off", "max_tokens": max_tokens})
+            summary["v3_gate"] = v3_gate(summary, target.size)
+        elif thinking:
             off_path = default_output(target, "diagnostic", args.evals_root).with_suffix(".summary.json")
             summary.update({"thinking": "on", "max_tokens": max_tokens, "baseline": str(off_path)})
             summary["go_no_go"] = go_no_go(summary, read_baseline(off_path))
