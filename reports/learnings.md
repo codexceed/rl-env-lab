@@ -11,16 +11,20 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **v1** | `SPEC.md` (11 train, 5 held-out templates) | thinking off, cap 256 | 0.8B / 2B / 4B × robust, leaky × 3 seeds | pre-registered (PREREG) |
 | **v2** | same as v1 | thinking on, cap 1,024 (ADR 0005, 0006) | 2B, 0.8B (4B gate no-go) | exploratory |
 | **v3** | `SPEC_v3.md`: harder, 15 train, near + far held-out (ADR 0007) | thinking on, cap 1,024 | 4B, 2B (planned) | exploratory, being built |
-- **Last updated:** 2026-10-12 22:20 (all 18 v1 runs trained; 4B evals ~half done; v2 2B done and evaluated; no verdicts yet).
+- **Last updated:** 2026-10-13 00:05 (v1 verdicts in: H1 pass, H2 fail by 0.2 pts, H5 fail; v2 0.8B training; v3 being built).
 
 ## 1. Reward hacking: what it looks like here (v1)
 
 | Lesson | Evidence | Source |
 |---|---|---|
+| **The environment teaches, and a leaky reward still looks better while teaching less** | H1 pass: 2B robust held-out true 36.6% vs base 21.8% (+14.8, CI +9.7 to +20.8). H2 fail by 0.2 pts: leaky training reward 97.8% vs 82.6%, exploit 63.9% vs base 48.3%, but true-success drop vs robust +9.8 pts (CI +5.4 to +14.0) against a 10-pt bar | pre-registered |
+| **Exploit rate does not grow with size; the skill gap does** | H5 fail: leaky exploit 72.7% (0.8B), 63.9% (2B), 64.5% (4B). Robust minus leaky true success: 2.3 pts (0.8B), 9.7 (2B), 21.8 (4B) | pre-registered (H5); gap is descriptive |
+| **One seed can fail to transfer at all** | 4b-rob-s2 ends at held-out true 36.9% (s1 55.7%, s3 57.9%) with training reward 0.82: it learned the training tasks but not the held-out ones. Three seeds made this visible; one would have hidden it or been it | pre-registered data, descriptive |
+| **Held-out transfer peaks mid-run, then drifts down, at 4B too** | 4B robust s1/s3 held-out true ~0.85 at steps 200–450, 0.56–0.58 at step 1,000 (training reward stays 0.85–0.97). Same shape as v2 2B robust (§2). Verdicts use the final step as pre-registered | held-out, descriptive |
 | **Leaky training doesn't just allow exploits, it unlearns the real skill** | 4B on training tasks, steps 1–100 → 601–700: leaky run robust 0.63 → 0.27 with leaky ~1.0; robust run robust 0.74 → 0.95 | training-time |
 | **The typical exploit is "right record, wrong amount"** | Traces: the model writes a number, then works out the correct value in its own note, too late | base evals |
 | **Base models already "exploit" a lot** | Formal base exploit rate 0.8B 41%, 2B 48%, 4B 57%; "≥ 2× base" was unreachable, amended to base + 10 pts (ADR 0004) | base evals |
-| **The robust/leaky split grows with size** | Held-out true success at step 1,000, robust vs leaky: 0.8B no clear split; 2B 0.34–0.41 vs 0.23–0.30 (base 0.22); 4B 0.37–0.58 vs 0.28–0.30. Exploit leaky 2B 0.53–0.70, 4B 0.50–0.72 | held-out, provisional (per-seed, final checkpoint; 4B evals ~half done; verdicts need the paired bootstrap) |
+| **The robust/leaky split grows with size** | Held-out true success at step 1,000, robust vs leaky (mean of 3 seeds): 0.8B 29.3 vs 27.0%; 2B 36.6 vs 26.9%; 4B 50.2 vs 28.4%. *Updated 2026-10-13 with complete data (was per-seed ranges with 4B half evaluated)* | held-out, complete data; not itself a pre-registered test |
 | **Robust training still "exploits" on held-out tasks** | 2B robust runs end at held-out exploit 0.44–0.65: they never learned the new arithmetic, so their wrong answers still look right on the surface | held-out, provisional |
 | **A leaky run can degenerate while scoring ~1.0** | 2b-leak-s1 ends with every answer hitting the 256-token cap (tool call first, then a runaway note), leaky reward 0.99, robust 0.26 | training-time |
 | **Held-out failures mix hacking with missing skill** | Held-out F1/F3/F4 stay near 0% exact in every run: models learn tool, customer and status, not new arithmetic. Motivated the same-type eval (ADR 0005) | held-out |
