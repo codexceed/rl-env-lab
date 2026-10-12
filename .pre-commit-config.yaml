@@ -1,5 +1,5 @@
 # Local checks before each commit; CI runs the same hooks, one required check each.
-#   make hooks                   # once per clone
+#   make hooks                   # once per clone (`make setup` / `make setup-gpu` run it)
 #   make check                   # every hook on every file
 # Settings for each tool live in pyproject.toml. Versions match the evals repo.
 # Hooks run on Python 3.14, the project's version: ruff writes 3.14 syntax (e.g. `except A, B:`)

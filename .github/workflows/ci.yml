@@ -31,7 +31,8 @@ jobs:
         with:
           path: ~/.cache/pre-commit
           key: pre-commit-py314-${{ hashFiles('.pre-commit-config.yaml') }}
-      - run: uvx --with pre-commit-uv pre-commit run ${{ matrix.hook }} --all-files --show-diff-on-failure
+      # pre-commit itself is pinned in the dev group (pyproject.toml), the same one `make hooks` installs
+      - run: uv run --group dev pre-commit run ${{ matrix.hook }} --all-files --show-diff-on-failure
 
   tests:
     # unit tests only: no GPU, no Lightning account, no model downloads.

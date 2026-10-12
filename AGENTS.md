@@ -65,13 +65,14 @@ CI runs one required check per lint tool plus the tests. **The CI environment ha
 - **Import-linter contracts** in `pyproject.toml`:
   - `envlab.sim` never imports tasks, verify or prompts.
   - `envlab` never imports the GPU stack.
-- **Versions:** hook versions are pinned in `.pre-commit-config.yaml`. The dev `ruff` pin matches the hook.
+- **Versions:** hook versions are pinned in `.pre-commit-config.yaml`; pre-commit itself and `ruff` are pinned in the dev group and match it.
+- **Hooks are mandatory:** `make setup` / `make setup-gpu` install the git hook (worktrees share it). Never commit with `--no-verify`; fix the lint instead.
 
 ## Working rules
 
 **Decisions → ADRs**
 - When a request involves a **major architectural, planning or experiment-design change**, **ask the owner whether to record an ADR** before making the change. Examples: model or model family, hypotheses, thresholds or statistics, run matrix, compute or deadline, environment, grader or artifact contract, working process.
-- If yes, draft `docs/adr/NNNN-short-title.md` from the template in `docs/adr/README.md`, with status `Proposed`. Add a `DECISIONS.md` row and a PROGRESSION Change log row. Mark it `Accepted` once the owner agrees.
+- If yes, draft `docs/adr/NNNN-short-title.md` from the template in `docs/adr/README.md`, with status `Proposed`. Add a `DECISIONS.md` row that links the ADR file in its Status column (`[ADR NNNN](docs/adr/NNNN-short-title.md)`) and a PROGRESSION Change log row. Mark it `Accepted` once the owner agrees.
 - Never rewrite an accepted ADR. Supersede it with a new one.
 
 **Parallel work**

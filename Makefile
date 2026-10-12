@@ -5,7 +5,7 @@
 
 # Lightning studios point uv at a shared env root; unset it so the repo .venv is used everywhere
 UV := env -u UV_LIGHTNING_VIRTUALENV_ROOT uv run
-PRECOMMIT := uvx --with pre-commit-uv pre-commit
+PRECOMMIT := $(UV) pre-commit
 
 MODEL ?= Qwen/Qwen3.5-2B
 LR ?= 3e-6
@@ -33,14 +33,16 @@ help:  ## List the targets
 
 # --- setup and checks ---------------------------------------------------------------------------
 
-setup: hooks  ## First-time local setup: dev env + pre-commit hooks
+setup:  ## First-time local setup: dev env + pre-commit hooks
 	uv sync --group dev
+	$(MAKE) hooks
 
-setup-gpu:  ## GPU node setup (runs on CPU too): gpu extra + causal-conv1d built with a pip CUDA nvcc
+setup-gpu:  ## GPU node setup (runs on CPU too): gpu extra + causal-conv1d built with a pip CUDA nvcc + hooks
 	bash scripts/setup_gpu.sh
+	$(MAKE) hooks
 
-hooks:  ## Install the pre-commit hooks
-	$(PRECOMMIT) install
+hooks:  ## Install the pre-commit git hook (lint on every commit) and prebuild its tool envs
+	$(PRECOMMIT) install --install-hooks
 
 check:  ## Every lint, format, type, docstring and import check, as CI runs them
 	$(PRECOMMIT) run --all-files

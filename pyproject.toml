@@ -36,6 +36,9 @@ dev = [
     "pytest>=8.0",
     # same version as the ruff pre-commit hook
     "ruff==0.16.9",
+    # git hook runner: `make hooks` installs it from the repo .venv, so the hook never depends on a uvx cache.
+    # No pre-commit-uv: it would put a second `uv` binary in the venv that `uv run` children pick up.
+    "pre-commit==4.6.2",
 ]
 
 [build-system]
