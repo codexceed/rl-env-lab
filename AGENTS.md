@@ -22,6 +22,7 @@ We measure true success against exploits (samples that pass leaky but fail robus
 | `INSTRUCTIONS.md` | Original plan. **Never edit.** Inherited unless overridden in PROGRESSION | Nobody |
 | `SPEC.md` | Environment contract: entities, tools, templates, graders, gates | Agent drafts, owner signs off |
 | `PREREG.md` | Hypotheses, thresholds, eval protocol. Frozen before task training | Owner |
+| `reports/learnings.md` | **Living record of lessons** from results, issues and decisions; seed of the final knowledge piece | Everyone, per "Updating `reports/learnings.md`" |
 
 If code and SPEC disagree, SPEC wins. Fix the code, or propose a SPEC change in your PR.
 
@@ -30,15 +31,19 @@ If code and SPEC disagree, SPEC wins. Fix the code, or propose a SPEC change in 
 ```
 src/envlab/
   sim/       entities, tools, ledger, state hash
-  tasks/     f1..f5 templates, generate, broken variants
-  verify/    robust, leaky, gates
-  prompts.py parse.py
-train/       smoke_toy.py  grpo.py  sft.py  coordinator.py
-eval/        heldout.py  metrics.py  compare.py
-configs/     grpo.yaml (+ per-size overrides: GPU layout, recovery interval)
-reports/     acceptance.md  baseline.md  results.md
+  tasks/     f1..f5 templates, generate, build, broken variants
+  verify/    robust, leaky, gates, rollout, acceptance
+  calls.py prompts.py parse.py
+train/       grpo.py  rewards.py  coordinator.py  async_recovery.py  checkpoints.py  run_manifest.py
+             logsync.py  compat_check.py  smoke_toy.py  bench.py  LAYOUT.md (artifact contract)
+eval/        heldout.py  watcher.py  metrics.py  compare.py  gallery.py
+             sametype_batch.py  sametype_report.py  v2_report.py   (exploratory, ADR 0005)
+configs/     grpo.yaml (+ sizes/: GPU layout, recovery interval; variants/: v2-think)  allocation.yaml
+scripts/     setup_gpu.sh  dry_runs.sh  gpu_checks.sh  base_evals.sh  studio.py
+reports/     acceptance.md  results.md  learnings.md  (+ sametype.md, v2.md when generated)
+logs/        run logs synced from the GPU nodes (train/logsync.py)
 tests/
-data/ runs/  gitignored (except data/manifest.json, data/splits/)
+data/ runs/  gitignored (except data/manifest*.json, data/splits/)
 ```
 
 ## Commands
@@ -52,7 +57,8 @@ make check        # ruff check, ruff format, pyright, pydoclint, import-linter (
 make fmt          # auto-fix lint and format
 make test         # unit tests
 make train RUN=2b-leak-s2 · make eval RUN=2b-leak-s2 STEP=final · make coordinator NODE=node1
-make studio-status · make studio-run CMD="make test"   # drive the Lightning studio from a laptop
+make plan NODE=node1 · make dry-run · make logsync      # print a node's plan · GPU dry runs · log mirroring
+make studio-status STUDIO=rl-env-lab-n2 · make studio-run CMD="make test"   # drive a studio from a laptop (default n1)
 ```
 
 CI runs one required check per lint tool plus the tests. **The CI environment has no GPU and no gpu extra installed.** Code imported by tests must not import torch, transformers or vllm at module top level. Import them lazily inside functions, or put the import in `train/` / `eval/` entry points that tests do not import. Import-linter enforces this for `envlab`.
@@ -92,6 +98,12 @@ CI runs one required check per lint tool plus the tests. **The CI environment ha
 - Sections, in order: **Description**, **Motivation**, **Changes**, **Testing**.
 - Use plain language and reference the PROGRESSION section (e.g. "§1.1").
 - Merge only when CI is green.
+
+**Updating `reports/learnings.md`**
+- Add a lesson when a result, incident or decision teaches something non-obvious: one line, the lesson in bold, then the evidence (numbers, run ids, ADR). Put it in the matching section.
+- Label its source: *pre-registered*, *training-time* or *exploratory*. Never present an exploratory or training-time number as a verdict.
+- When later data changes a lesson, correct it in place and say why. Bump **Last updated**.
+- The integrator updates it at least at each gate (block done, verdicts in) and when closing an incident. Parallel workstreams report candidate lessons in their summary instead of editing it.
 
 **Updating PROGRESSION.md**
 - In a parallel workstream, **don't edit `PROGRESSION.md` yourself**. Report which boxes are met in your final summary or PR, and the integrator ticks them on merge. This avoids merge conflicts.

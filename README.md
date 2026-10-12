@@ -35,6 +35,7 @@ flowchart LR
 | If you want to… | Read |
 |---|---|
 | See the results | [`reports/results.md`](reports/results.md) |
+| Read what we've learned (and the open questions) | [`reports/learnings.md`](reports/learnings.md) |
 | Understand how it fits together | [`ARCHITECTURE.md`](ARCHITECTURE.md) (diagrams) |
 | Know the hypotheses and pass/fail rules | [`PREREG.md`](PREREG.md) |
 | See the billing tasks, tools and graders | [`SPEC.md`](SPEC.md) |
@@ -100,7 +101,7 @@ src/envlab/   sim/ (simulator, tools, ledger)  tasks/ (templates, data build)  v
 train/        grpo.py (GRPO run)  coordinator.py (one per node)  async_recovery.py  logsync.py  LAYOUT.md
 eval/         heldout.py (evals)  watcher.py  metrics.py (stats, verdicts)  compare.py (report)  fake_data.py
 configs/      grpo.yaml (training budget)  sizes/ (per-size GPU layout)  allocation.yaml (run matrix)
-reports/      results.md  figures/
+reports/      results.md  learnings.md  figures/
 scripts/      studio.py (Lightning studio helpers)
 tests/        unit tests, no GPU needed
 logs/         run logs synced from the GPU nodes
