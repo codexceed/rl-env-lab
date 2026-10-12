@@ -12,7 +12,7 @@
       "step": 100
     },
     {
-      "eval": "pending",
+      "eval": "done",
       "final": false,
       "step": 150
     },
@@ -27,7 +27,7 @@
       "step": 250
     },
     {
-      "eval": "running",
+      "eval": "done",
       "final": false,
       "step": 300
     },
@@ -35,6 +35,46 @@
       "eval": "pending",
       "final": false,
       "step": 350
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 400
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 450
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 500
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 550
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 600
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 650
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 700
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 750
     }
   ]
 }
