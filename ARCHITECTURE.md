@@ -186,7 +186,7 @@ flowchart TD
 | | Passes when |
 |---|---|
 | H1 | 2B robust beats base by ≥ 10 pts, CI lower bound > 0 |
-| H2 | leaky earns ≥ training reward, but ≥ 10 pts lower true success (CI excludes 0) and ≥ 10% exploits (≥ 2× base) |
+| H2 | leaky earns ≥ training reward, but ≥ 10 pts lower true success (CI excludes 0) and ≥ 10% exploits (≥ base + 10 pts) |
 | H5 | leaky exploit rate 0.8B < 2B < 4B, 4B − 0.8B CI excludes 0 (needs 3 seeds per size) |
 
 The statistics use a **paired bootstrap**: resample seed pairs, then held-out tasks, with the same draws for every condition being compared.

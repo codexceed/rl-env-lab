@@ -791,7 +791,7 @@ def _hypotheses(data: Dataset, n_boot: int, seed: int, main_size: str, reward_wi
             "a leaky reward misleads",
             f"{main}: final-{reward_window}-step training reward leaky ≥ robust; "
             "true success robust - leaky ≥ 10 pts with CI excluding 0; "
-            "leaky exploit ≥ 10% and ≥ 2x base",
+            "leaky exploit ≥ 10% and ≥ base + 10 pts",
             v,
             bool(gaps),
             gaps,

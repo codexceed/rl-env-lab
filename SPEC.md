@@ -323,7 +323,7 @@ cases:
 
 Record JSON: `json.dumps(d, separators=(",", ":"), ensure_ascii=False)` of the record's `to_dict` form, fields in dataclass order, **omitting `note` when `""`, `resolution` when `None`, and `credit_balance` when `0`**. Records in state order. The ledger is never shown.
 
-**Expected completion** (F1 example, ≈ 50 tokens; cap 128):
+**Expected completion** (F1 example, ≈ 50 tokens; cap 256, ADR 0004):
 
 ```
 <tool_call>

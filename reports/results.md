@@ -99,7 +99,7 @@ Still missing for a final verdict:
 
 #### H2: a leaky reward misleads — **NOT AVAILABLE**
 
-Rule: 2b: final-50-step training reward leaky ≥ robust; true success robust - leaky ≥ 10 pts with CI excluding 0; leaky exploit ≥ 10% and ≥ 2x base.
+Rule: 2b: final-50-step training reward leaky ≥ robust; true success robust - leaky ≥ 10 pts with CI excluding 0; leaky exploit ≥ 10% and ≥ base + 10 pts.
 
 Not computed: no robust/leaky seed pairs for size '2b'.
 

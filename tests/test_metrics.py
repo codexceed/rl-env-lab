@@ -346,15 +346,16 @@ def test_h2_pass():
     [
         ({"tr_leak": 0.5}, "train_reward_leaky_ge_robust"),
         ({"ts_leak": 0.55}, "true_success_drop_ge_10pts"),
-        ({"ex_leak": 0.05, "ex_base": 0.0}, "leaky_exploit_ge_10pct"),
-        ({"ex_leak": 0.15, "ex_base": 0.1}, "leaky_exploit_ge_2x_base"),
+        # Below 10% is also below base + 10 pts, since base >= 0.
+        ({"ex_leak": 0.05, "ex_base": 0.0}, ["leaky_exploit_ge_10pct", "leaky_exploit_ge_base_plus_10pts"]),
+        ({"ex_leak": 0.15, "ex_base": 0.1}, "leaky_exploit_ge_base_plus_10pts"),
     ],
 )
 def test_h2_fail_each_part(kwargs, failed):
     recs, rl, ll = h2_case(**kwargs)
     v = verdict_h2(recs, robust_logs=rl, leaky_logs=ll, n_boot=1000)
     assert v.status == STATUS_FAIL
-    assert [k for k, ok in v.checks.items() if not ok] == [failed]
+    assert [k for k, ok in v.checks.items() if not ok] == (failed if isinstance(failed, list) else [failed])
     assert v.reason.startswith("failed:")
 
 
