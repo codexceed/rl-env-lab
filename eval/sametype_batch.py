@@ -4,11 +4,16 @@
     uv run python eval/sametype_batch.py --gpus 6 --runs '2b-*' --dry-run
 
 **Jobs.** Every ``runs/<id>/eval/step-NNNNN/`` with ``COMPLETE`` (the trainer writes it last), plus
-``base-<size>`` (step 0) for each size among those runs. By default only run-matrix ids, v2 included
-(``[v2-]<size>-<rob|leak>-s<seed>...``), are taken; ``--runs`` (fnmatch globs, comma-separated)
+``base-<size>`` (step 0) for each size among those runs. By default only run-matrix ids, v2 and v3 included
+(``[v<k>-]<size>-<rob|leak>-s<seed>...``), are taken; ``--runs`` (fnmatch globs, comma-separated)
 selects others, e.g. ``--runs 'dry-*'``. A v2 checkpoint is evaluated with its own variant settings
 (`eval/heldout.py` reads them from the run dir). A job whose output already exists is skipped, so the driver can be
 re-run at any time to pick up new checkpoints.
+
+**v3 runs** (ADR 0007; variant ``v3`` in the run dir, or a ``v3-`` run id) read their sametype split from
+``--v3-data-dir`` (default ``data/v3``) instead of ``--data-dir``, and bring ``v3-base-<size>`` (the base model
+with ``--variant v3``: thinking on, cap 1,024) for each of their sizes instead of ``base-<size>``. Their outputs
+are ``evals/v3-<id>/sametype/step-NNNNN.jsonl``. v1 and v2 jobs and their commands are unchanged.
 
 **Metadata** (size, reward, seed) comes from ``runs/<id>/run_manifest.json`` (`train/run_manifest.py`),
 else the ``COMPLETE`` marker, else ``status.json``, else the run id.
@@ -46,8 +51,9 @@ from typing import Any, Protocol
 if __package__ in (None, ""):  # run as a script: make `eval` and `train` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from envlab.tasks.v3 import DATA_DIR as V3_DATA_DIR
 from eval.heldout import sametype_output_path
-from train.checkpoints import COMPLETE, list_eval_checkpoints, read_marker, read_status, step_name
+from train.checkpoints import COMPLETE, list_eval_checkpoints, read_json, read_marker, read_status, step_name
 from train.grpo import SIZES
 from train.run_manifest import read_run_manifest
 
@@ -58,6 +64,7 @@ KILL_GRACE_S = 30.0
 POLL_S = 5.0
 RUN_ID_RE = re.compile(r"^(?:v\d+-)?(?P<size>\d+(?:\.\d+)?b)-(?P<reward>rob|leak)-s(?P<seed>\d+)")
 REWARD_ALIASES = {"rob": "robust", "leak": "leaky"}
+V3_VARIANT = "v3"  # configs/variants/v3.yaml (ADR 0007)
 
 
 @dataclass(frozen=True)
@@ -69,6 +76,7 @@ class Job:
     step: int
     checkpoint: Path | None  # None: the base model
     output: Path
+    v3: bool = False  # ADR 0007: v3 data dir; a v3 base job runs with --variant v3
 
     @property
     def label(self) -> str:
@@ -79,6 +87,8 @@ class Job:
         cmd = [python, "-u", str(HELDOUT), "--size", self.size, "--mode", "sametype"]
         if self.checkpoint is None:
             cmd += ["--checkpoint", "base"]
+            if self.v3:
+                cmd += ["--variant", V3_VARIANT]
         else:
             seed = "" if self.seed is None else str(self.seed)
             cmd += ["--run-id", self.run_id, "--reward", self.reward, "--seed", seed]
@@ -105,6 +115,17 @@ def run_metadata(rdir: Path) -> dict[str, Any] | None:
     return None
 
 
+def is_v3_run(rdir: Path) -> bool:
+    """ADR 0007: the run trained with ``--variant v3`` (run_manifest.json, train_config.json, COMPLETE) or has a
+    ``v3-`` run id."""
+    sources: list[Any] = [read_run_manifest(rdir), read_json(rdir / "train_config.json")]
+    sources += [read_marker(ck.path / COMPLETE) for ck in list_eval_checkpoints(rdir)[:1]]
+    for src in sources:
+        if isinstance(src, dict) and src.get("variant"):
+            return src["variant"] == V3_VARIANT
+    return rdir.name.startswith(f"{V3_VARIANT}-")
+
+
 def _selected(run_id: str, patterns: Sequence[str] | None) -> bool:
     if patterns:
         return any(fnmatch.fnmatchcase(run_id, p) for p in patterns)
@@ -119,6 +140,7 @@ def plan_jobs(
     wanted: list[Job] = []
     notes: list[str] = []
     sizes: set[str] = set()
+    v3_sizes: set[str] = set()
     rdirs = sorted(p for p in runs_root.iterdir() if p.is_dir()) if runs_root.is_dir() else []
     for rdir in rdirs:
         if rdir.name.startswith(("_", ".")) or not _selected(rdir.name, patterns):
@@ -130,14 +152,18 @@ def plan_jobs(
         if meta is None:
             notes.append(f"{rdir.name}: no size/reward/seed in run_manifest.json, COMPLETE, status.json or the id")
             continue
-        sizes.add(meta["size"])
+        v3 = is_v3_run(rdir)
+        (v3_sizes if v3 else sizes).add(meta["size"])
         for ck in checkpoints:
             out = sametype_output_path(evals_root, rdir.name, ck.step)
-            wanted.append(Job(rdir.name, meta["size"], meta["reward"], meta["seed"], ck.step, ck.path, out))
+            wanted.append(Job(rdir.name, meta["size"], meta["reward"], meta["seed"], ck.step, ck.path, out, v3))
     bases = [
         Job(f"base-{s}", s, "base", None, 0, None, sametype_output_path(evals_root, f"base-{s}", 0))
         for s in sorted(sizes, key=SIZES.index)
     ]
+    for s in sorted(v3_sizes, key=SIZES.index):
+        rid = f"{V3_VARIANT}-base-{s}"
+        bases.append(Job(rid, s, "base", None, 0, None, sametype_output_path(evals_root, rid, 0), True))
     jobs = [*bases, *wanted]
     return [j for j in jobs if not j.output.exists()], [j for j in jobs if j.output.exists()], notes
 
@@ -277,6 +303,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--runs-root", type=Path, default=Path("runs"))
     p.add_argument("--evals-root", type=Path, default=Path("evals"))
     p.add_argument("--data-dir", type=Path, default=Path("data"))
+    p.add_argument("--v3-data-dir", type=Path, default=Path(V3_DATA_DIR), help="sametype split of v3 runs (ADR 0007)")
     p.add_argument("--config", type=Path, help="passed to eval/heldout.py")
     p.add_argument("--dry-run", action="store_true", help="print the plan and exit")
     return p
@@ -285,8 +312,8 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     # The evals run with the repo root as cwd: hand them absolute paths.
-    args.runs_root, args.evals_root, args.data_dir = (
-        p.resolve() for p in (args.runs_root, args.evals_root, args.data_dir)
+    args.runs_root, args.evals_root, args.data_dir, args.v3_data_dir = (
+        p.resolve() for p in (args.runs_root, args.evals_root, args.data_dir, args.v3_data_dir)
     )
     patterns = [p for p in (args.runs or "").split(",") if p] or None
     jobs, skipped, notes = plan_jobs(args.runs_root, args.evals_root, patterns)
@@ -297,13 +324,17 @@ def main(argv: list[str] | None = None) -> int:
         for job in jobs:
             print(f"  {job.label:<22} -> {job.output}")
         return 0
-    if jobs and not (args.data_dir / "sametype.jsonl").is_file():
-        print(f"[sametype] {args.data_dir / 'sametype.jsonl'} not found: run `make data-sametype`", file=sys.stderr)
-        print("PROGRESS_EXIT 2", flush=True)
-        return 2
-    extra = ["--evals-root", str(args.evals_root), "--data-dir", str(args.data_dir)]
-    if args.config:
-        extra += ["--config", str(args.config.resolve())]
+    for v3, hint in ((False, "make data-sametype"), (True, "make data-v3")):
+        data_dir = args.v3_data_dir if v3 else args.data_dir
+        if any(j.v3 == v3 for j in jobs) and not (data_dir / "sametype.jsonl").is_file():
+            print(f"[sametype] {data_dir / 'sametype.jsonl'} not found: run `{hint}`", file=sys.stderr)
+            print("PROGRESS_EXIT 2", flush=True)
+            return 2
+
+    def extra_for(job: Job) -> list[str]:
+        """``--evals-root`` and the job's ``--data-dir`` (v3: ``--v3-data-dir``), then ``--config``."""
+        extra = ["--evals-root", str(args.evals_root), "--data-dir", str(args.v3_data_dir if job.v3 else args.data_dir)]
+        return [*extra, "--config", str(args.config.resolve())] if args.config else extra
 
     def emit(line: str) -> None:
         print(line, flush=True)
@@ -315,7 +346,7 @@ def main(argv: list[str] | None = None) -> int:
             jobs,
             args.gpus,
             timeout_s=args.timeout,
-            launch=lambda job, gpu: launch_subprocess(job, gpu, extra),
+            launch=lambda job, gpu: launch_subprocess(job, gpu, extra_for(job)),
             emit=emit,
         )
     finally:

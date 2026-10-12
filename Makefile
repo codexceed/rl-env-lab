@@ -29,10 +29,10 @@ SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-gpu hooks check fmt test lock data data-sametype acceptance compat toy sweep gpu-checks dry-run base-evals bench \
-	train eval eval-base diagnostic diagnostic-think sametype-evals sametype-report v2-report plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
+	train eval eval-base diagnostic diagnostic-think diagnostic-v3 sametype-evals sametype-report v2-report v3-report dry-v3 plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
 
 help:  ## List the targets
-	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
+	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
 
 # --- setup and checks ---------------------------------------------------------------------------
 
@@ -88,6 +88,9 @@ base-evals:  ## §2.2 diagnostic + §2.3 formal base eval, all sizes in parallel
 dry-run:  ## §1.4: real grpo.py, 12 steps, async recovery: 2B robust + leaky, 4B robust, resumes of 2B and 4B -> runs/dry/*.log
 	bash scripts/dry_runs.sh
 
+dry-v3:  ## ADR 0007: grpo.py --variant v3, 12 steps: 4B robust (GPU 0-3) + 2B leaky (GPU 4), 8-instance evals -> runs/dry/*.log
+	bash scripts/dry_v3.sh
+
 gpu-checks:  ## compat x3 sizes + 2B toy LR sweep in parallel, one GPU each -> runs/gpu_checks/*.log
 	bash scripts/gpu_checks.sh
 
@@ -113,6 +116,9 @@ diagnostic:  ## Diagnostic baseline on train templates (band check), e.g. SIZE=2
 diagnostic-think:  ## ADR 0005 v2 go/no-go: thinking-on base diagnostic, e.g. SIZE=2b -> evals/diagnostic/*_think_*
 	$(UV) python eval/heldout.py --size $(SIZE) --checkpoint base --mode diagnostic --thinking on
 
+diagnostic-v3:  ## ADR 0007 §5 v3 calibration gate: thinking-on base diagnostic on data/v3 train, SIZE=4b -> evals/diagnostic/v3-base-*
+	$(UV) python eval/heldout.py --size $(SIZE) --checkpoint base --variant v3 --mode diagnostic
+
 sametype-evals:  ## ADR 0005 exploratory: sametype eval of every saved eval ckpt + bases, GPUS=4,5 [RUNS='2b-*']
 	$(UV) python eval/sametype_batch.py --gpus "$(GPUS)" $(if $(RUNS),--runs '$(RUNS)')
 
@@ -121,6 +127,9 @@ sametype-report:  ## ADR 0005 exploratory: evals/*/sametype/ -> reports/sametype
 
 v2-report:  ## ADR 0005 exploratory: v2 runs, robust vs leaky -> reports/v2.md
 	$(UV) python eval/v2_report.py
+
+v3-report:  ## ADR 0007 exploratory: v3 runs, near vs far, robust vs leaky vs v3 base -> reports/v3.md
+	$(UV) python eval/v3_report.py
 
 plan:  ## Print what the coordinator would launch on NODE
 	$(UV) python train/coordinator.py --node $(NODE) --print-plan

@@ -117,6 +117,25 @@ runs:
   v2-0.8b-leak-s1: {size: 0.8b, reward: leaky, seed: 1, timeout_s: 21600, train_command: *v2cmd}
   v2-0.8b-leak-s2: {size: 0.8b, reward: leaky, seed: 2, timeout_s: 21600, train_command: *v2cmd}
   v2-0.8b-leak-s3: {size: 0.8b, reward: leaky, seed: 3, timeout_s: 21600, train_command: *v2cmd}
+  # ADR 0007 project version v3 (exploratory; run ids keep them out of H1/H2/H5): v2-think settings on data/v3,
+  # 2,048-token prompts, eval every 100 steps. Defined but NOT queued in any node group yet: the integrator places
+  # them once the v3 calibration gate (ADR 0007 §5) says go. 4B 12 h (~20 s/step dry run, 1,000 steps, longer
+  # prompts), 2B 10 h as v2.
+  v3-4b-rob-s1:
+    {size: 4b, reward: robust, seed: 1, timeout_s: 43200, train_command: &v3cmd "uv run python train/grpo.py
+      --run-id {run_id} --size {size} --reward {reward} --seed {seed} --gpus {gpus} --output-dir {run_dir}
+      --variant v3"}
+  v3-4b-rob-s2: {size: 4b, reward: robust, seed: 2, timeout_s: 43200, train_command: *v3cmd}
+  v3-4b-rob-s3: {size: 4b, reward: robust, seed: 3, timeout_s: 43200, train_command: *v3cmd}
+  v3-4b-leak-s1: {size: 4b, reward: leaky, seed: 1, timeout_s: 43200, train_command: *v3cmd}
+  v3-4b-leak-s2: {size: 4b, reward: leaky, seed: 2, timeout_s: 43200, train_command: *v3cmd}
+  v3-4b-leak-s3: {size: 4b, reward: leaky, seed: 3, timeout_s: 43200, train_command: *v3cmd}
+  v3-2b-rob-s1: {size: 2b, reward: robust, seed: 1, timeout_s: 36000, train_command: *v3cmd}
+  v3-2b-rob-s2: {size: 2b, reward: robust, seed: 2, timeout_s: 36000, train_command: *v3cmd}
+  v3-2b-rob-s3: {size: 2b, reward: robust, seed: 3, timeout_s: 36000, train_command: *v3cmd}
+  v3-2b-leak-s1: {size: 2b, reward: leaky, seed: 1, timeout_s: 36000, train_command: *v3cmd}
+  v3-2b-leak-s2: {size: 2b, reward: leaky, seed: 2, timeout_s: 36000, train_command: *v3cmd}
+  v3-2b-leak-s3: {size: 2b, reward: leaky, seed: 3, timeout_s: 36000, train_command: *v3cmd}
 
 # Groups: a queue runs in order on the group's GPUs. A group starts only after every group in
 # `after` is drained, and a run starts only when all its GPUs are free (no training, no eval).

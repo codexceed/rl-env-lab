@@ -26,11 +26,11 @@ flowchart LR
     HELD["heldout.py<br/>formal 250 × 4 · diagnostic · sametype"]
     WATCH["watcher.py"]
     CMP["metrics.py · compare.py<br/>bootstrap · H1/H2/H5"]
-    EXP["sametype_* · v2_report<br/>exploratory (ADR 0005)"]
+    EXP["sametype_* · v2_report · v3_report<br/>exploratory (ADR 0005, 0007)"]
   end
   DATA[("data/<br/>train · train_hard · heldout · broken<br/>+ sametype (exploratory)")]
   RUNS[("runs/ · evals/")]
-  REP["reports/results.md<br/>+ sametype.md · v2.md"]
+  REP["reports/results.md<br/>+ sametype.md · v2.md · v3.md"]
 
   TASKS --> DATA
   DATA --> GRPO
@@ -68,9 +68,9 @@ train/          grpo.py · rewards.py · callbacks.py · async_recovery.py · ch
                 coordinator.py · logsync.py · common.py · export_text.py
                 compat_check.py · smoke_toy.py · toy_utils.py · bench.py · LAYOUT.md · README*.md
 eval/           heldout.py · watcher.py · metrics.py · compare.py · gallery.py · fake_data.py
-                sametype_batch.py · sametype_report.py · v2_report.py   (exploratory)
-configs/        grpo.yaml · sizes/{0.8b,2b,4b}.yaml · variants/v2-think.yaml · allocation.yaml · accelerate/
-scripts/        setup_gpu.sh · dry_runs.sh · gpu_checks.sh · base_evals.sh · studio.py
+                sametype_batch.py · sametype_report.py · v2_report.py · v3_report.py   (exploratory)
+configs/        grpo.yaml · sizes/{0.8b,2b,4b}.yaml · variants/{v2-think,v3}.yaml · allocation.yaml · accelerate/
+scripts/        setup_gpu.sh · dry_runs.sh · dry_v3.sh · gpu_checks.sh · base_evals.sh · studio.py
 reports/        acceptance.md · results.md · learnings.md · figures/ (+ sametype.md, v2.md when generated)
 docs/adr/       decision records
 logs/           run logs mirrored from the nodes (git, every 30 min)
@@ -104,6 +104,7 @@ sequenceDiagram
 - A robust run and a leaky run differ **only** in the reward weights.
 - The model trains from a **text-only export** of each Qwen3.5 checkpoint, with **fp32 master weights** and bf16 compute.
 - **v2 runs** (`--variant v2-think`, ADR 0005/0006, exploratory) change only two things: thinking on, and answers ≤ 1,024 tokens in a 2,560-token context. A thought that never closes is a format failure.
+- **v3 runs** (`--variant v3`, ADR 0007, exploratory) are v2 runs on the v3 task set: `data/v3`, prompts ≤ 2,048 tokens, a 3,072-token context, eval weights every 100 steps. Run ids `v3-<size>-<rob|leak>-s<seed>` and the v3 base `v3-base-<size>` (`heldout.py --checkpoint base --variant v3`) stay out of compare.py; `v3_report.py` reports them, near vs far held-out.
 - **Recovery checkpoints** are written asynchronously: tensors are copied to CPU (~10–15 s pause), a background thread writes them, and a save step is skipped while the previous write is still running.
 
 ## 4. Flow: the simulator
@@ -186,11 +187,11 @@ flowchart TD
   TM --> CMP
   CMP --> RES["reports/results.md<br/>H1 · H2 · H5 · H3 table · figures"]
   EW -.->|exploratory| SB["sametype_batch.py → evals/id/sametype/"]
-  SB -.-> SR["reports/sametype.md · reports/v2.md"]
+  SB -.-> SR["reports/sametype.md · reports/v2.md · reports/v3.md"]
   CO -->|"all done"| IDLE["node marked idle<br/>(owner releases it)"]
 ```
 
-**Run matrix:** {0.8B, 2B, 4B} × {robust, leaky} × seeds {1, 2, 3} = 18 runs. Every size gets the same per-step budget: 8 prompts × 8 generations, 1,000 steps, LR 1e-6. Plus 6 exploratory v2 runs (`v2-2b-{rob,leak}-s{1,2,3}`), whose run ids keep them out of every verdict.
+**Run matrix:** {0.8B, 2B, 4B} × {robust, leaky} × seeds {1, 2, 3} = 18 runs. Every size gets the same per-step budget: 8 prompts × 8 generations, 1,000 steps, LR 1e-6. Plus 6 exploratory v2 runs (`v2-2b-{rob,leak}-s{1,2,3}`), whose run ids keep them out of every verdict. v3 (ADR 0007, exploratory) defines 12 more, `v3-{4b,2b}-{rob,leak}-s{1,2,3}`, queued once its calibration gate passes.
 
 **Verdicts** (exact rules in `PREREG.md`):
 

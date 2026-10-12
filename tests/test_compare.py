@@ -586,3 +586,38 @@ def test_v2_runs_never_reach_a_verdict(tmp_path):
     data = load_dataset(tmp_path / "evals", tmp_path / "runs", _protocol(tmp_path))
     assert not any(rid.startswith("v2-") for rid, _ in data.runs)
     assert any("not in the run matrix, ignored: v2-2b-leak-s1, v2-2b-rob-s1" in n for n in data.notes)
+
+
+# ── ADR 0007 v3 runs and the v3 base stay out of the verdicts ────────────────
+
+
+def test_v3_runs_and_the_v3_base_never_reach_a_verdict(tmp_path):
+    runs = ["2b-rob-s1", "2b-rob-s2", "2b-leak-s1", "2b-leak-s2"]
+    write_fake_tree(tmp_path, run_ids=runs, base_sizes=("2b",), **FAKE)
+    before = _analyze(tmp_path)
+    for rid in ("2b-rob-s1", "2b-leak-s1"):  # v3 copies that would move every verdict if read
+        v3 = f"v3-{rid}"
+        rob = rid.startswith("2b-rob")
+        shutil.copytree(tmp_path / "runs" / rid, tmp_path / "runs" / v3)
+        shutil.copytree(tmp_path / "evals" / rid, tmp_path / "evals" / v3)
+        _rewrite_evals(
+            tmp_path,
+            f"{v3}/step-*.jsonl",
+            lambda rows, v3=v3, rob=rob: [{**r, "run_id": v3, "robust_pass": rob, "leaky_pass": True} for r in rows],
+        )
+    # the v3 base (`eval/heldout.py --checkpoint base --variant v3`): reward "base", size 2b, a v3 run id and
+    # (here) the v1 instance ids, so only its run id keeps it out; sorted after base-2b it would otherwise win
+    shutil.copytree(tmp_path / "evals" / "base-2b", tmp_path / "evals" / "v3-base-2b")
+    _rewrite_evals(
+        tmp_path,
+        "v3-base-2b/step-*.jsonl",
+        lambda rows: [{**r, "run_id": "v3-base-2b", "robust_pass": False, "leaky_pass": True} for r in rows],
+    )
+    assert compare.parse_run_id("v3-2b-rob-s1") is None and compare.parse_run_id("v3-4b-leak-s3") is None
+    after = _analyze(tmp_path)
+    assert {k: _v(h) for k, h in _by_h(after).items()} == {k: _v(h) for k, h in _by_h(before).items()}
+    for protocol in (_protocol(tmp_path), None):
+        data = load_dataset(tmp_path / "evals", tmp_path / "runs", protocol)
+        assert not any(rid.startswith("v3-") for rid, _ in data.runs)
+        assert data.base["2b"].run_id == "base-2b"
+        assert any("ignored: v3-2b-leak-s1, v3-2b-rob-s1, v3-base-2b" in n for n in data.notes)

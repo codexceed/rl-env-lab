@@ -21,7 +21,7 @@ Full fine-tune with TRL `GRPOTrainer` on the common budget in `configs/grpo.yaml
 GPU indices (``--gpus`` etc.) are physical; ``CUDA_VISIBLE_DEVICES`` is set from them for every
 child. Ports are offset by the run's lowest GPU index so runs sharing a node never collide.
 
-Artifacts (`train/LAYOUT.md`): eval weights ``eval/step-NNNNN/`` every 50 steps and at the final
+Artifacts (`train/LAYOUT.md`): eval weights ``eval/step-NNNNN/`` every 50 steps (v3: 100) and at the final
 step, recovery checkpoints ``recovery/checkpoint-N/`` (full trainer state), ``COMPLETE`` written
 last in both, and ``train_metrics.jsonl`` one row per optimizer step (`train/callbacks.py`). Rolling
 recovery pruning only with ``checkpoints.pruning_enabled: true``. With ``checkpoints.async_recovery``
@@ -32,13 +32,15 @@ At start the main rank writes
 fingerprints, seed, max_steps, git commit; `eval/compare.py` checks matched pairs against it.
 
 Prompts are rendered once with the SPEC §10 call (`envlab.prompts.render_prompt`, thinking off) and
-given to TRL as plain text; every rendered prompt is checked against the 1,536-token budget, and
-prompt + answer cap against ``layout.vllm_max_model_length``.
+given to TRL as plain text; every rendered prompt is checked against ``budget.max_prompt_length``
+(1,536; v3: 2,048), and prompt + answer cap against ``layout.vllm_max_model_length``.
 
 **Variants** (``--variant NAME``, ADR 0005): ``configs/variants/<NAME>.yaml`` is merged over the
 config after the size file and may set only `VARIANT_KEYS`. ``v2-think`` turns thinking on in the
-training prompts, caps answers at 1,024 and widens the vLLM context to 2,560 (ADR 0006). The
-variant is recorded in ``train_config.json`` and
+training prompts, caps answers at 1,024 and widens the vLLM context to 2,560 (ADR 0006). ``v3``
+(ADR 0007) is v2-think on the v3 task set: ``data/v3``, prompts up to 2,048 tokens, a 3,072-token
+context and eval weights every 100 steps. The
+variant is recorded in ``train_config.json``, ``COMPLETE`` and
 ``run_manifest.json`` (so a v2 run never pairs with a v1 run), and the graders see `graded_text`
 (the prompt's open think tag restored; an unclosed think block is a format failure), exactly as
 `eval/heldout.py` grades that run's checkpoints. Without a variant nothing changes. The
@@ -100,10 +102,14 @@ LAYOUT_KEYS = frozenset(
 )
 THINK_OFF_SUFFIX = "<think>\n\n</think>\n\n"  # SPEC §10: generation prompt with enable_thinking=False
 # The keys a configs/variants/<name>.yaml may set (ADR 0005 v2, ADR 0006): thinking, the answer cap and the
-# vLLM context that cap needs. Nothing else, so a variant run differs from v1 only where the ADRs say it does.
+# vLLM context that cap needs; for the v3 task set (ADR 0007 §6) also its data dir, the prompt budget its longer
+# prompts need and the eval-weight interval. Nothing else, so a variant run differs from v1 only where the ADRs say
+# it does. A variant that sets none of the v3 keys (v2-think) resolves to exactly the config it always did.
 VARIANT_KEYS: dict[str, frozenset[str]] = {
-    "budget": frozenset({"enable_thinking", "max_completion_length"}),
+    "budget": frozenset({"enable_thinking", "max_completion_length", "max_prompt_length"}),
     "layout": frozenset({"vllm_max_model_length"}),
+    "data": frozenset({"dir"}),
+    "checkpoints": frozenset({"eval_every"}),
 }
 
 
@@ -145,7 +151,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--recovery-every", type=int, help="override checkpoints.recovery_every (dry runs)")
     p.add_argument("--hf-generate", action="store_true", help="fallback: HF generate instead of vLLM")
     p.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
-    p.add_argument("--variant", help="ADR 0005 variant overlay configs/variants/<name>.yaml, e.g. v2-think")
+    p.add_argument("--variant", help="ADR 0005 variant overlay configs/variants/<name>.yaml, e.g. v2-think or v3")
     p.add_argument("--data-dir", type=Path, help="override data.dir")
     p.add_argument("--port-offset", type=int, help="override the port offset (default: lowest GPU index)")
     p.add_argument("--vllm-server-url", help="attach to a running vLLM server instead of starting one")
@@ -253,12 +259,18 @@ def load_variant_override(config_path: Path, variant: str) -> dict[str, Any]:
     budget = data.get("budget") or {}
     if "enable_thinking" in budget and not isinstance(budget["enable_thinking"], bool):
         raise ConfigError(f"{path}: budget.enable_thinking must be true or false")
-    cap = budget.get("max_completion_length", 1)
-    if isinstance(cap, bool) or not isinstance(cap, int) or cap < 1:
-        raise ConfigError(f"{path}: budget.max_completion_length must be an integer >= 1")
-    ctx = (data.get("layout") or {}).get("vllm_max_model_length", 1)
-    if isinstance(ctx, bool) or not isinstance(ctx, int) or ctx < 1:
-        raise ConfigError(f"{path}: layout.vllm_max_model_length must be an integer >= 1")
+    for where, value in (
+        ("budget.max_completion_length", budget.get("max_completion_length", 1)),
+        ("budget.max_prompt_length", budget.get("max_prompt_length", 1)),
+        ("layout.vllm_max_model_length", (data.get("layout") or {}).get("vllm_max_model_length", 1)),
+        ("checkpoints.eval_every", (data.get("checkpoints") or {}).get("eval_every", 1)),
+    ):
+        if isinstance(value, bool) or not isinstance(value, int) or value < 1:
+            raise ConfigError(f"{path}: {where} must be an integer >= 1")
+    if "dir" in (data.get("data") or {}):
+        data_dir = data["data"]["dir"]
+        if not isinstance(data_dir, str) or not data_dir.strip():
+            raise ConfigError(f"{path}: data.dir must be a non-empty path")
     return data
 
 
@@ -611,7 +623,7 @@ def load_train_rows(
 
     path = Path(settings["data_dir"]) / f"{settings['train_split']}.jsonl"
     if not path.exists():
-        raise FileNotFoundError(f"{path} not found: run `make data`")
+        raise FileNotFoundError(f"{path} not found: run `make data` (v3: `make data-v3`)")
     instances = read_jsonl(path)
     if not instances:
         raise RuntimeError(f"{path} is empty")

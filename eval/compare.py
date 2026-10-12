@@ -15,7 +15,8 @@ Inputs
 
 **Eval JSONL** (`train/LAYOUT.md`): ``<evals>/<run_id>/step-NNNNN.jsonl``, one
 `eval.metrics.EvalRecord` per line. Base models live in ``<evals>/base-<size>/``
-with ``reward: "base"``, ``seed: null``, ``step: 0``.
+with ``reward: "base"``, ``seed: null``, ``step: 0``; a base record under any other run id (the v3 base
+``v3-base-<size>``, ADR 0007) is ignored like a non-matrix run.
 
 * A step with a ``.failed`` marker next to it is skipped (failed), and so is one with a ``.claim``
   but no ``.done`` (being evaluated right now). ``.done`` wins over a leftover claim: watchers before
@@ -57,8 +58,8 @@ both runs leave every verdict and are listed. A pair missing a manifest is *unve
 kept, but the data is not complete and the verdicts that read it are provisional.
 
 Run IDs: the matrix is ``{0.8b,2b,4b}-{rob,leak}-s{1,2,3}``. A rerun ``<id>-r<k>``
-replaces the original (highest ``k`` wins). Other run IDs (ablations) are ignored
-here and listed in the data notes.
+replaces the original (highest ``k`` wins). Other run IDs (ablations, and the exploratory
+``v2-<id>`` / ``v3-<id>`` project versions, ADR 0005 / 0007) are ignored here and listed in the data notes.
 
 Output
 ------
@@ -310,6 +311,11 @@ def parse_run_id(run_id: str) -> tuple[RunKey, int] | None:
     return (m["size"], reward, int(m["seed"])), int(m["rerun"] or 0)
 
 
+def _is_base_run(r: EvalRecord) -> bool:
+    """A v1 base-model record: reward base under run id ``base-<size>`` (not e.g. ``v3-base-4b``)."""
+    return r.reward == "base" and r.run_id == f"base-{r.size}"
+
+
 def read_train_log(path: Path) -> list[dict[str, Any]] | None:
     """Training log rows sorted by step; the last line for a step wins (resume)."""
     if not path.is_file():
@@ -429,6 +435,8 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protoc
     ignored: set[str] = set()
     for r in records:
         if r.reward == "base":
+            if not _is_base_run(r):
+                ignored.add(r.run_id)
             continue
         parsed = parse_run_id(r.run_id)
         if parsed is None or parsed[0] != (r.size, r.reward, r.seed):
@@ -445,7 +453,7 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protoc
         notes.append("replaced by a rerun: " + ", ".join(replaced))
     if ignored:
         notes.append("not in the run matrix, ignored: " + ", ".join(sorted(ignored)))
-    records = [r for r in records if r.reward == "base" or r.run_id in keep_ids]
+    records = [r for r in records if _is_base_run(r) or r.run_id in keep_ids]
     invalid = {k: n for k, n in invalid.items() if k[0] in keep_ids or k[0].startswith("base-")}
     records, failures = check_protocol(records, protocol, invalid)
     if protocol is None:
