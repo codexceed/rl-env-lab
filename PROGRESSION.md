@@ -111,8 +111,8 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Written confirmation of H200 access (2 nodes, through Fri 16 Oct)
 - [ ] Written confirmation: personal grant, no Lightning IP claim
 - [x] Lightning studio `rl-env-lab` created in `[teamspace]`, started on CPU — 2026-10-12
-- [ ] Owner: `gh auth login` (codexceed) on the studio; clone repo; `uv sync --group dev`
-- [ ] Studio auto-sleep disabled (machines stay attached through dips)
+- [x] Owner: `gh auth login` (codexceed) on the studio; clone repo; `uv sync --group dev` — 2026-10-12; agent drives studio via `lightning_sdk` `Studio.run`
+- [x] Studio auto-sleep disabled (machines stay attached through dips) — 2026-10-12, verified via SDK
 - [ ] Switch studio to H200 (1× for §0.3/§0.4, then ×8) when GPU scripts land
 - [ ] Both nodes reachable; GPU check prints GPU name, memory, CUDA available on each
 - [ ] Shared storage for checkpoints/eval outputs set up; path: `____`
@@ -409,3 +409,4 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Kernel failure → source build, then Python 3.12, before switching model family | `causal-conv1d` has no PyPI wheels | [ ] |
 | 2026-10-12 | Compute on Lightning studio `rl-env-lab` (`[teamspace]`); repo cloned there | Owner request | [ ] |
 | 2026-10-12 | No automatic node release; machines stay attached through dips; owner releases | Owner request | [x] #13 |
+| 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
