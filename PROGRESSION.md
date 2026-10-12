@@ -228,7 +228,8 @@ Three agents in parallel; I integrate and review.
 - [x] Data build: 2,000 train, 250 held-out, 100 broken
 - [x] `prompts.py` in native format
 - [x] Unit tests: seed reproducibility, no T3 in train — 2026-10-12, merged (#7)
-- [ ] Known limit: prompt budget (≤ 1,500 est. tokens) leaves no headroom; most *hard* variants fit only 2–3 distractors (not 5–6). Only matters if the too-easy branch fires — then raise hard-variant budget or revise k before using them
+- [x] Real token counts checked with the Qwen3.5 tokenizer — 2026-10-12 14:00, all splits fit: max real 1,463 (train_hard), 1,430 (train), 1,462 (heldout) vs limit 1,536; 0 over. The chars/2.5 estimate overcounts (real = 0.92× estimate on average, ≤ 0.98× worst case), so data needs no rebuild
+- [ ] Known limit: prompt budget (≤ 1,500 est. tokens, ≈ 1,465 real) leaves little headroom; most *hard* variants fit only 2–3 distractors (not 5–6). Only matters if the too-easy branch fires — then raise hard-variant budget or revise k before using them
 
 ### 1.4 Training and eval plumbing
 - [x] TRL reward wrappers (robust, leaky; same interface) — 2026-10-12, both scored every step, weight 1/0 by run (#9)
