@@ -23,11 +23,14 @@ jobs:
         hook: [ruff-check, ruff-format, pyright, pydoclint, import-linter]
     steps:
       - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
       - uses: astral-sh/setup-uv@v7
       - uses: actions/cache@v6
         with:
           path: ~/.cache/pre-commit
-          key: pre-commit-${{ hashFiles('.pre-commit-config.yaml') }}
+          key: pre-commit-py314-${{ hashFiles('.pre-commit-config.yaml') }}
       - run: uvx --with pre-commit-uv pre-commit run ${{ matrix.hook }} --all-files --show-diff-on-failure
 
   tests:
