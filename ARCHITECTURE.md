@@ -167,6 +167,8 @@ flowchart TD
   RUN --> EW["runs/id/eval/step-N/ + COMPLETE"]
   RUN --> RC["runs/id/recovery/checkpoint-N/ (keep 2)"]
   RUN --> TM["runs/id/train_metrics.jsonl"]
+  RUN --> MF["runs/id/run_manifest.json"]
+  MF --> CMP
   RC -.->|crash| CO
   EW --> WA["watcher: final first, then every 100"]
   WA --> HO["heldout.py: 250 × 4, temp 0.7, both graders"]
@@ -188,6 +190,13 @@ flowchart TD
 | H5 | leaky exploit rate 0.8B < 2B < 4B, 4B − 0.8B CI excludes 0 (needs 3 seeds per size) |
 
 The statistics use a **paired bootstrap**: resample seed pairs, then held-out tasks, with the same draws for every condition being compared.
+
+**Before a verdict counts as final**, `compare.py` checks two things:
+
+| Check | Fails when | Effect |
+|---|---|---|
+| Eval protocol | a checkpoint lacks the 250 frozen held-out ids × 4 samples (`sample_idx` 0..3), or a grader field | data incomplete, verdicts provisional; failing checkpoints listed |
+| Matched pairs | robust and leaky seed *k* differ in `run_manifest.json` (anything but reward weights) or in final step | pair rejected: both runs leave the verdicts and are listed |
 
 ## 8. Compute: Lightning studios
 

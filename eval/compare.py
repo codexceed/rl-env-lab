@@ -48,6 +48,13 @@ optimizer step::
 (still training, eval behind, or ``runs/`` not synced) its last evaluated step is
 used and every verdict that depends on it is marked **provisional**.
 
+**Matched pairs** (PREREG §1, `check_pair`): robust seed k and leaky seed k of one size
+must have ``<runs>/<run_id>/run_manifest.json`` files (`train/run_manifest.py`) that agree
+on everything but the reward weights (config hash, data, base model, seed, max_steps), no
+identity change on a resume, and the same final step. A pair that fails is **rejected**:
+both runs leave every verdict and are listed. A pair missing a manifest is *unverified*:
+kept, but the data is not complete and the verdicts that read it are provisional.
+
 Run IDs: the matrix is ``{0.8b,2b,4b}-{rob,leak}-s{1,2,3}``. A rerun ``<id>-r<k>``
 replaces the original (highest ``k`` wins). Other run IDs (ablations) are ignored
 here and listed in the data notes.
@@ -99,6 +106,7 @@ from eval.metrics import (
     verdict_h5,
 )
 from train.checkpoints import list_eval_checkpoints, read_status
+from train.run_manifest import compare_manifests, read_run_manifest, resume_mismatches
 
 BEGIN_MARKER = "<!-- BEGIN GENERATED -->"
 END_MARKER = "<!-- END GENERATED -->"
@@ -172,9 +180,12 @@ class RunInfo:
     final_step: int | None = None  # step marked final in runs/<id>/eval, if known
     status: str | None = None  # status.json
     train_log: list[dict[str, Any]] | None = None
+    excluded: str | None = None  # why its matched pair was rejected; then it is in no verdict
 
     @property
     def state(self) -> str:
+        if self.excluded is not None:
+            return "excluded"
         if not self.eval_steps:
             return "missing"
         if self.final_step is not None and self.final_step in self.eval_steps:
@@ -184,6 +195,62 @@ class RunInfo:
     @property
     def last_step(self) -> int | None:
         return max(self.eval_steps) if self.eval_steps else None
+
+    @property
+    def in_verdicts(self) -> bool:
+        return self.excluded is None and bool(self.eval_steps)
+
+
+PAIR_OK, PAIR_REJECTED, PAIR_UNVERIFIED = "ok", "rejected", "unverified"
+
+
+@dataclass
+class PairCheck:
+    """Robust seed k and leaky seed k of one size: still a matched pair (PREREG §1)?"""
+
+    size: str
+    seed: int
+    run_ids: tuple[str, str]  # (robust, leaky)
+    status: str  # PAIR_OK | PAIR_REJECTED (excluded from verdicts) | PAIR_UNVERIFIED (no manifest)
+    reasons: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+
+def check_pair(rob: RunInfo, leak: RunInfo, runs_root: Path) -> PairCheck:
+    """Compare the two runs' ``run_manifest.json`` (`train/run_manifest.py`) and final steps.
+
+    Rejected when the manifests differ in anything but the reward, a manifest disagrees with its
+    run id, a run changed identity on a resume, or both runs are final at different steps.
+    Unverified (kept, but provisional) when a manifest is missing.
+    """
+    reasons: list[str] = []
+    notes: list[str] = []
+    mans: dict[str, dict[str, Any]] = {}
+    for info in (rob, leak):
+        m = read_run_manifest(runs_root / info.run_id)
+        if m is None:
+            continue
+        mans[info.reward] = m
+        said = (m.get("size"), m.get("reward"), m.get("seed"))
+        if said != (info.size, info.reward, info.seed):
+            reasons.append(f"`{info.run_id}` manifest says size/reward/seed {said}")
+        changed = resume_mismatches(m)
+        if changed:
+            reasons.append(f"`{info.run_id}` changed on a resume: {', '.join(changed)}")
+    if len(mans) == 2:
+        diffs = compare_manifests(mans["robust"], mans["leaky"])
+        if diffs:
+            reasons.append("manifests differ in " + ", ".join(diffs))
+        commits = [(mans[r].get("git") or {}).get("commit") for r in REWARDS]
+        if commits[0] != commits[1]:
+            notes.append(f"git commits differ ({str(commits[0])[:12]} vs {str(commits[1])[:12]})")
+    missing = [i.run_id for i in (rob, leak) if i.reward not in mans]
+    if missing:
+        notes.append("no run_manifest.json: " + ", ".join(f"`{r}`" for r in missing))
+    if rob.final_step is not None and leak.final_step is not None and rob.final_step != leak.final_step:
+        reasons.append(f"final steps differ ({rob.final_step} vs {leak.final_step})")
+    status = PAIR_REJECTED if reasons else (PAIR_UNVERIFIED if missing else PAIR_OK)
+    return PairCheck(rob.size, rob.seed, (rob.run_id, leak.run_id), status, reasons, notes)
 
 
 @dataclass
@@ -198,11 +265,15 @@ class Dataset:
     protocol: Protocol | None = None  # None: not checked, data never complete
     protocol_failures: dict[CkptKey, list[str]] = field(default_factory=dict)
     dropped: set[CkptKey] = field(default_factory=set)  # instance set differs: not in `runs`
+    pairs: list[PairCheck] = field(default_factory=list)  # every (size, seed) with both runs evaluated
 
     def used_checkpoints(self) -> set[CkptKey]:
         """Checkpoints the verdicts read: each matrix run's last evaluated step, and the base evals."""
-        used = {(i.run_id, i.last_step) for i in self.infos.values() if i.last_step is not None}
+        used = {(i.run_id, i.last_step) for i in self.infos.values() if i.in_verdicts and i.last_step is not None}
         return used | {(b.run_id, b.step) for b in self.base.values()}
+
+    def pair_of(self, run_id: str) -> PairCheck | None:
+        return next((p for p in self.pairs if run_id in p.run_ids), None)
 
     def verdict_failures(self) -> dict[CkptKey, list[str]]:
         """Protocol failures of the checkpoints the verdicts read."""
@@ -426,6 +497,21 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protoc
                 info.train_log = read_train_log(rdir / TRAIN_LOG)
                 if size in H5_SIZES or info.eval_steps:
                     infos[key] = info
+
+    # Matched pairs: a rejected pair leaves every verdict (both runs' checkpoints are removed).
+    pairs: list[PairCheck] = []
+    for size in sizes:
+        for seed in SEEDS:
+            rob, leak = infos.get((size, "robust", seed)), infos.get((size, "leaky", seed))
+            if rob is None or leak is None or not rob.eval_steps or not leak.eval_steps:
+                continue
+            pc = check_pair(rob, leak, runs_root)
+            pairs.append(pc)
+            if pc.status == PAIR_REJECTED:
+                for info in (rob, leak):
+                    info.excluded = "; ".join(pc.reasons)
+                    for k in [k for k in runs if k[0] == info.run_id]:
+                        del runs[k]
     return Dataset(
         runs=runs,
         infos=infos,
@@ -437,6 +523,7 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protoc
         protocol=protocol,
         protocol_failures=failures,
         dropped=set(dropped),
+        pairs=pairs,
     )
 
 
@@ -527,9 +614,17 @@ class Analysis:
         return self.data.protocol is not None and not self.data.verdict_failures()
 
     @property
+    def pairs_ok(self) -> bool:
+        """Every matched pair with evals was verified from its manifests (none rejected or unverified)."""
+        return all(p.status == PAIR_OK for p in self.data.pairs)
+
+    @property
     def complete(self) -> bool:
         return (
-            self.count("final") == self.n_expected and all(s in self.data.base for s in H5_SIZES) and self.protocol_ok
+            self.count("final") == self.n_expected
+            and all(s in self.data.base for s in H5_SIZES)
+            and self.protocol_ok
+            and self.pairs_ok
         )
 
 
@@ -618,13 +713,23 @@ def _gaps(data: Dataset, keys: Sequence[RunKey], base_sizes: Sequence[str]) -> l
         out.append("no eval yet: " + ", ".join(missing))
     if partial:
         out.append("not at final checkpoint (last evaluated step): " + ", ".join(partial))
+    excluded = [i.run_id for i in infos if i is not None and i.state == "excluded"]
+    if excluded:
+        out.append("excluded, matched pair rejected (see Matched pairs): " + ", ".join(excluded))
+    unverified = [
+        i.run_id
+        for i in infos
+        if i is not None and (p := data.pair_of(i.run_id)) is not None and p.status == PAIR_UNVERIFIED
+    ]
+    if unverified:
+        out.append("matched pair not verified, no run manifest (see Matched pairs): " + ", ".join(unverified))
     for s in base_sizes:
         if s not in data.base:
             out.append(f"no base eval for {s}")
     if data.protocol is None:
         out.append("eval protocol not checked (no held-out id list)")
     else:
-        used = [(i.run_id, i.last_step) for i in infos if i is not None and i.last_step is not None]
+        used = [(i.run_id, i.last_step) for i in infos if i is not None and i.in_verdicts and i.last_step is not None]
         used += [(data.base[s].run_id, data.base[s].step) for s in base_sizes if s in data.base]
         bad = [f"{rid}@{st}" for rid, st in used if (rid, st) in data.protocol_failures]
         if bad:
@@ -659,7 +764,7 @@ def _hypotheses(data: Dataset, n_boot: int, seed: int, main_size: str, reward_wi
     # H2
     keys = [(main, r, s) for r in REWARDS for s in SEEDS]
     gaps = _gaps(data, keys, [main])
-    present = [i for k in keys if (i := data.infos.get(k)) and i.state != "missing"]
+    present = [i for k in keys if (i := data.infos.get(k)) and i.in_verdicts]
     no_log = [i.run_id for i in present if i.train_log is None]
     if no_log:
         gaps.append("no training log: " + ", ".join(no_log))
@@ -807,7 +912,7 @@ def make_plots(an: Analysis, out_dir: str | Path) -> list[Path]:
             any_data = False
             for s in SEEDS:
                 info = data.infos.get((size, reward, s))
-                if info is None:
+                if info is None or info.excluded is not None:
                     continue
                 if info.train_log:
                     st = np.array([r["step"] for r in info.train_log], dtype=float)
@@ -875,7 +980,7 @@ def make_plots(an: Analysis, out_dir: str | Path) -> list[Path]:
             per_seed = []
             for s in SEEDS:
                 info = data.infos.get((size, reward, s))
-                if info is not None and info.last_step is not None:
+                if info is not None and info.in_verdicts and info.last_step is not None:
                     per_seed.append(data.runs[(info.run_id, info.last_step)].mean("exploit"))
             ax.scatter([k + off] * len(per_seed), per_seed, color=color, s=12, alpha=0.45, zorder=2)
         if xs:
@@ -1008,6 +1113,27 @@ def _protocol_md(an: Analysis) -> list[str]:
     return out
 
 
+def _pairs_md(an: Analysis) -> list[str]:
+    """Every robust/leaky seed pair with evals: verified, rejected (excluded) or unverified."""
+    out = [
+        "### Matched pairs",
+        "",
+        "Robust seed k and leaky seed k of one size must share start weights, data, resolved config "
+        "(all but the reward weights), seed and final step (`runs/<id>/run_manifest.json`). "
+        "A rejected pair is excluded from every verdict.",
+        "",
+    ]
+    if not an.data.pairs:
+        return [*out, "No pair has evals on both sides yet.", ""]
+    out += ["| Size | Seed | Runs | Check | Details |", "|---|---|---|---|---|"]
+    for p in an.data.pairs:
+        check = {PAIR_OK: "ok", PAIR_REJECTED: "**rejected**", PAIR_UNVERIFIED: "unverified"}[p.status]
+        details = "; ".join(p.reasons + p.notes) or DASH
+        out.append(f"| {p.size} | {p.seed} | `{p.run_ids[0]}`, `{p.run_ids[1]}` | {check} | {details} |")
+    out.append("")
+    return out
+
+
 def render_markdown(an: Analysis, figures: Sequence[Path] | None, report_dir: Path) -> str:
     data = an.data
     n_exp = an.n_expected
@@ -1024,13 +1150,19 @@ def render_markdown(an: Analysis, figures: Sequence[Path] | None, report_dir: Pa
         "",
     ]
     if an.complete:
-        lines.append(f"Complete: all {n_exp} runs at their final checkpoint, base evals present, eval protocol met.")
+        lines.append(
+            f"Complete: all {n_exp} runs at their final checkpoint, base evals present, eval protocol met, "
+            "matched pairs verified."
+        )
     else:
         n_bad = len(data.verdict_failures())
         protocol_txt = "not checked" if data.protocol is None else f"{n_bad} checkpoint(s) in verdicts fail it"
+        n_rej = sum(p.status == PAIR_REJECTED for p in data.pairs)
+        n_unv = sum(p.status == PAIR_UNVERIFIED for p in data.pairs)
         lines.append(
             f"**Incomplete data: verdicts are provisional.** Runs at final checkpoint: "
-            f"{n_final}/{n_exp} · partial: {n_part} · no eval yet: {n_miss} · eval protocol: {protocol_txt}."
+            f"{n_final}/{n_exp} · partial: {n_part} · no eval yet: {n_miss} · excluded: {an.count('excluded')} · "
+            f"eval protocol: {protocol_txt} · matched pairs: {n_rej} rejected, {n_unv} unverified."
         )
     base_txt = ", ".join(s for s in H5_SIZES if s in data.base) or "none"
     lines += ["", f"Base evals: {base_txt}."]
@@ -1038,6 +1170,7 @@ def render_markdown(an: Analysis, figures: Sequence[Path] | None, report_dir: Pa
         lines.append(f"\n- {note}")
     lines.append("")
     lines += _protocol_md(an)
+    lines += _pairs_md(an)
 
     # verdict summary
     lines += ["### Verdicts", "", "| Hypothesis | Verdict | n |", "|---|---|---|"]
@@ -1238,7 +1371,8 @@ def main(argv: list[str] | None = None) -> int:
     if not an.complete:
         bad = "not checked" if data.protocol is None else f"{len(data.verdict_failures())} checkpoint(s) fail"
         print(
-            f"incomplete data: {an.count('final')}/{an.n_expected} runs final; eval protocol: {bad}",
+            f"incomplete data: {an.count('final')}/{an.n_expected} runs final; eval protocol: {bad}; "
+            f"matched pairs not ok: {sum(p.status != PAIR_OK for p in data.pairs)}",
             file=sys.stderr,
         )
     return 0

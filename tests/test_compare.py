@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import dataclasses
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -27,7 +28,9 @@ from eval.compare import (
     write_report,
 )
 from eval.fake_data import eval_records, write_fake_tree
+from eval.fake_data import run_manifest as fake_run_manifest
 from eval.metrics import STATUS_FAIL, STATUS_INCOMPLETE, STATUS_PASS, EvalRecord, Verdict
+from train.run_manifest import MANIFEST_FILE
 
 N_BOOT = 1000
 REPO = Path(__file__).resolve().parents[1]
@@ -298,6 +301,107 @@ def test_load_protocol_reads_samples_from_config(tmp_path):
         load_protocol(ids)
 
 
+# ── matched pairs (PREREG §1: same config, seed, start weights, step count) ──
+
+PAIR_RUNS = [f"2b-{r}-s{s}" for r in ("rob", "leak") for s in (1, 2, 3)]
+
+
+def _edit_manifest(root: Path, run_id: str, change) -> None:
+    p = root / "runs" / run_id / MANIFEST_FILE
+    p.write_text(json.dumps(change(json.loads(p.read_text()))))
+
+
+def _pair_tree(root: Path, **kw) -> None:
+    write_fake_tree(root, run_ids=PAIR_RUNS, base_sizes=("2b",), **{**FAKE, **kw})
+
+
+def test_matched_pairs_verified(tmp_path):
+    _pair_tree(tmp_path)
+    data = load_dataset(tmp_path / "evals", tmp_path / "runs", _protocol(tmp_path))
+    assert [(p.size, p.seed, p.status) for p in data.pairs] == [("2b", s, "ok") for s in (1, 2, 3)]
+    assert all(not p.reasons for p in data.pairs)
+    md = render_markdown(analyze(data, n_boot=N_BOOT), None, tmp_path)
+    assert "| 2b | 1 | `2b-rob-s1`, `2b-leak-s1` | ok | — |" in md
+
+
+def test_pair_with_different_data_is_rejected_and_excluded(tmp_path):
+    _pair_tree(tmp_path)
+    _edit_manifest(tmp_path, "2b-leak-s1", lambda m: {**m, "data": {**m["data"], "sha256": "f" * 64}})
+    an = _analyze(tmp_path)
+    pair = an.data.pair_of("2b-leak-s1")
+    assert pair is not None and pair.status == "rejected" and pair.reasons == ["manifests differ in data"]
+    assert {i.run_id: i.state for i in an.data.infos.values() if i.size == "2b"} == {
+        "2b-rob-s1": "excluded",
+        "2b-rob-s2": "final",
+        "2b-rob-s3": "final",
+        "2b-leak-s1": "excluded",
+        "2b-leak-s2": "final",
+        "2b-leak-s3": "final",
+    }
+    assert not any(rid in ("2b-rob-s1", "2b-leak-s1") for rid, _ in an.data.runs)
+    hs = _by_h(an)
+    assert _v(hs["H1"]).n["seeds"] == 2 and _v(hs["H2"]).n["seed_pairs"] == 2
+    assert hs["H1"].provisional and hs["H2"].provisional
+    assert any("excluded, matched pair rejected" in g and "2b-rob-s1" in g for g in hs["H1"].gaps)
+    md = render_markdown(an, None, tmp_path)
+    assert "| 2b | 1 | `2b-rob-s1`, `2b-leak-s1` | **rejected** | manifests differ in data |" in md
+    assert "`2b-leak-s1` | excluded |" in md
+    assert "matched pairs: 1 rejected, 0 unverified" in md
+
+
+def test_pair_differing_only_in_reward_weights_is_kept(tmp_path):
+    _pair_tree(tmp_path)
+    _edit_manifest(tmp_path, "2b-leak-s2", lambda m: {**m, "reward_weights": {"robust": 0.5, "leaky": 0.5}})
+    _edit_manifest(tmp_path, "2b-leak-s2", lambda m: {**m, "git": {"commit": "other", "dirty": True}})
+    data = load_dataset(tmp_path / "evals", tmp_path / "runs", _protocol(tmp_path))
+    pair = data.pair_of("2b-rob-s2")
+    assert pair is not None and pair.status == "ok"
+    assert pair.notes == ["git commits differ (fake vs other)"]
+
+
+def test_pair_with_different_final_steps_is_rejected(tmp_path):
+    _pair_tree(tmp_path)
+    for d in ("runs", "evals"):
+        shutil.rmtree(tmp_path / d / "2b-leak-s3")
+    write_fake_tree(tmp_path, run_ids=["2b-leak-s3"], base_sizes=(), final_step=250, eval_every=100)
+    _edit_manifest(tmp_path, "2b-leak-s3", lambda m: fake_run_manifest("2b", "leaky", 3, 300))
+    an = _analyze(tmp_path)
+    pair = an.data.pair_of("2b-leak-s3")
+    assert pair is not None and pair.status == "rejected"
+    assert pair.reasons == ["final steps differ (300 vs 250)"]
+    assert _v(_by_h(an)["H2"]).n["seed_pairs"] == 2
+
+
+def test_resume_change_and_wrong_label_reject_the_pair(tmp_path):
+    _pair_tree(tmp_path)
+
+    def resumed(m):
+        m["starts"].append({"resume_from": "recovery/checkpoint-100", "git": None, "mismatch": ["data"]})
+        return m
+
+    _edit_manifest(tmp_path, "2b-rob-s1", resumed)
+    _edit_manifest(tmp_path, "2b-leak-s2", lambda m: {**m, "reward": "robust"})
+    data = load_dataset(tmp_path / "evals", tmp_path / "runs", _protocol(tmp_path))
+    p1, p2 = data.pair_of("2b-rob-s1"), data.pair_of("2b-rob-s2")
+    assert p1 is not None and p1.reasons == ["`2b-rob-s1` changed on a resume: data"]
+    assert p2 is not None and p2.status == "rejected"
+    assert p2.reasons[0] == "`2b-leak-s2` manifest says size/reward/seed ('2b', 'robust', 2)"
+
+
+def test_missing_manifest_leaves_pair_unverified_and_provisional(tmp_path):
+    _pair_tree(tmp_path, manifests=False)
+    an = _analyze(tmp_path)
+    assert {p.status for p in an.data.pairs} == {"unverified"}
+    assert all(i.state == "final" for i in an.data.infos.values() if i.size == "2b")
+    hs = _by_h(an)
+    assert _v(hs["H2"]).n["seed_pairs"] == 3  # kept in the verdicts
+    assert hs["H1"].provisional and hs["H2"].provisional
+    assert any("matched pair not verified" in g for g in hs["H2"].gaps)
+    assert not an.pairs_ok
+    md = render_markdown(an, None, tmp_path)
+    assert "| unverified | no run_manifest.json: `2b-rob-s1`, `2b-leak-s1` |" in md
+
+
 # ── loading rules ────────────────────────────────────────────────────────────
 
 
@@ -425,6 +529,14 @@ def test_plots_written(tmp_path, full):
     assert all(p.stat().st_size > 1000 for p in paths)
     md = render_markdown(an, paths, tmp_path)
     assert "![reward_vs_true_success](figures/reward_vs_true_success.png)" in md
+
+
+def test_plots_skip_excluded_runs(tmp_path):
+    pytest.importorskip("matplotlib")
+    _pair_tree(tmp_path)
+    _edit_manifest(tmp_path, "2b-leak-s1", lambda m: {**m, "max_steps": 10})
+    paths = compare.make_plots(_analyze(tmp_path), tmp_path / "figures")
+    assert all(p.exists() for p in paths)
 
 
 def test_plots_with_partial_data(tmp_path):
