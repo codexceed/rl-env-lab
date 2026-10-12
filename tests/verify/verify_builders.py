@@ -1,7 +1,6 @@
 """Hand-built task instances (one or more per family) and broken variants for verify tests.
 
-Built with the SPEC interfaces `envlab.sim.ledger.build_ledger` and `envlab.sim.tools.apply_tool`,
-so they run on the test stand-in today and on the real simulator after merge.
+Built with the simulator's `build_ledger` and `apply_tool`, so every fixture is a state the real tools produce.
 """
 
 import dataclasses
