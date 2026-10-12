@@ -1,0 +1,69 @@
+# GRPO training config (PROGRESSION §1.4). Read by train/grpo.py and eval/heldout.py.
+#
+# Everything here is common to all sizes. configs/sizes/<size>.yaml may override `layout` ONLY
+# (GPU layout), so the per-step budget is identical across sizes (H5 validity, PREREG §1).
+# train/grpo.py refuses a size file with any other key.
+version: 1
+
+models:  # text-only exports are made from these under runs/models/<name>-text (train/common.py)
+  0.8b: Qwen/Qwen3.5-0.8B
+  2b: Qwen/Qwen3.5-2B
+  4b: Qwen/Qwen3.5-4B
+
+data:
+  dir: data
+  train_split: train  # train.jsonl; `train_hard` only under the frozen too-easy rule (PREREG §7)
+
+budget:  # the common per-step budget (PROGRESSION "Common budget across sizes")
+  prompts_per_step: 8
+  num_generations: 8
+  max_prompt_length: 1536    # checked on real tokens before training; TRL 1.15 has no prompt truncation
+  max_completion_length: 128
+  temperature: 1.0
+  beta: 0.0
+  learning_rate: 3.0e-6      # PLACEHOLDER until DECISIONS #6 (LR sweep, §0.4)
+  lr_scheduler_type: constant
+  warmup_steps: 0
+  max_steps: 300             # PLACEHOLDER until DECISIONS #7 (benchmark, §0.4)
+  loss_type: dapo            # TRL 1.15 default, pinned so a TRL upgrade cannot change it silently
+  scale_rewards: group       # TRL 1.15 default, pinned
+  bf16: true                 # bf16 autocast compute ...
+  param_dtype: float32       # ... over fp32 master weights (full-FT updates at 1e-6 vanish in bf16)
+  gradient_checkpointing: true
+  enable_thinking: false     # always; the 4B template defaults to thinking on (SPEC §10)
+
+checkpoints:
+  eval_every: 50             # eval weights -> runs/<id>/eval/step-NNNNN/ (+ the final step)
+  recovery_every: 50         # full trainer state -> runs/<id>/recovery/checkpoint-N/
+  keep_last: 2
+  pruning_enabled: false     # rolling prune of recovery checkpoints; enable only after resume is verified
+  eval_weights_dtype: bfloat16  # 1-GPU runs; ZeRO-3 runs save DeepSpeed's 16-bit gathered weights
+
+ports:  # offset by the run's lowest physical GPU index, so runs sharing a node never collide
+  master_base: 29500         # torch.distributed / accelerate main process
+  vllm_base: 8000            # vLLM server HTTP port (server layout)
+  group_base: 51216          # TRL weight-sync NCCL group (server layout)
+
+layout:  # default GPU layout; per-size files override these keys only
+  generation: colocate       # colocate | server
+  train_ranks: 1             # training processes (ZeRO-3 via configs/accelerate/zero3_<n>gpu.yaml when > 1)
+  hf_train_ranks: 1          # training processes under --hf-generate (no vLLM GPU needed)
+  vllm_server_gpus: 0        # GPUs for `trl vllm-serve` (server layout only)
+  vllm_gpu_memory_utilization: 0.3   # colocated engine share of the training GPU
+  vllm_server_gpu_memory_utilization: 0.9
+  vllm_max_model_length: 2048        # >= 1,536 prompt + 128 completion
+
+eval:
+  formal:      # PREREG §3: all verdicts
+    split: heldout
+    samples: 4
+    temperature: 0.7
+    max_tokens: 128
+  diagnostic:  # PREREG §3: difficulty band only, never used in verdicts
+    split: train
+    per_template: 50
+    samples: 8
+    temperature: 1.0
+    max_tokens: 128
+  vllm_gpu_memory_utilization: 0.85
+  sample_seed: 0
