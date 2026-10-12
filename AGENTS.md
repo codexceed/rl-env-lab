@@ -68,6 +68,7 @@ CI runs ruff and pytest on every PR. **The CI environment has no GPU and no gpu 
 - Merge only when CI is green.
 
 **Updating PROGRESSION.md**
+- In a parallel workstream, **don't edit `PROGRESSION.md` yourself**. Report which boxes are met in your final summary or PR, and the integrator ticks them on merge. This avoids merge conflicts.
 - Tick a box when its *done-when* is met: `[x] … — YYYY-MM-DD HH:MM, note`.
 - Never delete a task. Mark it `[~]` cut or `[>]` moved, with a reason.
 - Any scope, model, config, schedule or statistics change gets a Change log row. If it touches a locked decision, it also goes in `DECISIONS.md`.
