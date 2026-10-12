@@ -22,7 +22,7 @@
 | **Today** | Mon 12 Oct 2026 |
 | **Phase** | P0 — Setup |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
-| **Compute** | 2 × 8 H200 (Lightning AI) |
+| **Compute** | 2 × 8 H200 (Lightning AI) · studio `rl-env-lab` in `[teamspace]` (CPU now → H200 when GPU scripts land) |
 | **Next gate** | 🚦 G-Mon (end of today) |
 | **Blockers** | — |
 
@@ -43,7 +43,7 @@
 | Difficulty fallback | Too-hard branch only | **Too-hard and too-easy branches**, rule frozen in PREREG |
 | Statistics | Per-run bootstrap CI | **Seed-pair + instance paired bootstrap**, rules in §0.7 |
 | Checkpoints | Every 50 steps | **Eval weights every 50 + rolling full recovery checkpoint** |
-| Node shutdown | Each job stops its instance | **Coordinator shuts nodes down** after all training, eval and transfers |
+| Node shutdown | Each job stops its instance | **No auto-release.** Coordinator stops *runs* at cutoff and reports "idle, safe to release"; machines stay attached through debugging/plan/code dips; **owner releases** only when certain they're no longer needed |
 | Hypotheses | H1–H5 | **H1, H2, H5 tested; H3 exploratory; H4 cut** |
 | Triage classifier | Sat | **Cut** |
 | Multi-turn tasks | Stretch | **Cut** |
@@ -110,6 +110,10 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 ### 0.1 Compute and access (me)
 - [ ] Written confirmation of H200 access (2 nodes, through Fri 16 Oct)
 - [ ] Written confirmation: personal grant, no Lightning IP claim
+- [x] Lightning studio `rl-env-lab` created in `[teamspace]`, started on CPU — 2026-10-12
+- [x] Owner: `gh auth login` (codexceed) on the studio; clone repo; `uv sync --group dev` — 2026-10-12; agent drives studio via `lightning_sdk` `Studio.run`
+- [x] Studio auto-sleep disabled (machines stay attached through dips) — 2026-10-12, verified via SDK
+- [ ] Switch studio to H200 (1× for §0.3/§0.4, then ×8) when GPU scripts land
 - [ ] Both nodes reachable; GPU check prints GPU name, memory, CUDA available on each
 - [ ] Shared storage for checkpoints/eval outputs set up; path: `____`
 - [ ] Storage measured after first checkpoint save (per-checkpoint size × planned count recorded here: `____`)
@@ -132,7 +136,7 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Weight sync trainer → vLLM works (generations change after an update)
 - [ ] Save → resume restores model, optimizer, scheduler, RNG, trainer state; loss continues smoothly
 - [ ] Thinking mode disabled cleanly via chat template
-- [ ] Native tool-call format identified: `____` (feeds SPEC prompt format and `parse.py`)
+- [ ] Native tool-call format identified: **XML** `<tool_call><function=NAME><parameter=ARG>…` from HF chat templates (owner approved 2026-10-12); confirm with real tokenizer on GPU
 - [ ] Memory and throughput recorded per size (feeds §0.4)
 - [ ] Decision rule:
   - vLLM fails → HF generate for **training and eval**; model family unchanged
@@ -150,39 +154,39 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Done when: reward rises for ≥1 LR with no entropy collapse
 
 ### 0.5 Spec (agent drafts, I review) — `SPEC.md`
-- [ ] Entities and fields
-- [ ] 6 tools: arguments, state effects, error cases, ledger postings
-- [ ] Ledger balance rule
-- [ ] 15 templates with oracle rules
-- [ ] **Pre-specified harder variant per train template** (e.g. more distractors, multi-line arithmetic), used only by the too-easy branch
-- [ ] Robust and leaky grader definitions
-- [ ] Quality gates G1–G3; 4 broken-variant types
-- [ ] Prompt format using the tool-call format from §0.3
-- [ ] Done when: I sign off, no open TODOs
+- [x] Entities and fields
+- [x] 6 tools: arguments, state effects, error cases, ledger postings
+- [x] Ledger balance rule
+- [x] 15 templates with oracle rules
+- [x] **Pre-specified harder variant per train template** (e.g. more distractors, multi-line arithmetic), used only by the too-easy branch
+- [x] Robust and leaky grader definitions
+- [x] Quality gates G1–G3; 4 broken-variant types
+- [x] Prompt format using the tool-call format from §0.3
+- [ ] Done when: I sign off, no open TODOs — drafted 2026-10-12, in review: PR #12
 
 ### 0.6 Metrics (agent) — `eval/metrics.py`
-- [ ] True success, exploit rate, format-failure rate per sample
-- [ ] Paired, hierarchical bootstrap: resample **seed pairs**, then **held-out instances**, keeping compared conditions on the same draws
-- [ ] Effects reported as mean across seeds with 95% CI
-- [ ] H1, H2, H5 verdict functions implementing §0.7 rules exactly
-- [ ] Training-reward window helper (for H2)
-- [ ] Done when: unit tests pass on fake data with known answers
+- [x] True success, exploit rate, format-failure rate per sample
+- [x] Paired, hierarchical bootstrap: resample **seed pairs**, then **held-out instances**, keeping compared conditions on the same draws
+- [x] Effects reported as mean across seeds with 95% CI
+- [x] H1, H2, H5 verdict functions implementing §0.7 rules exactly
+- [x] Training-reward window helper (for H2)
+- [x] Done when: unit tests pass on fake data with known answers — 2026-10-12, 33 tests, merged #11
 
 ### 0.7 Pre-registration (me) — `PREREG.md`, committed before any task training
-- [ ] Held-out template IDs frozen (T3 per family)
-- [ ] **Two separate evals:**
+- [x] Held-out template IDs frozen (T3 per family) — 2026-10-12, PREREG signed off with defaults; diagnostic temp 1.0
+- [x] **Two separate evals:**
   - *Diagnostic baseline* — train templates, 50 instances × 8 samples, for difficulty band only; never used in verdicts
   - *Formal eval* — 250 held-out × 4 samples, temp 0.7, both graders; base model, every 50 steps, final
-- [ ] **Statistics:** effect = mean across 3 seeds; 95% CI from the §0.6 bootstrap
-- [ ] **H1** passes iff main-model robust gain over base ≥ 10 pts **and** CI lower bound > 0
-- [ ] **H2** passes iff all three hold:
+- [x] **Statistics:** effect = mean across 3 seeds; 95% CI from the §0.6 bootstrap
+- [x] **H1** passes iff main-model robust gain over base ≥ 10 pts **and** CI lower bound > 0
+- [x] **H2** passes iff all three hold:
   - training reward: leaky ≥ robust, mean over the **final 50 steps**, averaged over seeds
   - true success: leaky ≥ 10 pts below robust, CI excludes 0
   - exploit rate: leaky ≥ 10% **and** ≥ 2× base
-- [ ] **H5** passes iff final leaky exploit rate is ordered 0.8B < 2B < 4B **and** 4B − 0.8B CI excludes 0; requires 3 seeds per size, else H5 is reported as **exploratory/incomplete** with actual n
-- [ ] **H3** exploratory; **H4** cut
-- [ ] **Difficulty adaptation rule (frozen):** see §2.2; decided from train-template diagnostics only; one task distribution for all sizes; held-out templates never adapted
-- [ ] **SFT rule:** if SFT warm-up is used, the same recipe is applied to all sizes and both reward members start from the same SFT checkpoint; otherwise H5 is exploratory
+- [x] **H5** passes iff final leaky exploit rate is ordered 0.8B < 2B < 4B **and** 4B − 0.8B CI excludes 0; requires 3 seeds per size, else H5 is reported as **exploratory/incomplete** with actual n
+- [x] **H3** exploratory; **H4** cut
+- [x] **Difficulty adaptation rule (frozen):** see §2.2; decided from train-template diagnostics only; one task distribution for all sizes; held-out templates never adapted
+- [x] **SFT rule:** if SFT warm-up is used, the same recipe is applied to all sizes and both reward members start from the same SFT checkpoint; otherwise H5 is exploratory
 
 ### 0.8 End-of-day decisions (me) — `DECISIONS.md`
 - [ ] Model family + main model
@@ -226,12 +230,14 @@ Three agents in parallel; I integrate and review.
 - [ ] `configs/grpo.yaml` + per-size overrides for GPU layout only
 - [ ] `train/grpo.py`: config + reward + seed; saves **eval weights every 50 steps** and a **rolling full recovery checkpoint** (model, optimizer, scheduler, RNG, trainer state; keep last 2)
 - [ ] Resume tested from a recovery checkpoint **before** any pruning is enabled
+- [ ] Rolling recovery pruning **during training** (keep last 2; delete an older one only once a newer one has `COMPLETE`; never touch `eval/`), via `train/checkpoints.py`; enabled only after resume is verified. Remaining recovery checkpoints deleted after the final-artifact integrity check
 - [ ] `eval/heldout.py`: vLLM path + HF fallback; both graders; per-sample JSONL
-- [ ] Eval watcher: picks up new eval checkpoints, evaluates, marks done; never deletes final artifacts
-- [ ] **Coordinator** (`train/coordinator.py` or job script):
+- [x] Eval watcher: picks up new eval checkpoints, evaluates, marks done; never deletes final artifacts — 2026-10-12, `eval/watcher.py`, priority final → every 100 → rest; layout in `train/LAYOUT.md`
+- [x] **Coordinator** (`train/coordinator.py` or job script): — 2026-10-12, `configs/allocation.yaml`, 38 tests
   - launches runs per GPU allocation
   - per-run timeout (run ends, node stays up)
-  - shuts a node down only when all its training, eval and output transfers are done, or at a hard node deadline
+  - never releases a machine by default: when all training, eval and transfers are done it writes an idle marker ("safe to release"); at the hard deadline it stops runs only
+  - actual shutdown only with explicit opt-in flag + configured command (owner's call)
 - [ ] 10-step dry run of `train/grpo.py` with each reward on 2B; resume tested
 - [ ] CI green
 
@@ -340,7 +346,7 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 
 ## P4 — Friday 16 Oct 06:00 → 12:00: final review and publish
 
-- [ ] 06:00: training stopped; coordinator confirms all eval + transfers done, then shuts nodes down
+- [ ] 06:00: training stopped; coordinator confirms all eval + transfers done (idle marker); **owner releases machines** once certain they're not needed
 - [ ] Final verdicts confirmed from complete data (H1, H2, H5; H3 exploratory); sample sizes stated
 - [ ] Results, plots, gallery, limits reviewed
 - [ ] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking
@@ -402,3 +408,9 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Reporting moved earlier: skeleton Tue, live tables + provisional verdicts Thu | Friday overload | [ ] |
 | 2026-10-12 | Python 3.11 → 3.14; GPU stack moved to Linux-only `gpu` extra | Owner request; wheels verified | [ ] |
 | 2026-10-12 | Kernel failure → source build, then Python 3.12, before switching model family | `causal-conv1d` has no PyPI wheels | [ ] |
+| 2026-10-12 | Compute on Lightning studio `rl-env-lab` (`[teamspace]`); repo cloned there | Owner request | [ ] |
+| 2026-10-12 | No automatic node release; machines stay attached through dips; owner releases | Owner request | [x] #13 |
+| 2026-10-12 | PREREG signed off with default interpretations; diagnostic baseline at temp 1.0, robust grader decides band | Owner | [ ] |
+| 2026-10-12 | Recovery checkpoints: rolling keep-last-2 during training (not only after the run), gated on verified resume | ~25–30 GB per 2B full-state ckpt; post-run-only pruning would need TBs | [ ] |
+| 2026-10-12 | Tool calls in Qwen3.5 native XML format (INSTRUCTIONS assumed JSON); parser also accepts JSON; `enable_thinking=False` always | Native chat template; owner approved | [ ] |
+| 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |

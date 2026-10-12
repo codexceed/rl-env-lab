@@ -17,4 +17,5 @@ Format: one row per decision. A changed decision gets a new row; the old row is 
 | 9 | — | 4B GPU layout | 1 vLLM server + 3 train (default) | | Pending §0.4 benchmark |
 | 10 | 2026-10-12 | Hypotheses | H1, H2, H5 tested; H3 exploratory; H4 cut | Deadline | Locked |
 | 11 | 2026-10-12 | Scope cuts | Triage classifier, multi-turn cut; ablations optional | Deadline | Locked |
-| 12 | 2026-10-12 | Node shutdown | Coordinator only, after training + eval + transfers | Runs share nodes | Locked |
+| 12 | 2026-10-12 | Node shutdown | Coordinator only, after training + eval + transfers | Runs share nodes | Superseded by #13 |
+| 13 | 2026-10-12 | Node release | No auto-release. Coordinator stops runs at cutoff and marks idle; machines stay attached through dips; owner releases manually | Re-acquiring H200s costs more than idle time | Locked |
