@@ -1,0 +1,36 @@
+# Local checks before each commit; CI runs the same hooks, one required check each.
+#   make hooks                   # once per clone
+#   make check                   # every hook on every file
+# Settings for each tool live in pyproject.toml. Versions match the evals repo.
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.9
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.414
+    hooks:
+      - id: pyright
+        # the bundled Node.js spares contributors a separate install; the runtime deps let pyright
+        # check calls against real signatures (the GPU stack stays out: see pyproject.toml)
+        additional_dependencies: ["pyright[nodejs]", numpy, pyyaml, pytest]
+
+  - repo: https://github.com/jsh9/pydoclint
+    rev: 0.9.1
+    hooks:
+      - id: pydoclint
+        args: [--config=pyproject.toml]
+
+  - repo: local
+    hooks:
+      - id: import-linter
+        name: import-linter
+        language: python
+        additional_dependencies: [import-linter==2.15]
+        # the package is imported from its folder, not installed
+        entry: env PYTHONPATH=src lint-imports
+        pass_filenames: false
+        files: ^src/.*\.py$|^pyproject\.toml$

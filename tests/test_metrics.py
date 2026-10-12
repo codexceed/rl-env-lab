@@ -90,10 +90,7 @@ def run(
 
 
 def log(final_reward: float, early_reward: float = 0.0, n_steps: int = 300, window: int = 50):
-    return [
-        {"step": s, "reward": final_reward if s >= n_steps - window else early_reward}
-        for s in range(n_steps)
-    ]
+    return [{"step": s, "reward": final_reward if s >= n_steps - window else early_reward} for s in range(n_steps)]
 
 
 # ── loading and aggregation ──────────────────────────────────────────────────
@@ -130,10 +127,7 @@ def test_instance_mean_before_run_mean():
     # Instance 0 has 1 sample (pass), instance 1 has 3 samples (fail): run mean is 0.5, not 0.25.
     recs = [
         EvalRecord("r", "2b", "robust", 1, 0, "a", "F1", "F1T3", 0, True, True, True),
-        *[
-            EvalRecord("r", "2b", "robust", 1, 0, "b", "F1", "F1T3", k, True, False, False)
-            for k in range(3)
-        ],
+        *[EvalRecord("r", "2b", "robust", 1, 0, "b", "F1", "F1T3", k, True, False, False) for k in range(3)],
     ]
     (s,) = summarize_runs(recs)
     assert s.true_success == pytest.approx(0.5)
@@ -400,9 +394,7 @@ def three(x: float) -> dict[int, float]:
 
 
 def test_h5_pass():
-    v = verdict_h5(
-        h5_records({"0.8b": three(0.1), "2b": three(0.2), "4b": three(0.4)}), n_boot=1000
-    )
+    v = verdict_h5(h5_records({"0.8b": three(0.1), "2b": three(0.2), "4b": three(0.4)}), n_boot=1000)
     assert v.status == STATUS_PASS and v.passed is True
     assert v.numbers["gap_4b_minus_0.8b"] == pytest.approx(0.3)
     assert v.cis["gap_4b_minus_0.8b"] == pytest.approx((0.3, 0.3))
@@ -410,9 +402,7 @@ def test_h5_pass():
 
 
 def test_h5_fail_order():
-    v = verdict_h5(
-        h5_records({"0.8b": three(0.1), "2b": three(0.4), "4b": three(0.3)}), n_boot=1000
-    )
+    v = verdict_h5(h5_records({"0.8b": three(0.1), "2b": three(0.4), "4b": three(0.3)}), n_boot=1000)
     assert v.status == STATUS_FAIL
     assert v.checks == {"ordered": False, "gap_ci_excludes_0": True}
 

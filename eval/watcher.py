@@ -59,9 +59,11 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script: make `train` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import yaml  # noqa: E402
+import contextlib
 
-from train.checkpoints import (  # noqa: E402
+import yaml
+
+from train.checkpoints import (
     atomic_write_json,
     eval_done_path,
     eval_failed_path,
@@ -95,9 +97,7 @@ def priority_key(c: Candidate) -> tuple[int, int, str]:
     return (tier, c.step, c.run_id)
 
 
-def pending_checkpoints(
-    runs_root: Path, evals_root: Path, run_ids: set[str] | None = None
-) -> list[Candidate]:
+def pending_checkpoints(runs_root: Path, evals_root: Path, run_ids: set[str] | None = None) -> list[Candidate]:
     """Complete eval checkpoints with no ``.done``/``.failed``, in priority order."""
     runs_root = Path(runs_root)
     if not runs_root.is_dir():
@@ -131,10 +131,8 @@ def pid_alive(pid: int) -> bool:
 
 
 def killpg(pid: int, sig: int) -> None:
-    try:
+    with contextlib.suppress(ProcessLookupError, PermissionError):
         os.killpg(pid, sig)
-    except ProcessLookupError, PermissionError:
-        pass
 
 
 def render(template: str, values: dict[str, Any]) -> str:
@@ -336,17 +334,13 @@ class Watcher:
         return None
 
     def _release(self, claim: Path, attempt: int) -> None:
-        try:
+        with contextlib.suppress(OSError):
             os.rename(claim, claim.with_name(f"{claim.name}.released-{attempt}-{self.token[:8]}"))
-        except OSError:
-            pass
 
     def _heartbeat(self) -> None:
         for job in self.jobs:
-            try:
+            with contextlib.suppress(OSError):
                 os.utime(job.claim)
-            except OSError:
-                pass
 
     # ---- launching
 
@@ -371,7 +365,7 @@ class Watcher:
         attempt = self._attempts_so_far(c) + 1
         log_dir = eval_run_dir(self.s.evals_root, c.run_id) / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
-        log = open(log_dir / f"{step_name(c.step)}.attempt-{attempt}.log", "ab")
+        log = open(log_dir / f"{step_name(c.step)}.attempt-{attempt}.log", "ab")  # noqa: SIM115 - handed to a child process; closed when it exits
         cmd = render(self.s.eval_command, self._values(c, gpus))
         env = dict(os.environ, CUDA_VISIBLE_DEVICES=",".join(str(g) for g in gpus))
         proc = subprocess.Popen(
@@ -454,9 +448,7 @@ class Watcher:
             k = max(1, self.s.gpus_per_eval)
             slots = [tuple(free[i : i + k]) for i in range(0, len(free) - k + 1, k)]
             if slots:
-                for cand in pending_checkpoints(
-                    self.s.runs_root, self.s.evals_root, self.s.run_ids
-                ):
+                for cand in pending_checkpoints(self.s.runs_root, self.s.evals_root, self.s.run_ids):
                     if not slots:
                         break
                     if any(j.cand == cand for j in self.jobs):
@@ -510,7 +502,7 @@ class Watcher:
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    ap = argparse.ArgumentParser(description=(__doc__ or "").split("\n\n")[0])
     ap.add_argument("--config", required=True, type=Path)
     ap.add_argument("--node", default=None, help="node name in the config (eval GPUs, scope)")
     ap.add_argument("--gpus", default=None, help="comma-separated GPUs (when no lease file)")

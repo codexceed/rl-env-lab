@@ -169,7 +169,7 @@ def test_eval_timeout_kills_and_records_failure(env):
 
 
 def test_two_watchers_never_evaluate_the_same_step(env):
-    _, runs, evals, _, _ = env
+    _, runs, _evals, _, _ = env
     for s in (50, 100, 150, 200):
         add_ckpt(runs, "a-rob-s1", s)
     w1 = Watcher(settings(env, sleep=0.2, gpus=(0,)))
