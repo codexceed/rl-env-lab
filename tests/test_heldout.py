@@ -1,5 +1,7 @@
 """eval/heldout.py without a GPU: CLI, checkpoint resolution, record schema, diagnostic band."""
 
+from __future__ import annotations
+
 import dataclasses
 import json
 from pathlib import Path

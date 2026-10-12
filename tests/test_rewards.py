@@ -1,5 +1,7 @@
 """TRL reward wrappers (train/rewards.py) on hand-written native XML completions (SPEC §10)."""
 
+from __future__ import annotations
+
 import inspect
 import json
 import subprocess

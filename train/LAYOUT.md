@@ -37,7 +37,7 @@ This is the contract between the trainer (`train/grpo.py`), the eval script (`ev
 | `COMPLETE` last | A directory without `COMPLETE` is in progress, and every consumer ignores it. |
 | Final step | `COMPLETE` with `"final": true`. It need not be a multiple of 50. |
 | Never deleted | Nothing under `eval/` or `<evals>/`. The watcher never deletes anything; it releases locks by renaming them. |
-| Pruning | Only complete `recovery/checkpoint-<N>` dirs are pruned, keeping the newest `keep_last` (2). This needs `checkpoints.pruning_enabled: true`, which is off until resume is verified, **and** the final eval step to pass the integrity check. |
+| Pruning | Only complete `recovery/checkpoint-<N>` dirs are pruned, keeping the newest `keep_last` (2). Everything needs `checkpoints.pruning_enabled: true`, which stays off until resume is verified. **During training** the trainer rolls them (`train/callbacks.py`): an older one is deleted only once a newer one has `COMPLETE`. **After the run** the coordinator removes the rest, once the final eval step passes the integrity check. `eval/` is never touched. |
 | Integrity check | The final step has `COMPLETE`, every file listed in `files` exists and is non-empty, and each glob in `required_eval_files` (`config.json`, `*.safetensors`) matches a non-empty file. |
 
 ## What each producer must do
@@ -46,7 +46,7 @@ This is the contract between the trainer (`train/grpo.py`), the eval script (`ev
 
 - Accept the `commands.train` flags: `--run-id --size --reward --seed --gpus --output-dir`. For 4B, also `--vllm-server-gpus --train-gpus` (physical indices). On a crash relaunch the coordinator appends `--resume-from <recovery/checkpoint-N>`.
 - Write eval weights to `eval/step-<NNNNN>/` every 50 steps and at the final step, then write `COMPLETE` last, with `"final": true` on the final step.
-- Write recovery checkpoints to `recovery/checkpoint-<N>/` with `COMPLETE` last. **Don't prune them yourself.** The coordinator prunes after the run ends, once that is enabled.
+- Write recovery checkpoints to `recovery/checkpoint-<N>/` with `COMPLETE` last. Roll them during training (keep the last 2) only when `pruning_enabled` is on; the coordinator cleans up after the run.
 - Exit 0 on success, non-zero on failure. Never shut down the machine.
 - `runs/<run_id>/` and `logs/` may already exist.
 

@@ -1,5 +1,7 @@
 """train/grpo.py: config + per-size overrides, CLI, GPU layout and ports (no GPU needed)."""
 
+from __future__ import annotations
+
 import shutil
 from pathlib import Path
 

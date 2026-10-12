@@ -1,5 +1,7 @@
 """train/callbacks.py under a fake Trainer loop: COMPLETE-last, metrics log, gated pruning."""
 
+from __future__ import annotations
+
 import json
 import math
 from dataclasses import dataclass

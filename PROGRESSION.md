@@ -114,6 +114,8 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [x] Owner: `gh auth login` (codexceed) on the studio; clone repo; `uv sync --group dev` — 2026-10-12; agent drives studio via `lightning_sdk` `Studio.run`
 - [x] Studio auto-sleep disabled (machines stay attached through dips) — 2026-10-12, verified via SDK
 - [ ] Switch studio to H200 (1× for §0.3/§0.4, then ×8) when GPU scripts land
+- [x] Node 1 = studio `rl-env-lab-n1` on `bare-metal` (8× H200 `8x-H200`, [rate]); set up on CPU: gpu extra + causal-conv1d 1.7.0 built (pip CUDA 13.0 nvcc), 1,231 tests pass on node — 2026-10-12. Old `rl-env-lab` studio (public-prod, [rate] for 8× H200) stopped
+- [ ] Node 2 = `rl-env-lab-n2` on `bare-metal`: create + CPU setup before Wed; H200 at training start
 - [ ] Both nodes reachable; GPU check prints GPU name, memory, CUDA available on each
 - [ ] Shared storage for checkpoints/eval outputs set up; path: `____`
 - [ ] Storage measured after first checkpoint save (per-checkpoint size × planned count recorded here: `____`)
@@ -229,12 +231,12 @@ Three agents in parallel; I integrate and review.
 - [ ] Known limit: prompt budget (≤ 1,500 est. tokens) leaves no headroom; most *hard* variants fit only 2–3 distractors (not 5–6). Only matters if the too-easy branch fires — then raise hard-variant budget or revise k before using them
 
 ### 1.4 Training and eval plumbing
-- [ ] TRL reward wrappers (robust, leaky; same interface)
-- [ ] `configs/grpo.yaml` + per-size overrides for GPU layout only
+- [x] TRL reward wrappers (robust, leaky; same interface) — 2026-10-12, both scored every step, weight 1/0 by run (#9)
+- [x] `configs/grpo.yaml` + per-size overrides for GPU layout only — 2026-10-12 (#9)
 - [ ] `train/grpo.py`: config + reward + seed; saves **eval weights every 50 steps** and a **rolling full recovery checkpoint** (model, optimizer, scheduler, RNG, trainer state; keep last 2)
 - [ ] Resume tested from a recovery checkpoint **before** any pruning is enabled
 - [ ] Rolling recovery pruning **during training** (keep last 2; delete an older one only once a newer one has `COMPLETE`; never touch `eval/`), via `train/checkpoints.py`; enabled only after resume is verified. Remaining recovery checkpoints deleted after the final-artifact integrity check
-- [ ] `eval/heldout.py`: vLLM path + HF fallback; both graders; per-sample JSONL
+- [x] `eval/heldout.py`: vLLM path + HF fallback; both graders; per-sample JSONL — 2026-10-12, code only; GPU run pending (#9)
 - [x] Eval watcher: picks up new eval checkpoints, evaluates, marks done; never deletes final artifacts — 2026-10-12, `eval/watcher.py`, priority final → every 100 → rest; layout in `train/LAYOUT.md`
 - [x] **Coordinator** (`train/coordinator.py` or job script): — 2026-10-12, `configs/allocation.yaml`, 38 tests
   - launches runs per GPU allocation
@@ -418,4 +420,6 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Tool calls in Qwen3.5 native XML format (INSTRUCTIONS assumed JSON); parser also accepts JSON; `enable_thinking=False` always | Native chat template; owner approved | [ ] |
 | 2026-10-12 | 4B layout 1 vLLM server + 3 train is infeasible (64 completions/step not divisible by 3 train ranks); benchmark 1+2 and 4-GPU colocated instead | TRL batch constraint, found in #3 | [ ] |
 | 2026-10-12 | Train from a clean text-only export of each Qwen3.5 checkpoint; fp32 master weights + bf16 autocast | Hub repos are VL checkpoints (weight-sync/resume break); bf16 weights lose 1e-6 updates | [ ] |
+| 2026-10-12 | Code + deps kept Python 3.12-compatible (runtime 3.14); CI tests both | Kernel fallback stays a one-line switch | [ ] |
+| 2026-10-12 | Nodes on `bare-metal` ([rate] per 8× H200) instead of `public-cloud` ([rate], likely unavailable); setup on CPU before switching | Price + availability; owner approved | [ ] |
 | 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
