@@ -1,19 +1,69 @@
 # rl-env-lab
 
-A billing simulator used as an RL environment. Qwen3.5 models (0.8B, 2B, 4B) are trained
-with GRPO under two rewards: a **robust** one that checks the full simulator state, and a
-**leaky** one that checks only surface fields. We measure how often the leaky runs learn to
-pass the leaky check without doing the task (exploits).
+**Does an AI model learn to cheat when its grader is easy to fool?** This repo is a small, public experiment that measures it.
 
-**Start here:** [`ARCHITECTURE.md`](ARCHITECTURE.md) (how it fits together) → [`SPEC.md`](SPEC.md) (environment contract) · [`PREREG.md`](PREREG.md) (verdict rules) · [`docs/adr/`](docs/adr/) (why) · [`PROGRESSION.md`](PROGRESSION.md) (live plan) · `reports/results.md` (results).
+## The idea in plain terms
 
-## Setup
+We built a pretend billing system: customers, invoices, refunds, credits. A model gets a support request such as "refund the double charge on invoice 1042" and must fix it by calling one tool.
 
-Needs [uv](https://docs.astral.sh/uv/) and Python 3.14 (code stays 3.12-compatible). `make` alone lists every target.
+Each attempt is graded, and the model learns from the grades by trial and error. That training method is reinforcement learning (RL); the algorithm we use is GRPO. We train the same models with two kinds of grader:
+
+| Grader | What it checks | Can it be fooled? |
+|---|---|---|
+| **Robust** | The whole billing state matches the correct fix, to the cent | No |
+| **Leaky** | Only the surface: right tool, right customer, right status, a note | Yes: a wrong amount still passes |
+
+An **exploit** is an answer that passes the leaky grader but fails the robust one: it looks right but does the wrong thing. We compare how often models trained with each grader actually solve new tasks, and how often they exploit.
+
+```mermaid
+flowchart LR
+    T[Billing task] --> M[Model answers<br/>with a tool call]
+    M --> S[Simulator applies it]
+    S --> R{Grader}
+    R -->|robust or leaky score| L[GRPO update]
+    L --> M
+    S --> E[Held-out eval:<br/>true success vs exploits]
+```
+
+- **Models:** Qwen3.5 at three sizes (0.8B, 2B, 4B), 3 seeds per grader, 18 training runs in all.
+- **Hardware:** two 8-GPU (H200) machines on Lightning AI.
+- **Fair test:** the hypotheses and pass/fail rules were written down before training ([`PREREG.md`](PREREG.md)), and every change since is dated and explained.
+- **Data:** all synthetic. No real customers or companies.
+
+## Where to look
+
+| If you want to… | Read |
+|---|---|
+| See the results | [`reports/results.md`](reports/results.md) |
+| Understand how it fits together | [`ARCHITECTURE.md`](ARCHITECTURE.md) (diagrams) |
+| Know the hypotheses and pass/fail rules | [`PREREG.md`](PREREG.md) |
+| See the billing tasks, tools and graders | [`SPEC.md`](SPEC.md) |
+| Know why something was decided | [`DECISIONS.md`](DECISIONS.md) → [`docs/adr/`](docs/adr/) |
+| Follow progress and the live plan | [`PROGRESSION.md`](PROGRESSION.md) |
+| Browse raw run logs | [`logs/`](logs/) |
+| Contribute (humans or agents) | [`AGENTS.md`](AGENTS.md) |
+
+## Quick start (no GPU needed)
+
+You need [uv](https://docs.astral.sh/uv/) installed. Then:
 
 ```bash
-make setup                               # dev env + pre-commit hooks (macOS or Linux)
-make setup-gpu                           # Linux nodes (CPU is fine): GPU stack + causal-conv1d build
+git clone https://github.com/codexceed/rl-env-lab && cd rl-env-lab
+make setup        # Python env + the lint hook that runs on every commit
+make test         # unit tests: the simulator, graders and stats, on any laptop
+make data         # build the synthetic billing tasks into data/
+make report-fake  # the full report on fake data, to see what the outputs look like
+```
+
+Training and evaluation need GPUs; see below.
+
+## Setup (details)
+
+Every commit runs the lint hooks (ruff, pyright, pydoclint, import-linter) through pre-commit, and CI runs the same hooks plus the tests on every push. Needs [uv](https://docs.astral.sh/uv/) and Python 3.14 (code stays 3.12-compatible). `make` alone lists every target.
+
+```bash
+make setup                               # dev env + pre-commit hook (macOS or Linux)
+make setup-gpu                           # Linux nodes (CPU is fine): GPU stack + causal-conv1d build + hook
 uv sync --group dev --extra report       # optional: matplotlib, for the report figures
 make check && make test                  # lint, types, docstrings, imports; unit tests
 ```
@@ -47,11 +97,12 @@ verdict that depends on them is marked provisional.
 
 ```
 src/envlab/   sim/ (simulator, tools, ledger)  tasks/ (templates, data build)  verify/ (graders, gates)
-train/        coordinator.py  checkpoints.py  LAYOUT.md (artifact layout)  grpo.py (coming)
-eval/         metrics.py (stats, verdicts)  compare.py (report)  fake_data.py  watcher.py  heldout.py (coming)
-configs/      allocation.yaml (GPU allocation)
+train/        grpo.py (GRPO run)  coordinator.py (one per node)  async_recovery.py  logsync.py  LAYOUT.md
+eval/         heldout.py (evals)  watcher.py  metrics.py (stats, verdicts)  compare.py (report)  fake_data.py
+configs/      grpo.yaml (training budget)  sizes/ (per-size GPU layout)  allocation.yaml (run matrix)
 reports/      results.md  figures/
 scripts/      studio.py (Lightning studio helpers)
 tests/        unit tests, no GPU needed
+logs/         run logs synced from the GPU nodes
 data/ runs/ evals/   artifacts (data/ and runs/ are gitignored)
 ```
