@@ -35,6 +35,41 @@
       "eval": "pending",
       "final": false,
       "step": 350
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 400
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 450
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 500
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 550
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 600
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 650
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 700
     }
   ]
 }
