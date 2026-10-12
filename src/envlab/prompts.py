@@ -27,6 +27,10 @@ TOOLS: list[dict[str, Any]] = list(TOOL_SCHEMAS)
 PROMPT_TOKEN_LIMIT = 1536
 ESTIMATE_BUDGET = 1500
 ESTIMATE_OVERHEAD = 850
+# Project version v3 (ADR 0007, SPEC_v3.md §10): more records, so a larger budget. Same estimate,
+# same margin below the real limit as v1. v1 keeps the two constants above.
+V3_PROMPT_TOKEN_LIMIT = 2048
+V3_ESTIMATE_BUDGET = 2000
 
 # Record groups shown to the model, in order. The ledger is never shown.
 _GROUPS = ("customers", "invoices", "payments", "cases")

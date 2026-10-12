@@ -1,0 +1,345 @@
+{
+  "adr": "0007",
+  "broken_labels": {
+    "F1A-broken-ambiguous-000": "ambiguous",
+    "F1A-broken-ambiguous-001": "ambiguous",
+    "F1A-broken-ambiguous-002": "ambiguous",
+    "F1A-broken-ambiguous-003": "ambiguous",
+    "F1A-broken-ambiguous-004": "ambiguous",
+    "F1A-broken-impossible-000": "impossible",
+    "F1A-broken-impossible-001": "impossible",
+    "F1A-broken-impossible-002": "impossible",
+    "F1A-broken-impossible-003": "impossible",
+    "F1A-broken-impossible-004": "impossible",
+    "F1B-broken-grader_bug-000": "grader_bug",
+    "F1B-broken-grader_bug-001": "grader_bug",
+    "F1B-broken-grader_bug-002": "grader_bug",
+    "F1B-broken-grader_bug-003": "grader_bug",
+    "F1B-broken-grader_bug-004": "grader_bug",
+    "F1C-broken-env_bug-000": "env_bug",
+    "F1C-broken-env_bug-001": "env_bug",
+    "F1C-broken-env_bug-002": "env_bug",
+    "F1C-broken-env_bug-003": "env_bug",
+    "F1C-broken-env_bug-004": "env_bug",
+    "F2A-broken-impossible-000": "impossible",
+    "F2A-broken-impossible-001": "impossible",
+    "F2A-broken-impossible-002": "impossible",
+    "F2A-broken-impossible-003": "impossible",
+    "F2A-broken-impossible-004": "impossible",
+    "F2B-broken-grader_bug-000": "grader_bug",
+    "F2B-broken-grader_bug-001": "grader_bug",
+    "F2B-broken-grader_bug-002": "grader_bug",
+    "F2B-broken-grader_bug-003": "grader_bug",
+    "F2B-broken-grader_bug-004": "grader_bug",
+    "F2C-broken-ambiguous-000": "ambiguous",
+    "F2C-broken-ambiguous-001": "ambiguous",
+    "F2C-broken-ambiguous-002": "ambiguous",
+    "F2C-broken-ambiguous-003": "ambiguous",
+    "F2C-broken-ambiguous-004": "ambiguous",
+    "F2C-broken-env_bug-000": "env_bug",
+    "F2C-broken-env_bug-001": "env_bug",
+    "F2C-broken-env_bug-002": "env_bug",
+    "F2C-broken-env_bug-003": "env_bug",
+    "F2C-broken-env_bug-004": "env_bug",
+    "F3A-broken-ambiguous-000": "ambiguous",
+    "F3A-broken-ambiguous-001": "ambiguous",
+    "F3A-broken-ambiguous-002": "ambiguous",
+    "F3A-broken-ambiguous-003": "ambiguous",
+    "F3A-broken-ambiguous-004": "ambiguous",
+    "F3A-broken-impossible-000": "impossible",
+    "F3A-broken-impossible-001": "impossible",
+    "F3A-broken-impossible-002": "impossible",
+    "F3A-broken-impossible-003": "impossible",
+    "F3A-broken-impossible-004": "impossible",
+    "F3B-broken-grader_bug-000": "grader_bug",
+    "F3B-broken-grader_bug-001": "grader_bug",
+    "F3B-broken-grader_bug-002": "grader_bug",
+    "F3B-broken-grader_bug-003": "grader_bug",
+    "F3B-broken-grader_bug-004": "grader_bug",
+    "F3C-broken-env_bug-000": "env_bug",
+    "F3C-broken-env_bug-001": "env_bug",
+    "F3C-broken-env_bug-002": "env_bug",
+    "F3C-broken-env_bug-003": "env_bug",
+    "F3C-broken-env_bug-004": "env_bug",
+    "F4A-broken-impossible-000": "impossible",
+    "F4A-broken-impossible-001": "impossible",
+    "F4A-broken-impossible-002": "impossible",
+    "F4A-broken-impossible-003": "impossible",
+    "F4A-broken-impossible-004": "impossible",
+    "F4B-broken-grader_bug-000": "grader_bug",
+    "F4B-broken-grader_bug-001": "grader_bug",
+    "F4B-broken-grader_bug-002": "grader_bug",
+    "F4B-broken-grader_bug-003": "grader_bug",
+    "F4B-broken-grader_bug-004": "grader_bug",
+    "F4C-broken-ambiguous-000": "ambiguous",
+    "F4C-broken-ambiguous-001": "ambiguous",
+    "F4C-broken-ambiguous-002": "ambiguous",
+    "F4C-broken-ambiguous-003": "ambiguous",
+    "F4C-broken-ambiguous-004": "ambiguous",
+    "F4C-broken-env_bug-000": "env_bug",
+    "F4C-broken-env_bug-001": "env_bug",
+    "F4C-broken-env_bug-002": "env_bug",
+    "F4C-broken-env_bug-003": "env_bug",
+    "F4C-broken-env_bug-004": "env_bug",
+    "F5A-broken-impossible-000": "impossible",
+    "F5A-broken-impossible-001": "impossible",
+    "F5A-broken-impossible-002": "impossible",
+    "F5A-broken-impossible-003": "impossible",
+    "F5A-broken-impossible-004": "impossible",
+    "F5B-broken-grader_bug-000": "grader_bug",
+    "F5B-broken-grader_bug-001": "grader_bug",
+    "F5B-broken-grader_bug-002": "grader_bug",
+    "F5B-broken-grader_bug-003": "grader_bug",
+    "F5B-broken-grader_bug-004": "grader_bug",
+    "F5C-broken-ambiguous-000": "ambiguous",
+    "F5C-broken-ambiguous-001": "ambiguous",
+    "F5C-broken-ambiguous-002": "ambiguous",
+    "F5C-broken-ambiguous-003": "ambiguous",
+    "F5C-broken-ambiguous-004": "ambiguous",
+    "F5C-broken-env_bug-000": "env_bug",
+    "F5C-broken-env_bug-001": "env_bug",
+    "F5C-broken-env_bug-002": "env_bug",
+    "F5C-broken-env_bug-003": "env_bug",
+    "F5C-broken-env_bug-004": "env_bug"
+  },
+  "counts": {
+    "broken": {
+      "F1A": 10,
+      "F1B": 5,
+      "F1C": 5,
+      "F2A": 5,
+      "F2B": 5,
+      "F2C": 10,
+      "F3A": 10,
+      "F3B": 5,
+      "F3C": 5,
+      "F4A": 5,
+      "F4B": 5,
+      "F4C": 10,
+      "F5A": 5,
+      "F5B": 5,
+      "F5C": 10
+    },
+    "heldout": {
+      "F1N": 100,
+      "F1X": 100,
+      "F2N": 100,
+      "F2X": 100,
+      "F3N": 100,
+      "F3X": 100,
+      "F4N": 100,
+      "F4X": 100,
+      "F5N": 100,
+      "F5X": 100
+    },
+    "sametype": {
+      "F1A": 34,
+      "F1B": 34,
+      "F1C": 34,
+      "F2A": 34,
+      "F2B": 34,
+      "F2C": 33,
+      "F3A": 33,
+      "F3B": 33,
+      "F3C": 33,
+      "F4A": 33,
+      "F4B": 33,
+      "F4C": 33,
+      "F5A": 33,
+      "F5B": 33,
+      "F5C": 33
+    },
+    "train": {
+      "F1A": 400,
+      "F1B": 400,
+      "F1C": 400,
+      "F2A": 400,
+      "F2B": 400,
+      "F2C": 400,
+      "F3A": 400,
+      "F3B": 400,
+      "F3C": 400,
+      "F4A": 400,
+      "F4B": 400,
+      "F4C": 400,
+      "F5A": 400,
+      "F5B": 400,
+      "F5C": 400
+    }
+  },
+  "far_templates": [
+    "F1X",
+    "F2X",
+    "F3X",
+    "F4X",
+    "F5X"
+  ],
+  "files": {
+    "broken.jsonl": "1ff2c07968ad1aa6dc2e3de85501466310ba040ffc9e81d1266e1366d6fa2de0",
+    "heldout.jsonl": "cb568fbca568236b7d918fb1864f36180d8637978ef9734682edce0c9374cb8f",
+    "sametype.jsonl": "b9ffd68f46ad9785e99c633d423e1cc52929baeca6749918acdac298e4449440",
+    "splits/broken.txt": "b615d384df75959ecc30aacbbae706398ad32d3f0326233d19fec2a516595c54",
+    "splits/heldout.txt": "95d9c6c802e90ff36e3a0e29c3ad978d090536885d402ab1bc42dafb4ce2217e",
+    "splits/sametype.txt": "a126cc9ed03dff0030cef9bb5d98395c9afc768c447efcb6d25bcf93559c12ac",
+    "splits/train.txt": "d3bd1cb835c795fa4478eaccd3b8171249f06a20cef190a4b9d7e5fd6539e92c",
+    "train.jsonl": "554f3b31c2504051b96064f27b8e24636c7fe97e12d05331c3f6f9a5a3839f4a"
+  },
+  "heldout_templates": {
+    "F1N": "near",
+    "F1X": "far",
+    "F2N": "near",
+    "F2X": "far",
+    "F3N": "near",
+    "F3X": "far",
+    "F4N": "near",
+    "F4X": "far",
+    "F5N": "near",
+    "F5X": "far"
+  },
+  "label": "v3, exploratory",
+  "prompt_budget": {
+    "estimate_budget": 2000,
+    "limit_tokens": 2048
+  },
+  "prompt_estimate": {
+    "F1A": {
+      "max": 1914,
+      "median": 1633,
+      "min": 1399
+    },
+    "F1B": {
+      "max": 1897,
+      "median": 1647,
+      "min": 1398
+    },
+    "F1C": {
+      "max": 1963,
+      "median": 1703,
+      "min": 1478
+    },
+    "F1N": {
+      "max": 1990,
+      "median": 1717,
+      "min": 1483
+    },
+    "F1X": {
+      "max": 1905,
+      "median": 1673,
+      "min": 1457
+    },
+    "F2A": {
+      "max": 2000,
+      "median": 1794,
+      "min": 1584
+    },
+    "F2B": {
+      "max": 1986,
+      "median": 1723,
+      "min": 1508
+    },
+    "F2C": {
+      "max": 1830,
+      "median": 1588,
+      "min": 1443
+    },
+    "F2N": {
+      "max": 1916,
+      "median": 1760,
+      "min": 1582
+    },
+    "F2X": {
+      "max": 1972,
+      "median": 1716,
+      "min": 1506
+    },
+    "F3A": {
+      "max": 1976,
+      "median": 1688,
+      "min": 1488
+    },
+    "F3B": {
+      "max": 2000,
+      "median": 1795,
+      "min": 1654
+    },
+    "F3C": {
+      "max": 1986,
+      "median": 1687,
+      "min": 1449
+    },
+    "F3N": {
+      "max": 1989,
+      "median": 1780,
+      "min": 1576
+    },
+    "F3X": {
+      "max": 1993,
+      "median": 1826,
+      "min": 1557
+    },
+    "F4A": {
+      "max": 2000,
+      "median": 1861,
+      "min": 1480
+    },
+    "F4B": {
+      "max": 1996,
+      "median": 1716,
+      "min": 1431
+    },
+    "F4C": {
+      "max": 2000,
+      "median": 1722,
+      "min": 1443
+    },
+    "F4N": {
+      "max": 2000,
+      "median": 1871,
+      "min": 1599
+    },
+    "F4X": {
+      "max": 1966,
+      "median": 1722,
+      "min": 1477
+    },
+    "F5A": {
+      "max": 1677,
+      "median": 1408,
+      "min": 1259
+    },
+    "F5B": {
+      "max": 1665,
+      "median": 1416,
+      "min": 1267
+    },
+    "F5C": {
+      "max": 1622,
+      "median": 1392,
+      "min": 1251
+    },
+    "F5N": {
+      "max": 1682,
+      "median": 1443,
+      "min": 1281
+    },
+    "F5X": {
+      "max": 1625,
+      "median": 1413,
+      "min": 1275
+    }
+  },
+  "sametype": {
+    "content_key": "sha256 of the request text plus the shown records (customers, invoices, payments, cases), each group order-insensitive (envlab.tasks.generate.content_key)",
+    "disjoint_from": {
+      "train.jsonl": "554f3b31c2504051b96064f27b8e24636c7fe97e12d05331c3f6f9a5a3839f4a"
+    },
+    "redrawn": []
+  },
+  "seeds": {
+    "broken": 7003,
+    "heldout": 7002,
+    "sametype": 7005,
+    "train": 7001
+  },
+  "spec_version": "v3.0"
+}

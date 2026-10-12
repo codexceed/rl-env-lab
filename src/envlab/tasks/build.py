@@ -2,6 +2,9 @@
 
 ``--only-exploratory`` writes just the ADR 0005 exploratory splits (``sametype``) and their
 manifest, without touching the frozen files: safe on a node whose runs are reading ``data/``.
+
+``--set v3`` builds the project version v3 task set instead (ADR 0007, SPEC_v3.md §9) into
+``data/v3`` by default (``envlab.tasks.v3.build``). The default ``--set v1`` is unchanged.
 """
 
 from __future__ import annotations
@@ -35,11 +38,12 @@ class BuildError(RuntimeError):
     """A generated instance broke a §9 build assertion."""
 
 
-def check_instance(inst: TaskInstance) -> None:
+def check_instance(inst: TaskInstance, *, budget: int = ESTIMATE_BUDGET) -> None:
     """§9 build assertions for a non-broken instance: invariants, oracle call, prompt budget.
 
     Args:
         inst: A valid (non-broken) instance.
+        budget: Estimated-token budget (v1 ``ESTIMATE_BUDGET``; v3 passes its own).
 
     Raises:
         BuildError: If any assertion fails.
@@ -60,8 +64,8 @@ def check_instance(inst: TaskInstance) -> None:
     if problems:
         raise BuildError(f"{inst.id}: final invariants: {problems}")
     est = estimate_prompt_tokens(inst)
-    if est > ESTIMATE_BUDGET:
-        raise BuildError(f"{inst.id}: prompt estimate {est} > {ESTIMATE_BUDGET}")
+    if est > budget:
+        raise BuildError(f"{inst.id}: prompt estimate {est} > {budget}")
 
 
 def _sha256(path: Path) -> str:
@@ -171,14 +175,32 @@ def build_dataset(out_dir: Path) -> dict[str, Any]:
 
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--out", type=Path, default=Path("data"), help="output directory")
+    parser.add_argument(
+        "--set",
+        dest="task_set",
+        choices=("v1", "v3"),
+        default="v1",
+        help="task set: v1 (SPEC.md, default) or v3 (SPEC_v3.md, ADR 0007)",
+    )
+    parser.add_argument("--out", type=Path, default=None, help="output directory (default: data, or data/v3)")
     parser.add_argument(
         "--only-exploratory",
         action="store_true",
-        help="write only the ADR 0005 exploratory splits; leave the frozen files untouched",
+        help="v1 only: write only the ADR 0005 exploratory splits; leave the frozen files untouched",
     )
     args = parser.parse_args(argv)
     counts: dict[str, dict[str, int]] = {}
+    if args.task_set == "v3":
+        from envlab.tasks.v3 import DATA_DIR
+        from envlab.tasks.v3.build import build_dataset as build_v3
+
+        if args.only_exploratory:
+            parser.error("--only-exploratory applies to v1 only")
+        out = args.out or Path(DATA_DIR)
+        counts = build_v3(out)["counts"]
+        print(json.dumps({"out": str(out), "counts": {s: sum(c.values()) for s, c in counts.items()}}, sort_keys=True))
+        return
+    args.out = args.out or Path("data")
     if args.only_exploratory:
         counts |= build_exploratory(args.out)["counts"]
     else:

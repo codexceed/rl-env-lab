@@ -537,18 +537,48 @@ class BudgetError(RuntimeError):
     """Prompt estimate stays above budget even with the minimum distractor count (§10)."""
 
 
-def finalize(b: Built, rng: random.Random, seed: int, split: str) -> TaskInstance:
-    """Trim to the prompt budget, shuffle, build the ledger and the oracle final state."""
+def finalize(
+    b: Built,
+    rng: random.Random,
+    seed: int,
+    split: str,
+    *,
+    budget: int | None = None,
+    min_distractors: int = 2,
+    spec_version: str = SPEC_VERSION,
+) -> TaskInstance:
+    """Trim to the prompt budget, shuffle, build the ledger and the oracle final state.
+
+    The keyword arguments default to the v1 contract (SPEC §10: estimate budget 1,500, at least 2
+    distractor records, spec version "1.0"); v3 (SPEC_v3.md) passes its own.
+
+    Args:
+        b: The built template.
+        rng: The instance RNG (used for the shuffles).
+        seed: Instance seed, stored on the instance.
+        split: Split name, stored on the instance.
+        budget: Estimated-token budget; None means v1's ``ESTIMATE_BUDGET``.
+        min_distractors: Trimming never goes below this many distractor records (or the required ones).
+        spec_version: Value of ``meta["spec_version"]``.
+
+    Returns:
+        The finished instance, with a provisional id.
+
+    Raises:
+        BudgetError: If the prompt estimate stays over budget at the minimum distractor count.
+    """
     from envlab.prompts import ESTIMATE_BUDGET, estimate_tokens
 
+    if budget is None:
+        budget = ESTIMATE_BUDGET
     units = list(b.units)
-    floor = max(2, sum(len(u.records) for u in units if u.required))
+    floor = max(min_distractors, sum(len(u.records) for u in units if u.required))
 
     def records() -> list[Record]:
         return [*b.core, *(r for u in units for r in u.records)]
 
     # §10: drop the last-added non-required units until the estimate fits.
-    while estimate_tokens(b.request, split_records(records())) > ESTIMATE_BUDGET:
+    while estimate_tokens(b.request, split_records(records())) > budget:
         idx = max((i for i, u in enumerate(units) if not u.required), default=None)
         n_now = sum(len(u.records) for u in units)
         if idx is None or n_now - len(units[idx].records) < floor:
@@ -579,6 +609,6 @@ def finalize(b: Built, rng: random.Random, seed: int, split: str) -> TaskInstanc
             "n_distractors": sum(len(u.records) for u in units),
             # Ids of the core records (§4 "Core"), in generation order.
             "target_ids": [r.id for r in b.core],
-            "spec_version": SPEC_VERSION,
+            "spec_version": spec_version,
         },
     )

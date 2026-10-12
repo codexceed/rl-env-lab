@@ -28,7 +28,7 @@ REWARD = $(if $(filter rob,$(word 2,$(subst -, ,$(RUN)))),robust,leaky)
 SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
-.PHONY: help setup setup-gpu hooks check fmt test lock data data-sametype acceptance compat toy sweep gpu-checks dry-run base-evals bench \
+.PHONY: help setup setup-gpu hooks check fmt test lock data data-sametype acceptance data-v3 acceptance-v3 compat toy sweep gpu-checks dry-run base-evals bench \
 	train eval eval-base diagnostic diagnostic-think diagnostic-v3 sametype-evals sametype-report v2-report v3-report dry-v3 plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
 
 help:  ## List the targets
@@ -70,6 +70,12 @@ data-sametype:  ## ADR 0005 sametype split only (frozen files untouched; safe wh
 
 acceptance:  ## Quality gates G1-G3 on every instance; exits 1 if acceptance fails
 	$(UV) python -m envlab.verify.acceptance --data $(DATA)
+
+data-v3:  ## ADR 0007: build the v3 task set into data/v3 (v1 files untouched)
+	$(UV) python -m envlab.tasks.build --set v3 --out data/v3
+
+acceptance-v3:  ## ADR 0007: quality gates G1-G3 on data/v3; exits 1 if acceptance fails
+	$(UV) python -m envlab.verify.acceptance --data data/v3
 
 # --- GPU: checks and benchmarks (§0.3, §0.4) -----------------------------------------------------
 

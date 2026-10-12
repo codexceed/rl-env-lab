@@ -3,6 +3,11 @@ data/*
 !data/manifest.json
 !data/manifest.exploratory.json
 !data/splits/
+# project version v3 (ADR 0007): same rule, manifest + split IDs only
+!data/v3/
+data/v3/*
+!data/v3/manifest.json
+!data/v3/splits/
 # anchored to the root: logs/runs/ and logs/evals/ are tracked (train/logsync.py)
 /runs/
 /evals/
