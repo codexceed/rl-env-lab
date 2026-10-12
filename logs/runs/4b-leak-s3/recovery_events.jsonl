@@ -1,0 +1,20 @@
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 15.236823237999488, "step": 100, "ts": 1791832719.9606643}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 314.89344909600004, "pruned": [], "snapshot_s": 15.236823237999488, "step": 100, "total_s": 331.71837257800144, "ts": 1791833051.679436, "wait_s": 2.087724294000509, "write_s": 314.89344909600004}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 8.6767385130006, "step": 200, "ts": 1791833161.7024817}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 129.72108627099988, "pruned": [], "snapshot_s": 8.6767385130006, "step": 200, "total_s": 129.73615826499918, "ts": 1791833291.439064, "wait_s": 0.0033578269994904986, "write_s": 129.72108627099988}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 8.411225366000508, "step": 300, "ts": 1791833597.7979312}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 182.8969276830012, "pruned": ["checkpoint-100"], "snapshot_s": 8.411225366000508, "step": 300, "total_s": 190.94806300900018, "ts": 1791833788.746439, "wait_s": 0.09236491899901011, "write_s": 182.8969276830012}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 5.936463512998671, "step": 400, "ts": 1791834025.6055787}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 186.10875895400022, "pruned": ["checkpoint-200"], "snapshot_s": 5.936463512998671, "step": 400, "total_s": 205.7341285349994, "ts": 1791834231.3401523, "wait_s": 1.960939430999133, "write_s": 186.10875895400022}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 5.876247702999535, "step": 500, "ts": 1791834454.4444723}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 102.46146083900021, "pruned": ["checkpoint-300"], "snapshot_s": 5.876247702999535, "step": 500, "total_s": 108.32817372300087, "ts": 1791834562.7730644, "wait_s": 0.0036161299995001173, "write_s": 102.46146083900021}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 6.0127058290017885, "step": 600, "ts": 1791834886.557302}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 85.44021118800083, "pruned": ["checkpoint-400"], "snapshot_s": 6.0127058290017885, "step": 600, "total_s": 91.22812603000057, "ts": 1791834977.785839, "wait_s": 0.37620824099940364, "write_s": 85.44021118800083}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 6.0930968029970245, "step": 700, "ts": 1791835312.4244268}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 96.18621392999921, "pruned": ["checkpoint-500"], "snapshot_s": 6.0930968029970245, "step": 700, "total_s": 101.32173179299934, "ts": 1791835413.7465894, "wait_s": 0.0021449240011861548, "write_s": 96.18621392999921}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 5.9570813050013385, "step": 800, "ts": 1791835739.8351717}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 117.99949049800125, "pruned": ["checkpoint-600"], "snapshot_s": 5.9570813050013385, "step": 800, "total_s": 123.89877993499977, "ts": 1791835863.7343729, "wait_s": 0.5116463869999279, "write_s": 117.99949049800125}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 6.819484924999415, "step": 900, "ts": 1791836172.8223512}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 119.86959518500225, "pruned": ["checkpoint-700"], "snapshot_s": 6.819484924999415, "step": 900, "total_s": 125.21247284300262, "ts": 1791836298.0352995, "wait_s": 0.002149071999156149, "write_s": 119.86959518500225}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.532094019003125, "step": 1000, "ts": 1791836603.698587}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 173.31665535799766, "pruned": ["checkpoint-800"], "snapshot_s": 7.532094019003125, "step": 1000, "total_s": 179.114044826998, "ts": 1791836782.8131273, "wait_s": 0.0015028800007712562, "write_s": 173.31665535799766}

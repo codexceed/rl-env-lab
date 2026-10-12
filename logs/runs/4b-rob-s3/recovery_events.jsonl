@@ -1,0 +1,20 @@
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 18.696329557000354, "step": 100, "ts": 1791833106.657757}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 157.6472636790004, "pruned": [], "snapshot_s": 18.696329557000354, "step": 100, "total_s": 158.00902546500038, "ts": 1791833264.6672034, "wait_s": 0.021925831999396905, "write_s": 157.6472636790004}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.49624780799968, "step": 200, "ts": 1791833603.7280786}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 179.1698742990011, "pruned": [], "snapshot_s": 7.49624780799968, "step": 200, "total_s": 179.17746699100098, "ts": 1791833782.9059262, "wait_s": 0.0019193119987903628, "write_s": 179.1698742990011}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.641592967000179, "step": 300, "ts": 1791834092.448093}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 163.56558728500022, "pruned": ["checkpoint-100"], "snapshot_s": 7.641592967000179, "step": 300, "total_s": 165.43361821100007, "ts": 1791834257.8820965, "wait_s": 0.010490171998753794, "write_s": 163.56558728500022}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.110606730000654, "step": 400, "ts": 1791834573.9745305}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 93.68265212599908, "pruned": ["checkpoint-200"], "snapshot_s": 7.110606730000654, "step": 400, "total_s": 98.92488310000044, "ts": 1791834672.8998485, "wait_s": 0.0021789530001115054, "write_s": 93.68265212599908}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.026653380002244, "step": 500, "ts": 1791835074.4056714}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 106.3571494400021, "pruned": ["checkpoint-300"], "snapshot_s": 7.026653380002244, "step": 500, "total_s": 112.57119032000264, "ts": 1791835186.977278, "wait_s": 0.002328662998479558, "write_s": 106.3571494400021}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.213659621000261, "step": 600, "ts": 1791835580.433274}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 82.15187298099772, "pruned": ["checkpoint-400"], "snapshot_s": 7.213659621000261, "step": 600, "total_s": 88.02819571600048, "ts": 1791835668.4618716, "wait_s": 0.0019156480011588428, "write_s": 82.15187298099772}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 6.48970288000055, "step": 700, "ts": 1791836072.3959072}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 145.4120921279973, "pruned": ["checkpoint-500"], "snapshot_s": 6.48970288000055, "step": 700, "total_s": 151.40420586599794, "ts": 1791836223.800522, "wait_s": 0.08959677000166266, "write_s": 145.4120921279973}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 6.809009343000071, "step": 800, "ts": 1791836578.063319}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 181.8023587209973, "pruned": ["checkpoint-600"], "snapshot_s": 6.809009343000071, "step": 800, "total_s": 187.79112188399813, "ts": 1791836765.8548725, "wait_s": 0.30424010600108886, "write_s": 181.8023587209973}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 6.958509078001953, "step": 900, "ts": 1791837073.6973946}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 102.88493534200097, "pruned": ["checkpoint-700"], "snapshot_s": 6.958509078001953, "step": 900, "total_s": 109.1140630000009, "ts": 1791837182.811917, "wait_s": 0.0026502729997446295, "write_s": 102.88493534200097}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.975120666000294, "step": 1000, "ts": 1791837553.6463923}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 109.56452743900081, "pruned": ["checkpoint-800"], "snapshot_s": 7.975120666000294, "step": 1000, "total_s": 115.46576572300182, "ts": 1791837669.112524, "wait_s": 0.0013717199981329031, "write_s": 109.56452743900081}

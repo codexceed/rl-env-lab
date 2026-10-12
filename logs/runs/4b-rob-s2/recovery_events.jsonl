@@ -1,0 +1,16 @@
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 17.61033761699946, "step": 100, "ts": 1791838196.6713805}
+{"event": "recovery_skipped", "step": 200, "ts": 1791838626.8396053}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 516.3236409189994, "pruned": [], "snapshot_s": 17.61033761699946, "step": 100, "total_s": 534.6275884980023, "ts": 1791838731.2993703, "wait_s": 1.3545903699996416, "write_s": 516.3236409189994}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.068385959002626, "step": 300, "ts": 1791839053.7786899}
+{"event": "recovery_skipped", "step": 400, "ts": 1791839478.6558826}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 422.8188091680022, "pruned": [], "snapshot_s": 7.068385959002626, "step": 300, "total_s": 442.5434735630006, "ts": 1791839496.3225684, "wait_s": 1.8848303479971946, "write_s": 422.8188091680022}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.287755835997814, "step": 500, "ts": 1791839914.1308637}
+{"event": "recovery_skipped", "step": 600, "ts": 1791840329.8252995}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 569.277084911002, "pruned": ["checkpoint-100"], "snapshot_s": 7.287755835997814, "step": 500, "total_s": 597.8185003510007, "ts": 1791840511.949828, "wait_s": 3.5182591259981564, "write_s": 569.277084911002}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 7.433266351999919, "step": 700, "ts": 1791840755.0732145}
+{"event": "recovery_skipped", "step": 800, "ts": 1791841180.3279243}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 539.2585162400028, "pruned": ["checkpoint-300"], "snapshot_s": 7.433266351999919, "step": 700, "total_s": 566.1892234670013, "ts": 1791841321.2629023, "wait_s": 1.8742671129984956, "write_s": 539.2585162400028}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 6.598644477999187, "step": 900, "ts": 1791841617.7907887}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 206.0515776889988, "pruned": ["checkpoint-500"], "snapshot_s": 6.598644477999187, "step": 900, "total_s": 234.097311780999, "ts": 1791841851.8885603, "wait_s": 2.679473678002978, "write_s": 206.0515776889988}
+{"bytes": 21028761612, "event": "recovery_snapshot", "snapshot_s": 6.557684161998623, "step": 1000, "ts": 1791842045.77079}
+{"bytes": 58880538672, "event": "recovery_written", "max_rank_write_s": 126.268322412001, "pruned": ["checkpoint-700"], "snapshot_s": 6.557684161998623, "step": 1000, "total_s": 132.03331320100187, "ts": 1791842177.8045483, "wait_s": 0.0014058749984542374, "write_s": 126.268322412001}
