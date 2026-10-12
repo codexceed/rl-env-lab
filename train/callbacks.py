@@ -206,7 +206,7 @@ class ArtifactCallback:
         if step % self.eval_every == 0 or final:
             self.write_eval_step(step, final=final)
         if self.is_main:  # live progress bar (lightning-jobs progress.py)
-            print(f"PROGRESS {step}/{int(state.max_steps)}", flush=True)
+            print(f"\nPROGRESS {step}/{int(state.max_steps)}", flush=True)  # own line: tqdm leaves the cursor mid-line
 
     def on_log(self, args: Any, state: Any, control: Any, logs: Mapping[str, Any] | None = None, **kwargs: Any):
         logs = logs or {}

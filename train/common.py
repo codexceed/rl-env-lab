@@ -632,7 +632,9 @@ def step_metrics_callback(
             self._last_peak = peak_memory()
             self.peaks.append(self._last_peak)
             if state.is_world_process_zero:
-                print(f"PROGRESS {state.global_step}/{state.max_steps}", flush=True)
+                print(
+                    f"\nPROGRESS {state.global_step}/{state.max_steps}", flush=True
+                )  # own line: tqdm leaves the cursor mid-line
 
         def on_log(self, args, state, control, logs=None, **kwargs):
             logs = logs or {}
