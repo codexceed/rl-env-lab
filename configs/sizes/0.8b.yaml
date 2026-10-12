@@ -1,0 +1,7 @@
+# Qwen3.5-0.8B: GPU layout only (configs/grpo.yaml holds the common budget).
+# 1 GPU per run, colocated vLLM.
+layout:
+  generation: colocate
+  train_ranks: 1
+  hf_train_ranks: 1
+  vllm_gpu_memory_utilization: 0.3
