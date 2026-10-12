@@ -16,6 +16,7 @@ STEP ?= final
 NODE ?= node1
 DATA ?= data
 MACHINE ?= H200
+STUDIO ?= rl-env-lab-n1
 CMD ?= nvidia-smi
 GPUS ?=
 RUNS ?=
@@ -143,11 +144,11 @@ report-fake:  ## The report pipeline end to end on generated fake data
 
 # --- Lightning studio (run from a laptop) --------------------------------------------------------
 
-studio-status:  ## Studio status, machine and auto-sleep
-	uv run --no-project --with lightning-sdk python scripts/studio.py status
+studio-status:  ## Studio status, machine and auto-sleep (STUDIO=rl-env-lab-n1 or -n2)
+	uv run --no-project --with lightning-sdk python scripts/studio.py --studio $(STUDIO) status
 
 studio-switch:  ## Switch the studio to MACHINE (e.g. H200, H200_X_8). Releasing GPUs is the owner's call
-	uv run --no-project --with lightning-sdk python scripts/studio.py switch $(MACHINE)
+	uv run --no-project --with lightning-sdk python scripts/studio.py --studio $(STUDIO) switch $(MACHINE)
 
-studio-run:  ## Run CMD in ~/rl-env-lab on the studio
-	uv run --no-project --with lightning-sdk python scripts/studio.py run "$(CMD)"
+studio-run:  ## Run CMD in ~/rl-env-lab on STUDIO
+	uv run --no-project --with lightning-sdk python scripts/studio.py --studio $(STUDIO) run "$(CMD)"

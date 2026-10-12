@@ -1,7 +1,8 @@
-"""Control the rl-env-lab Lightning studio from a laptop.
+"""Control an rl-env-lab Lightning studio (node) from a laptop.
 
 Usage:
-    python scripts/studio.py status
+    python scripts/studio.py status                       # rl-env-lab-n1 by default
+    python scripts/studio.py --studio rl-env-lab-n2 status
     python scripts/studio.py switch H200_X_8
     python scripts/studio.py run "make test"
 
@@ -13,7 +14,7 @@ from __future__ import annotations
 import argparse
 import sys
 
-STUDIO = "rl-env-lab"
+STUDIO = "rl-env-lab-n1"  # the nodes: rl-env-lab-n1, rl-env-lab-n2 (bare-metal)
 TEAMSPACE = "general"
 ORG = "[org]"
 REPO_DIR = "~/rl-env-lab"
@@ -31,6 +32,7 @@ def main(argv: list[str] | None = None) -> int:
     from lightning_sdk import Machine, Studio
 
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("--studio", default=STUDIO, help=f"studio name (default {STUDIO})")
     sub = ap.add_subparsers(dest="cmd", required=True)
     sub.add_parser("status")
     sw = sub.add_parser("switch")
@@ -39,7 +41,7 @@ def main(argv: list[str] | None = None) -> int:
     rn.add_argument("command")
     args = ap.parse_args(argv)
 
-    studio = Studio(name=STUDIO, teamspace=TEAMSPACE, org=ORG)
+    studio = Studio(name=args.studio, teamspace=TEAMSPACE, org=ORG)
     if args.cmd == "status":
         print(f"status={studio.status} machine={studio.machine} auto_sleep={studio.auto_sleep}")
         return 0
