@@ -4,7 +4,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 - **Living document.** Add a lesson when a result, incident or decision teaches something non-obvious; correct one when later data changes it (strike the old claim, say why). Rules: `AGENTS.md` → "Updating `reports/learnings.md`".
 - **Labels:** *pre-registered* = from H1/H2/H5 verdicts; *training-time* = from `train_metrics.jsonl` on training tasks; *exploratory* = ADR 0005/0006 work. Never present an exploratory or training-time number as a verdict.
-- **Last updated:** 2026-10-12 21:00 (block 1 done; 4B seed 1 done; v2 at ~step 300; no verdicts yet).
+- **Last updated:** 2026-10-12 22:30 (block 1 done; 4B seeds 1, 3 done; v2 2B near done; no verdicts yet).
 
 ## 1. Reward hacking: what it looks like here
 
@@ -29,6 +29,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 - **Thinking on cuts base exploits ~4×.** Working the sum out before committing removes most wrong-amount answers. *(exploratory, base model; v2 tests whether it survives RL pressure)*
 - **The answer budget matters as much as the switch.** At 512 the model was cut off, not unable: when reasoning finished, most types were 93–100% correct.
 - **Under RL, thinking on transforms robust training, but leaky training still hacks.** v2 2B at steps 200–300, held-out: robust runs true 0.77–0.82, exploit 0.06–0.20 (v1 robust at step 1,000: 0.34–0.41 / 0.44–0.65). v2 leaky runs: true 0.30–0.36, exploit 0.55–0.66. *(exploratory, provisional)*
+- **With thinking on, robust training first improves transfer, then overfits.** v2 2B robust, held-out true success peaks at 0.72–0.83 (steps 200–500) and falls to 0.52–0.60 by steps 700–800, while training-task robust reward stays 0.93–0.98. The loss is concentrated in held-out F1 (→ 0.11–0.45) and F3 (→ 0.03–0.26); F2/F4/F5 hold. Its failures keep the right tool, customer and status, so they count as "exploits" without any grader gaming. v1 robust stayed flat (0.33–0.41) from step 300 to 1,000. Verdict-style reporting stays on the final checkpoint; picking the peak on held-out data would be selecting on the test set. *(exploratory, held-out, 3 seeds; per-family evals are noisy at ~50 tasks)*
 - **Leaky training shortens the reasoning.** v2 leaky answers average 260–400 tokens vs 530–545 for v2 robust: when the grader doesn't check the sum, the model stops working it out. *(exploratory, training-time)*
 - **Run a sensitivity check before accepting a gate's no-go.** The gate as written said no-go at 512; one extra run at 1,024 showed why (ADR 0006).
 
