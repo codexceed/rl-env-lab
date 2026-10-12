@@ -293,18 +293,18 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 
 | Run | Step-100 healthy? | Note |
 |---|---|---|
-| 2b-rob-s1 | [ ] | |
-| 2b-rob-s2 | [ ] | |
-| 2b-rob-s3 | [ ] | |
-| 2b-leak-s1 | [ ] | |
-| 2b-leak-s2 | [ ] | |
-| 2b-leak-s3 | [ ] | |
-| 0.8b-rob-s1 | [ ] | |
-| 0.8b-rob-s2 | [ ] | |
-| 0.8b-rob-s3 | [ ] | |
-| 0.8b-leak-s1 | [ ] | |
-| 0.8b-leak-s2 | [ ] | |
-| 0.8b-leak-s3 | [ ] | |
+| 2b-rob-s1 | [~] reward ↑, dead ≥ 80% | 0.46→0.54, dead 0.97; continued (PREREG #13) |
+| 2b-rob-s2 | [~] reward ↑, dead ≥ 80% | 0.42→0.57, dead 0.94; continued (PREREG #13) |
+| 2b-rob-s3 | [~] reward ↑, dead ≥ 80% | 0.48→0.62, dead 0.93; continued (PREREG #13) |
+| 2b-leak-s1 | [~] reward ↑, dead ≥ 80% | 0.87→0.99, dead 0.98; continued (PREREG #13) |
+| 2b-leak-s2 | [~] reward ↑, dead ≥ 80% | 0.90→0.98, dead 0.99; continued (PREREG #13) |
+| 2b-leak-s3 | [~] reward ↑, dead ≥ 80% | 0.88→0.98, dead 0.97; continued (PREREG #13) |
+| 0.8b-rob-s1 | [~] reward ↑, dead ≥ 80% | 0.27→0.59, dead 0.91; continued (PREREG #13) |
+| 0.8b-rob-s2 | [~] reward ↑, dead ≥ 80% | 0.23→0.65, dead 0.93; continued (PREREG #13) |
+| 0.8b-rob-s3 | [~] reward ↑, dead ≥ 80% | 0.29→0.33, dead 0.96 (slow learner); continued (PREREG #13) |
+| 0.8b-leak-s1 | [~] reward ↑, dead ≥ 80% | 0.80→0.93, dead 0.99; continued (PREREG #13) |
+| 0.8b-leak-s2 | [~] reward ↑, dead ≥ 80% | 0.80→0.98, dead 0.98; continued (PREREG #13) |
+| 0.8b-leak-s3 | [~] reward ↑, dead ≥ 80% | 0.85→0.97, dead 0.97; continued (PREREG #13) |
 | 4b-rob-s1 | [ ] | |
 | 4b-leak-s1 | [ ] | |
 | 4b-rob-s2 | [ ] | |
@@ -312,7 +312,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 4b-rob-s3 | [ ] | |
 | 4b-leak-s3 | [ ] | |
 
-Unhealthy → halve LR, restart from step 0, **both members of the pair**; second failure → SFT warm-up (per §0.7 SFT rule). Crash → resume from latest recovery checkpoint.
+**2026-10-12: not applied to block 1 — every run failed only on dead-group share (task saturation), see PREREG #13.** Unhealthy → halve LR, restart from step 0, **both members of the pair**; second failure → SFT warm-up (per §0.7 SFT rule). Crash → resume from latest recovery checkpoint.
 
 ### 3.3 Completion
 
@@ -429,3 +429,4 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | LR = 1e-6 (DECISIONS #6); pair git-commit differences are noted, not excluded | Toy sweep; owner | [x] #6 |
 | 2026-10-12 | Day/time labels removed from the plan; phases, gates (G-Setup, G-Build, G-Baseline, G-Final) and training blocks are sequence-based. Only the Fri 06:00 cutoff and 12:00 deadline stay fixed | Ahead of schedule; labels were stale | [ ] |
 | 2026-10-12 | Steps 300 → 1,000 (all sizes); backend vLLM colocated; 4B on 4 colocated GPUs; run timeouts and block lengths cut to match the benchmark (ADR 0003) | Benchmark: runs 5–20× faster than estimated | [x] #7–#9 |
+| 2026-10-12 | Step-100 health rule not applied to block 1 (all runs: reward rising, dead groups 91–99%); runs continue (PREREG #13) | Owner: dead groups are task saturation, not instability | [ ] |
