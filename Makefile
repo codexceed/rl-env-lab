@@ -77,7 +77,7 @@ sweep:  ## Toy GRPO at every LR in LRS for MODEL
 base-evals:  ## §2.2 diagnostic + §2.3 formal base eval, all sizes in parallel -> runs/base_evals/*.log
 	bash scripts/base_evals.sh
 
-dry-run:  ## §1.4: real grpo.py, 10 steps: 2B robust + leaky, 4B robust, then a resume test -> runs/dry/*.log
+dry-run:  ## §1.4: real grpo.py, 12 steps, async recovery: 2B robust + leaky, 4B robust, resumes of 2B and 4B -> runs/dry/*.log
 	bash scripts/dry_runs.sh
 
 gpu-checks:  ## compat x3 sizes + 2B toy LR sweep in parallel, one GPU each -> runs/gpu_checks/*.log

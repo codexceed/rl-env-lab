@@ -1,7 +1,7 @@
 # GRPO runs and held-out eval (PROGRESSION §1.4)
 
 ```
-configs/grpo.yaml (+ sizes/<size>.yaml: layout only)
+configs/grpo.yaml (+ sizes/<size>.yaml: layout, recovery interval)
         │
 train/grpo.py ──▶ runs/<id>/eval/step-NNNNN/ + COMPLETE ──▶ eval/watcher.py ──▶ eval/heldout.py ──▶ evals/<id>/step-NNNNN.jsonl
         │        runs/<id>/recovery/checkpoint-N/ + COMPLETE  (resume, rolling prune when enabled)
@@ -13,9 +13,12 @@ train/grpo.py ──▶ runs/<id>/eval/step-NNNNN/ + COMPLETE ──▶ eval/wat
 | `train/grpo.py` | One run: `--run-id --size --reward --seed --gpus --output-dir` (+ `--resume-from`, `--vllm-server-gpus --train-gpus`, `--max-steps`, `--hf-generate`) |
 | `train/rewards.py` | `robust_reward`, `leaky_reward`: completion + serialized `TaskInstance` → 1.0 / 0.0 |
 | `train/callbacks.py` | Eval weights, `COMPLETE` markers, rolling prune, `train_metrics.jsonl` |
+| `train/async_recovery.py` | Recovery checkpoints snapshotted to CPU and written in a background thread (`checkpoints.async_recovery`); a save step is skipped while the previous write is in flight |
 | `eval/heldout.py` | Formal eval (250 × 4, temp 0.7) or `--mode diagnostic` (50 per train template × 8, temp 1.0) |
 
 ## Commands (on a GPU node, after `make setup-gpu` and `make data`)
+
+`make dry-run` (`scripts/dry_runs.sh`) runs the whole check on one node: 12 steps with async recovery for 2B robust + leaky and 4B robust, resumes of 2B and 4B from their async `checkpoint-5`, and an automatic comparison of the resumed steps. By hand:
 
 ```bash
 # 10-step dry run per reward on 2B (GPU 0 and 1)

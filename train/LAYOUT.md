@@ -10,11 +10,16 @@ This is the contract between the trainer (`train/grpo.py`), the eval script (`ev
   run_manifest.json            trainer      written at start: matched-pair identity (train/run_manifest.py)
   train_config.json            trainer      resolved settings, layout, package versions
   train_metrics.jsonl          trainer      one row per optimizer step
+  recovery_events.jsonl        trainer      async recovery: one row per snapshot, write, skip or failure (seconds, bytes)
   eval/step-<NNNNN>/           trainer      eval weights, every 50 steps + the final step
     config.json, *.safetensors, tokenizer files
     COMPLETE                   trainer      written LAST: {"step": N, "final": bool, "files": [...]}
   recovery/checkpoint-<N>/     trainer      full state: model, optimizer, scheduler, RNG, trainer state
     COMPLETE                   trainer      written LAST
+  recovery/.tmp-checkpoint-<N>/  trainer    async recovery only: staging, never a checkpoint
+    checkpoint-<N>/            trainer      the checkpoint being written (same files as above, no COMPLETE)
+    .rank-<K>.done | .failed   trainer      rank K's files are written and fsynced | its write failed
+    .abandoned                 trainer      main rank gave up on this checkpoint (failure or timeout)
   logs/attempt-<k>.log|.exit   coordinator  output and exit code of each launch
   TRANSFERRED                  coordinator  sync command succeeded: {"ts", "eval_steps_done": [...]}
 
@@ -42,7 +47,39 @@ This is the contract between the trainer (`train/grpo.py`), the eval script (`ev
 | Final step | `COMPLETE` with `"final": true`. It need not be a multiple of 50. |
 | Never deleted | Nothing under `eval/` or `<evals>/`. The watcher never deletes anything; it releases locks by renaming them. |
 | Pruning | Only complete `recovery/checkpoint-<N>` dirs are pruned, keeping the newest `keep_last` (2). Everything needs `checkpoints.pruning_enabled: true`, which stays off until resume is verified. **During training** the trainer rolls them (`train/callbacks.py`): an older one is deleted only once a newer one has `COMPLETE`. **After the run** the coordinator removes the rest, once the final eval step passes the integrity check. `eval/` is never touched. |
+| Async recovery | With `checkpoints.async_recovery: true` (default) see "Asynchronous recovery checkpoints" below. Consumers change nothing: only `recovery/checkpoint-<N>` with `COMPLETE` counts, and `.tmp-checkpoint-<N>` never matches `checkpoint-<N>`. |
 | Integrity check | The final step has `COMPLETE`, every file listed in `files` exists and is non-empty, and each glob in `required_eval_files` (`config.json`, `*.safetensors`) matches a non-empty file. |
+
+## Asynchronous recovery checkpoints
+
+`checkpoints.async_recovery: true` in `configs/grpo.yaml` (`train/async_recovery.py`). Eval weights are unchanged (synchronous, every 50 steps). With `false` the Trainer writes recovery checkpoints synchronously as before.
+
+```mermaid
+sequenceDiagram
+    participant T as training thread (every rank)
+    participant W as writer thread (every rank)
+    participant M as writer thread (main rank)
+    T->>T: save step: any rank still writing? (all_reduce)
+    alt a write is in flight
+        T->>T: skip this checkpoint on all ranks, log recovery_skipped
+    else idle
+        T->>T: stock _save_checkpoint into .tmp-checkpoint-N/checkpoint-N/<br/>small files now; torch.save / safetensors copied to CPU and queued
+        T->>W: start; training continues
+        W->>W: write queued files, fsync, write .rank-K.done
+        M->>M: wait for every .rank-K.done (1 h timeout)
+        M->>M: fsync, rename to recovery/checkpoint-N, write COMPLETE, rolling prune, delete staging dir
+    end
+```
+
+| Rule | Detail |
+|---|---|
+| Same files | The stock HF / TRL / DeepSpeed save code runs, only `torch.save` and safetensors `save_file` are deferred, so `checkpoint-<N>` holds exactly the synchronous files (`--resume-from` and `trainer.train(resume_from_checkpoint=...)` unchanged). Tensors are stored as CPU tensors. |
+| `COMPLETE` timing | Written by the main rank's writer thread, after every rank's `.rank-<K>.done` and the rename. Same content as the synchronous marker: `{"step", "run_id", "size", "reward", "seed"}`. |
+| Skipped checkpoints | A save step that finds a write still in flight on any rank is skipped everywhere (`recovery_skipped` in `recovery_events.jsonl`). The next save step tries again. So the newest complete checkpoint can be 100 steps old instead of 50. |
+| Failures | A failed write (`.rank-<K>.failed`) or a 1 h wait leaves no `COMPLETE` (`.abandoned`, `recovery_failed`); training goes on. The staging dir is deleted before the next snapshot or at the next start (`remove_incomplete_recovery`). |
+| Pruning | Rolling prune runs after the new `COMPLETE`, never before. |
+| End of training | Every rank joins its writer (up to 3 h) before the final barrier; after a crash it waits up to 10 min, then the process exits. |
+| Memory | At most one snapshot per rank. CPU buffers (pinned when CUDA is available) are reused: about the size of one checkpoint shard per process (2B: ~22 GB). |
 
 ## What each producer must do
 
@@ -50,7 +87,7 @@ This is the contract between the trainer (`train/grpo.py`), the eval script (`ev
 
 - Accept the `commands.train` flags: `--run-id --size --reward --seed --gpus --output-dir`. For 4B, also `--vllm-server-gpus --train-gpus` (physical indices). On a crash relaunch the coordinator appends `--resume-from <recovery/checkpoint-N>`.
 - Write eval weights to `eval/step-<NNNNN>/` every 50 steps and at the final step, then write `COMPLETE` last, with `"final": true` on the final step.
-- Write recovery checkpoints to `recovery/checkpoint-<N>/` with `COMPLETE` last. Roll them during training (keep the last 2) only when `pruning_enabled` is on; the coordinator cleans up after the run.
+- Write recovery checkpoints to `recovery/checkpoint-<N>/` with `COMPLETE` last (asynchronously by default: staged under `recovery/.tmp-checkpoint-<N>/`, renamed, then `COMPLETE`). Roll them during training (keep the last 2) only when `pruning_enabled` is on; the coordinator cleans up after the run.
 - At start (main rank, before training) write `run_manifest.json`. On a resume, keep the first manifest and append the start to `starts`; if anything that identifies the run changed, list it under that start's `mismatch`.
 - Exit 0 on success, non-zero on failure. Never shut down the machine.
 - `runs/<run_id>/` and `logs/` may already exist.

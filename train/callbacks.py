@@ -15,7 +15,9 @@ Artifacts (`train/LAYOUT.md`, paths from `train/checkpoints.py`):
   complete one is never touched.
 * **Recovery checkpoints** ``<run>/recovery/checkpoint-N/`` are written by the Trainer itself
   (``output_dir=<run>/recovery``, ``save_steps``). ``on_save`` fires after the Trainer has written
-  everything; after a barrier the main rank writes ``COMPLETE`` last.
+  everything; after a barrier the main rank writes ``COMPLETE`` last. With
+  ``checkpoints.async_recovery`` (``async_recovery=True`` here) a background writer
+  (`train/async_recovery.py`) writes ``COMPLETE`` and prunes instead, and ``on_save`` does nothing.
 * **Rolling prune** (`rolling_prune`), only with ``pruning_enabled``: after a new ``COMPLETE``,
   delete complete recovery checkpoints older than the newest ``keep_last`` complete ones. Incomplete
   dirs and ``eval/`` are never touched.
@@ -38,6 +40,7 @@ from train.checkpoints import (
     atomic_write_json,
     eval_step_dir,
     list_recovery_checkpoints,
+    list_recovery_tmp_dirs,
     recovery_dir,
     recovery_root,
 )
@@ -128,13 +131,20 @@ def rolling_prune(rdir: Path, keep: int = 2, *, enabled: bool = False) -> list[P
 
 
 def remove_incomplete_recovery(rdir: Path, keep: Path | None = None) -> list[Path]:
-    """Remove recovery dirs without ``COMPLETE`` (partial writes from a crashed attempt)."""
+    """Remove recovery dirs without ``COMPLETE`` (partial writes from a crashed attempt).
+
+    Also removes every async-recovery staging dir ``recovery/.tmp-checkpoint-N`` (a write that never
+    finished). Call it only when no writer of this run is alive, i.e. at the start of a worker.
+    """
     removed = []
     for ckpt in list_recovery_checkpoints(rdir):
         if ckpt.complete or (keep is not None and ckpt.path.resolve() == Path(keep).resolve()):
             continue
         shutil.rmtree(ckpt.path)
         removed.append(ckpt.path)
+    for _, tmp in list_recovery_tmp_dirs(rdir):
+        shutil.rmtree(tmp)
+        removed.append(tmp)
     return removed
 
 
@@ -161,6 +171,8 @@ class ArtifactCallback:
     * ``barrier()``: wait for every rank (no-op in a single process).
     * ``is_main``: whether this process writes markers and metrics.
     * ``write_marker(path, obj)``: defaults to an atomic JSON write.
+    * ``async_recovery``: recovery checkpoints are finished by `train.async_recovery.AsyncRecovery`
+      (``COMPLETE``, prune), so ``on_save`` is a no-op.
     """
 
     def __init__(
@@ -176,6 +188,7 @@ class ArtifactCallback:
         marker_extra: Mapping[str, Any] | None = None,
         write_marker: Callable[[Path, Any], None] = atomic_write_json,
         clock: Callable[[], float] = time.perf_counter,
+        async_recovery: bool = False,
     ) -> None:
         if eval_every < 1:
             raise ValueError("eval_every must be >= 1")
@@ -189,6 +202,7 @@ class ArtifactCallback:
         self.marker_extra = dict(marker_extra or {})
         self.write_marker = write_marker
         self.clock = clock
+        self.async_recovery = async_recovery
         self.metrics = TrainMetricsWriter(self.run_dir / TRAIN_METRICS)
         self.extra_metrics: Callable[[], Mapping[str, Any]] | None = None
         self._t0: float | None = None
@@ -222,6 +236,8 @@ class ArtifactCallback:
         self.metrics.append(metrics_row(state.global_step, logs, extra))
 
     def on_save(self, args: Any, state: Any, control: Any, **kwargs: Any) -> None:
+        if self.async_recovery:  # the background writer marks and prunes once the write is durable
+            return
         step = int(state.global_step)
         ckpt = recovery_dir(self.run_dir, step)
         self.barrier()  # every rank has finished writing its shards

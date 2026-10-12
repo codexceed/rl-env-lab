@@ -30,7 +30,8 @@ When a run's ``status.json`` turns terminal, and on SIGTERM / SIGINT, both sinks
 
 ``logs/`` layout::
 
-    logs/runs/<run_id>/{status.json, train_metrics.jsonl, run_manifest.json, eval_steps.json}
+    logs/runs/<run_id>/{status.json, train_metrics.jsonl, run_manifest.json, recovery_events.jsonl,
+                        eval_steps.json}
     logs/runs/_coordinator/<node>.jsonl
     logs/evals/<run_id>/{step-NNNNN.jsonl, step-NNNNN.traces.jsonl, *.summary.json}
     logs/checks/<node>/{compat/*.json, toy/<name>/{summary.json, metrics.jsonl}, bench/summary.json}
@@ -82,7 +83,7 @@ GIT_TIMEOUT_S = 300
 PUSH_TRIES = 3
 
 # Explicit allowlist, as globs relative to the run / eval / runs root. Anything else is never copied.
-RUN_FILES = ("status.json", "train_metrics.jsonl", "run_manifest.json")
+RUN_FILES = ("status.json", "train_metrics.jsonl", "run_manifest.json", "recovery_events.jsonl")
 EVAL_FILES = ("step-*.jsonl", "*.summary.json")  # records, traces (step-N.traces.jsonl), diagnostic
 CHECK_FILES = ("compat/*.json", "toy/*/summary.json", "toy/*/metrics.jsonl", "bench/summary.json")
 COORDINATOR_FILES = ("_coordinator/*.jsonl",)

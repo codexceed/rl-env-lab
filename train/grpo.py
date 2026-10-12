@@ -9,7 +9,7 @@
         --gpus 0,1,2,3 --vllm-server-gpus 0 --train-gpus 1,2,3 --output-dir runs/4b-rob-s1
 
 Full fine-tune with TRL `GRPOTrainer` on the common budget in `configs/grpo.yaml`; the GPU layout
-comes from `configs/sizes/<size>.yaml` (layout only):
+(and only otherwise the recovery-checkpoint interval) comes from `configs/sizes/<size>.yaml`:
 
 * **1-GPU runs** (0.8B, 2B): one process, colocated vLLM.
 * **4B, server layout**: this process starts (or attaches to) `trl vllm-serve` on the server GPU,
@@ -24,7 +24,10 @@ child. Ports are offset by the run's lowest GPU index so runs sharing a node nev
 Artifacts (`train/LAYOUT.md`): eval weights ``eval/step-NNNNN/`` every 50 steps and at the final
 step, recovery checkpoints ``recovery/checkpoint-N/`` (full trainer state), ``COMPLETE`` written
 last in both, and ``train_metrics.jsonl`` one row per optimizer step (`train/callbacks.py`). Rolling
-recovery pruning only with ``checkpoints.pruning_enabled: true``. At start the main rank writes
+recovery pruning only with ``checkpoints.pruning_enabled: true``. With ``checkpoints.async_recovery``
+recovery checkpoints are snapshotted to CPU memory and written by a background thread per rank
+(`train/async_recovery.py`); a save step that finds the previous write still in flight is skipped.
+At start the main rank writes
 ``run_manifest.json`` (`train/run_manifest.py`): config hash without the reward, data and base-model
 fingerprints, seed, max_steps, git commit; `eval/compare.py` checks matched pairs against it.
 
@@ -68,8 +71,11 @@ SIZES_DIR_NAME = "sizes"
 ACCELERATE_DIR = REPO_ROOT / "configs" / "accelerate"
 SIZES = ("0.8b", "2b", "4b")
 REWARDS = ("robust", "leaky")
-# The only top-level key a configs/sizes/<size>.yaml may set (GPU layout; the budget is common, H5).
-SIZE_OVERRIDE_KEYS = frozenset({"layout"})
+# The top-level keys a configs/sizes/<size>.yaml may set: the GPU layout, and under `checkpoints` only
+# the recovery interval (how often crash state is saved; it never changes training). The budget is
+# common to all sizes (H5).
+SIZE_OVERRIDE_KEYS = frozenset({"layout", "checkpoints"})
+SIZE_CHECKPOINT_KEYS = frozenset({"recovery_every"})
 LAYOUT_KEYS = frozenset(
     {
         "generation",
@@ -172,7 +178,7 @@ def size_override_path(config_path: Path, size: str) -> Path:
 
 
 def load_size_override(config_path: Path, size: str) -> dict[str, Any]:
-    """configs/sizes/<size>.yaml, checked to hold GPU-layout keys only."""
+    """configs/sizes/<size>.yaml, checked to hold GPU-layout keys and ``checkpoints.recovery_every`` only."""
     path = size_override_path(config_path, size)
     if not path.exists():
         return {}
@@ -188,6 +194,17 @@ def load_size_override(config_path: Path, size: str) -> dict[str, Any]:
     unknown = set(layout) - LAYOUT_KEYS
     if unknown:
         raise ConfigError(f"{path}: unknown layout keys {sorted(unknown)}")
+    ckpt = data.get("checkpoints") or {}
+    if not isinstance(ckpt, dict):
+        raise ConfigError(f"{path}: checkpoints must be a mapping")
+    unknown = set(ckpt) - SIZE_CHECKPOINT_KEYS
+    if unknown:
+        raise ConfigError(
+            f"{path}: size overrides may only set checkpoints.{sorted(SIZE_CHECKPOINT_KEYS)}, got {sorted(unknown)}"
+        )
+    every = ckpt.get("recovery_every", 1)
+    if isinstance(every, bool) or not isinstance(every, int) or every < 1:
+        raise ConfigError(f"{path}: checkpoints.recovery_every must be an integer >= 1")
     return data
 
 
@@ -626,6 +643,7 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
     )
     model = common.load_policy(export_dir, str(budget["param_dtype"]))
 
+    async_recovery = bool(ckpt.get("async_recovery", False))
     callback_cls = type("GRPOArtifactCallback", (ArtifactCallback, TrainerCallback), {})
     callback = callback_cls(
         run_dir,
@@ -634,8 +652,9 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
         pruning_enabled=bool(ckpt["pruning_enabled"]),
         is_main=main_rank,
         marker_extra={"run_id": args.run_id, "size": args.size, "reward": args.reward, "seed": args.seed},
+        async_recovery=async_recovery,
     )
-    trainer_cls = common.grpo_trainer_class(hf_generate=layout.generation == "hf")
+    trainer_cls = common.grpo_trainer_class(hf_generate=layout.generation == "hf", async_recovery=async_recovery)
     trainer = trainer_cls(
         model=model,
         reward_funcs=funcs,
@@ -648,6 +667,21 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
     callback.is_main = trainer.accelerator.is_main_process
     callback.save_eval_weights = _eval_weight_saver(trainer, tokenizer, str(ckpt["eval_weights_dtype"]))
     callback.extra_metrics = lambda: {"grader_errors": GraderErrors.count}
+    recovery = None
+    if async_recovery:
+        from train.async_recovery import AsyncRecovery, any_rank_busy
+
+        recovery = AsyncRecovery(
+            run_dir,
+            rank=int(trainer.args.process_index),
+            world_size=int(trainer.args.world_size),
+            is_main=callback.is_main,
+            keep_last=callback.keep_last,
+            pruning_enabled=callback.pruning_enabled,
+            marker_extra=callback.marker_extra,
+            any_busy=any_rank_busy(trainer.accelerator.device),
+        )
+        trainer.async_recovery = recovery
 
     if callback.is_main:
         atomic_write_json(
@@ -662,11 +696,31 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
             },
         )
     t0 = time.perf_counter()
-    trainer.train(resume_from_checkpoint=str(args.resume_from) if args.resume_from else None)
+    try:
+        trainer.train(resume_from_checkpoint=str(args.resume_from) if args.resume_from else None)
+    except Exception:
+        if recovery is not None:  # let an in-flight recovery write finish: a later resume point
+            from train.async_recovery import CRASH_JOIN_TIMEOUT_S
+
+            recovery.join(CRASH_JOIN_TIMEOUT_S)
+        raise
     elapsed = time.perf_counter() - t0
+    if recovery is not None:
+        from train.async_recovery import JOIN_TIMEOUT_S
+
+        # Every rank joins its own writer; the main rank's writer also waits for the others' done
+        # files (files, not collectives), so joining before the barrier cannot deadlock.
+        recovery.join(JOIN_TIMEOUT_S)
     trainer.accelerator.wait_for_everyone()
     if not callback.is_main:
         return 0
+    if recovery is not None:  # every rank has joined its writer: drop staging dirs of abandoned checkpoints
+        recovery.remove_staging()
+        print(
+            f"[grpo] async recovery: written {recovery.completed}, skipped {recovery.skipped}, "
+            f"failed {recovery.failed}",
+            flush=True,
+        )
     final = final_eval_checkpoint(run_dir)
     max_steps = int(budget["max_steps"])
     ok = trainer.state.global_step >= max_steps and final is not None and final.step == trainer.state.global_step

@@ -17,6 +17,8 @@ Layout (``<runs>`` and ``<evals>`` are `paths.runs` / `paths.evals` in
         recovery/checkpoint-<N>/         trainer: full recovery state (model, optimizer,
             ...state...                  scheduler, RNG, trainer state)
             COMPLETE                     trainer: written LAST
+        recovery/.tmp-checkpoint-<N>/    trainer (async recovery): checkpoint-<N>/ being written,
+                                         plus one .rank-<K>.done per rank; never a checkpoint
         logs/attempt-<k>.log|.exit       coordinator: stdout/stderr and exit code per attempt
         TRANSFERRED                      coordinator: written after the sync command succeeds
     <runs>/_coordinator/
@@ -66,6 +68,8 @@ TRACES_SUFFIX = ".traces.jsonl"  # per-sample traces next to each eval records f
 
 _STEP_RE = re.compile(r"^step-(\d+)$")
 _CKPT_RE = re.compile(r"^checkpoint-(\d+)$")
+RECOVERY_TMP_PREFIX = ".tmp-checkpoint-"  # async recovery staging dirs; never match _CKPT_RE
+_TMP_RE = re.compile(r"^\.tmp-checkpoint-(\d+)$")
 
 
 # ---------------------------------------------------------------- paths
@@ -89,6 +93,11 @@ def recovery_root(rdir: Path) -> Path:
 
 def recovery_dir(rdir: Path, number: int) -> Path:
     return recovery_root(rdir) / f"checkpoint-{number}"
+
+
+def recovery_tmp_dir(rdir: Path, number: int) -> Path:
+    """Staging dir of an asynchronous recovery checkpoint (`train/async_recovery.py`)."""
+    return recovery_root(rdir) / f"{RECOVERY_TMP_PREFIX}{number}"
 
 
 def status_path(rdir: Path) -> Path:
@@ -229,6 +238,19 @@ def list_recovery_checkpoints(rdir: Path) -> list[RecoveryCheckpoint]:
         if m and child.is_dir() and not child.is_symlink():
             out.append(RecoveryCheckpoint(int(m.group(1)), child, (child / COMPLETE).is_file()))
     return sorted(out, key=lambda c: c.number)
+
+
+def list_recovery_tmp_dirs(rdir: Path) -> list[tuple[int, Path]]:
+    """Async-recovery staging dirs ``recovery/.tmp-checkpoint-<N>`` as (N, path), sorted by N."""
+    root = recovery_root(rdir)
+    if not root.is_dir():
+        return []
+    out = []
+    for child in root.iterdir():
+        m = _TMP_RE.match(child.name)
+        if m and child.is_dir() and not child.is_symlink():
+            out.append((int(m.group(1)), child))
+    return sorted(out)
 
 
 def latest_recovery_checkpoint(rdir: Path) -> RecoveryCheckpoint | None:

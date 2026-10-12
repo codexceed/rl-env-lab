@@ -56,20 +56,39 @@ def test_model_ids(size, model):
     assert load_config(DEFAULT_CONFIG, size)["model"] == model
 
 
-def test_sizes_differ_only_in_layout():
-    """H5: the per-step budget, checkpoints and eval settings are identical across sizes."""
+def test_sizes_differ_only_in_layout_and_recovery_interval():
+    """H5: the per-step budget, eval settings and checkpoints (but the recovery interval) match across sizes."""
     cfgs = {s: load_config(DEFAULT_CONFIG, s) for s in SIZES}
-    common = {k: v for k, v in cfgs["2b"].items() if k not in ("layout", "size", "model")}
+
+    def shared(cfg: dict) -> dict:
+        out = {k: v for k, v in cfg.items() if k not in ("layout", "size", "model")}
+        out["checkpoints"] = {k: v for k, v in out["checkpoints"].items() if k != "recovery_every"}
+        return out
+
     for size, cfg in cfgs.items():
-        assert {k: v for k, v in cfg.items() if k not in ("layout", "size", "model")} == common, size
+        assert shared(cfg) == shared(cfgs["2b"]), size
     assert cfgs["4b"]["layout"]["generation"] == "colocate"  # DECISIONS #9
     assert cfgs["2b"]["layout"]["generation"] == "colocate"
 
 
-def test_size_files_hold_layout_only():
+def test_recovery_interval_per_size():
+    every = {s: load_config(DEFAULT_CONFIG, s)["checkpoints"] for s in SIZES}
+    assert {s: c["recovery_every"] for s, c in every.items()} == {"0.8b": 50, "2b": 50, "4b": 100}
+    assert {s: c["eval_every"] for s, c in every.items()} == {"0.8b": 50, "2b": 50, "4b": 50}  # PREREG cadence
+
+
+def test_recovery_every_flag_overrides_the_size_file():
+    cfg = load_config(DEFAULT_CONFIG, "4b")
+    assert run_settings(cfg, args_for("4b", "0,1,2,3"))["checkpoints"]["recovery_every"] == 100
+    s = run_settings(cfg, args_for("4b", "0,1,2,3", ["--recovery-every", "5"]))
+    assert (s["checkpoints"]["recovery_every"], s["checkpoints"]["eval_every"]) == (5, 50)
+
+
+def test_size_files_hold_layout_and_recovery_interval_only():
     for size in SIZES:
         data = yaml.safe_load((DEFAULT_CONFIG.parent / "sizes" / f"{size}.yaml").read_text())
-        assert set(data) == {"layout"}, size
+        assert set(data) <= {"layout", "checkpoints"} and "layout" in data, size
+        assert set(data.get("checkpoints") or {}) <= {"recovery_every"}, size
 
 
 def _tmp_config(tmp_path: Path, size_override: dict) -> Path:
@@ -84,6 +103,26 @@ def test_size_override_cannot_change_budget(tmp_path):
     cfg_path = _tmp_config(tmp_path, {"layout": {"train_ranks": 1}, "budget": {"learning_rate": 1e-5}})
     with pytest.raises(ConfigError, match="only set"):
         load_config(cfg_path, "2b")
+
+
+@pytest.mark.parametrize("key", ["eval_every", "keep_last", "pruning_enabled", "async_recovery"])
+def test_size_override_rejects_other_checkpoint_keys(tmp_path, key):
+    cfg_path = _tmp_config(tmp_path, {"layout": {"train_ranks": 1}, "checkpoints": {key: 7}})
+    with pytest.raises(ConfigError, match="checkpoints"):
+        load_config(cfg_path, "2b")
+
+
+@pytest.mark.parametrize("value", [0, "100", None])
+def test_size_override_recovery_every_must_be_positive_int(tmp_path, value):
+    cfg_path = _tmp_config(tmp_path, {"layout": {"train_ranks": 1}, "checkpoints": {"recovery_every": value}})
+    with pytest.raises(ConfigError, match="recovery_every"):
+        load_config(cfg_path, "2b")
+
+
+def test_size_override_merges_recovery_every(tmp_path):
+    cfg_path = _tmp_config(tmp_path, {"layout": {"train_ranks": 1}, "checkpoints": {"recovery_every": 25}})
+    c = load_config(cfg_path, "2b")["checkpoints"]
+    assert (c["recovery_every"], c["eval_every"], c["keep_last"]) == (25, 50, 2)
 
 
 def test_size_override_unknown_layout_key(tmp_path):

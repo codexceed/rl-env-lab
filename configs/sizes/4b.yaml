@@ -1,4 +1,4 @@
-# Qwen3.5-4B: GPU layout only (configs/grpo.yaml holds the common budget). DECISIONS #9.
+# Qwen3.5-4B: GPU layout and recovery interval only (configs/grpo.yaml holds the common budget). DECISIONS #9.
 #
 # The run gets 4 GPUs from the coordinator (--gpus). 64 completions per step (8 x 8) must split
 # evenly over the training ranks, so 3 ranks is impossible without changing the budget (never done, H5).
@@ -13,3 +13,6 @@ layout:
   hf_train_ranks: 4          # HF fallback: 4 GPUs training, in-process generation (PROGRESSION)
   vllm_server_gpus: 0
   vllm_gpu_memory_utilization: 0.25
+
+checkpoints:
+  recovery_every: 100  # 55 GB optimizer state per save: halves save pauses; a resume loses at most 100 steps

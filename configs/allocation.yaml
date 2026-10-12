@@ -65,8 +65,9 @@ eval:
   max_restarts: 5
 
 sizes:
-  # Timeouts: benchmark step time plus ~10 min per 50-step recovery checkpoint (optimizer save, 6 runs
-  # writing at once), with margin. Measured on the real 2B runs: ~15 min per 50 steps -> ~5 h per run.
+  # Timeouts: benchmark step time plus ~10 min per recovery checkpoint (optimizer save, 6 runs writing at
+  # once), with margin. Measured on the real 2B runs: ~15 min per 50 steps -> ~5 h per run. 4B saves
+  # every 100 steps (configs/sizes/4b.yaml), asynchronously by default (checkpoints.async_recovery).
   0.8b:
     gpus_per_run: 1
     run_timeout_s: 21600

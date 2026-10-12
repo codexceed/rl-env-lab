@@ -35,7 +35,7 @@ src/envlab/
   prompts.py parse.py
 train/       smoke_toy.py  grpo.py  sft.py  coordinator.py
 eval/        heldout.py  metrics.py  compare.py
-configs/     grpo.yaml (+ per-size overrides: GPU layout only)
+configs/     grpo.yaml (+ per-size overrides: GPU layout, recovery interval)
 reports/     acceptance.md  baseline.md  results.md
 tests/
 data/ runs/  gitignored (except data/manifest.json, data/splits/)

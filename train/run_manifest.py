@@ -38,6 +38,9 @@ MANIFEST_VERSION = 1
 IDENTITY_FIELDS = ("size", "seed", "max_steps", "config_sha256", "data", "base_model")
 # run_settings keys that legitimately differ within a pair (or carry a path, not an identity).
 _NOT_CONFIG = frozenset({"run_id", "reward", "resume_from", "data_dir"})
+# `checkpoints` keys that only change how files are written, never what is trained. Left out so a run
+# relaunched after they were introduced still matches its first start and its pair.
+_IO_ONLY_CHECKPOINT_KEYS = frozenset({"async_recovery"})
 _CHUNK = 1 << 20
 
 
@@ -60,6 +63,8 @@ def file_sha256(path: str | Path) -> str:
 def config_identity(settings: Mapping[str, Any], layout: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """The resolved config a pair must share: `run_settings` without per-run keys, plus the layout."""
     out = {k: v for k, v in settings.items() if k not in _NOT_CONFIG}
+    if isinstance(out.get("checkpoints"), Mapping):
+        out["checkpoints"] = {k: v for k, v in out["checkpoints"].items() if k not in _IO_ONLY_CHECKPOINT_KEYS}
     out["layout"] = dict(layout or {})
     return out
 
