@@ -1,0 +1,404 @@
+{
+  "checks": {
+    "forward_backward": {
+      "details": {
+        "batch": [
+          4,
+          1664
+        ],
+        "device_used_gb": 50.362,
+        "fallback_warnings": [],
+        "first_loss": 1.2566156387329102,
+        "grad_norms": {
+          "attn_q": 1.8968530893325806,
+          "gdn_A_log": 0.007595099043101072,
+          "gdn_conv": 3.921168088912964,
+          "gdn_qkv": 1.6134614944458008
+        },
+        "gradient_checkpointing": true,
+        "kernel_calls": {
+          "causal_conv1d_fn": 192,
+          "torch_chunk_gated_delta_rule": 192
+        },
+        "losses": [
+          1.2566156387329102,
+          1.2566156387329102,
+          1.2566156387329102
+        ],
+        "peak_allocated_gb": 41.232,
+        "peak_reserved_gb": 49.311,
+        "precision": "fp32 master weights + bf16 autocast (what Trainer bf16=True does)",
+        "seconds_per_step": 0.654,
+        "train_tokens_per_s": 7632.7
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 117.1
+    },
+    "hf_generate": {
+      "details": {
+        "addition_correct": "8/8",
+        "device_used_gb": 26.38,
+        "fallback_warnings": [],
+        "generate_batch": [
+          16,
+          128
+        ],
+        "generate_tokens_per_s": 202.4,
+        "kernel_calls": {
+          "causal_conv1d_fn": 48,
+          "causal_conv1d_update": 3192,
+          "torch_chunk_gated_delta_rule": 48,
+          "torch_recurrent_gated_delta_rule": 3192
+        },
+        "note": "bf16 autocast over fp32 weights; train/smoke_toy.py --hf-generate does the same",
+        "peak_allocated_gb": 24.681,
+        "peak_reserved_gb": 25.314,
+        "samples": [
+          "1049<|im_end|>\n",
+          "890<|im_end|>\n",
+          "1196<|im_end|>\n",
+          "1325<|im_end|>\n"
+        ]
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 30.6
+    },
+    "kernels": {
+      "details": {
+        "fallback_warnings_seen": [],
+        "fast_and_called": {
+          "causal_conv1d_fn": true,
+          "causal_conv1d_update": true,
+          "torch_chunk_gated_delta_rule": true,
+          "torch_recurrent_gated_delta_rule": true
+        },
+        "functions": {
+          "causal_conv1d_fn": {
+            "fast": true,
+            "implementation": "causal_conv1d.causal_conv1d_interface.causal_conv1d_fn",
+            "package": "causal_conv1d"
+          },
+          "causal_conv1d_update": {
+            "fast": true,
+            "implementation": "causal_conv1d.causal_conv1d_interface.causal_conv1d_update",
+            "package": "causal_conv1d"
+          },
+          "torch_chunk_gated_delta_rule": {
+            "fast": true,
+            "implementation": "fla.ops.gated_delta_rule.chunk.chunk_gated_delta_rule",
+            "package": "fla"
+          },
+          "torch_recurrent_gated_delta_rule": {
+            "fast": true,
+            "implementation": "fla.ops.gated_delta_rule.fused_recurrent.fused_recurrent_gated_delta_rule",
+            "package": "fla"
+          }
+        },
+        "packages": {
+          "causal_conv1d": {
+            "importable": true,
+            "version": "1.7.0"
+          },
+          "fla": {
+            "importable": true,
+            "version": "0.5.2"
+          }
+        },
+        "runtime_calls": {
+          "causal_conv1d_fn": 240,
+          "causal_conv1d_update": 3192,
+          "torch_chunk_gated_delta_rule": 240,
+          "torch_recurrent_gated_delta_rule": 3192
+        },
+        "slow_fallback": false,
+        "vllm_note": "vLLM uses its own Triton gated-delta-net and conv kernels; fla/causal-conv1d only matter for the HF training forward/backward and HF generate."
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 0.0
+    },
+    "load": {
+      "details": {
+        "class": "Qwen3_5ForCausalLM",
+        "export_architectures": [
+          "Qwen3_5ForCausalLM"
+        ],
+        "layer_types": {
+          "full_attention": 8,
+          "linear_attention": 24
+        },
+        "model_type": "qwen3_5_text",
+        "num_layers": 32,
+        "num_parameters": 4205751296,
+        "param_dtype": "torch.float32",
+        "source_architectures": [
+          "Qwen3_5ForConditionalGeneration"
+        ],
+        "tie_word_embeddings": true
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 0.0
+    },
+    "save_resume": {
+      "details": {
+        "abs_diff_after_resume": {
+          "loss": [
+            0.0,
+            0.0,
+            0.0
+          ],
+          "reward": [
+            0.0,
+            0.0,
+            0.0
+          ]
+        },
+        "checkpoint_files": [
+          "chat_template.jinja",
+          "config.json",
+          "generation_config.json",
+          "model.safetensors",
+          "optimizer.pt",
+          "rng_state.pth",
+          "scheduler.pt",
+          "tokenizer.json",
+          "tokenizer_config.json",
+          "trainer_state.json",
+          "training_args.bin"
+        ],
+        "checkpoint_size_gb": 47.022,
+        "fingerprints_resumed": {
+          "global_step": 3,
+          "lr": 5e-06,
+          "model": 36638222.63531085,
+          "optimizer": {
+            "exp_avg": 2024.7040934822169,
+            "exp_avg_sq": 0.000997988196575294,
+            "step": 1278.0
+          },
+          "rng": {
+            "numpy": "dbd4bd81d081270d",
+            "python": "2d1026d52826de68",
+            "torch_cpu": "d082c9e1ef78a805",
+            "torch_cuda": "deecc8d3950a8c5b"
+          },
+          "scheduler_last_epoch": 3
+        },
+        "fingerprints_uninterrupted": {
+          "global_step": 3,
+          "lr": 5e-06,
+          "model": 36638222.63531085,
+          "optimizer": {
+            "exp_avg": 2024.7040934822169,
+            "exp_avg_sq": 0.000997988196575294,
+            "step": 1278.0
+          },
+          "rng": {
+            "numpy": "dbd4bd81d081270d",
+            "python": "2d1026d52826de68",
+            "torch_cpu": "d082c9e1ef78a805",
+            "torch_cuda": "deecc8d3950a8c5b"
+          },
+          "scheduler_last_epoch": 3
+        },
+        "logs_resumed": {
+          "4": {
+            "entropy": 0.08648598939180374,
+            "loss": 0.9780001640319824,
+            "reward": 0.90625
+          },
+          "5": {
+            "entropy": 1.52587890625e-05,
+            "loss": 0.0,
+            "reward": 1.0
+          },
+          "6": {
+            "entropy": 1.9073486328125e-06,
+            "loss": 0.0,
+            "reward": 1.0
+          }
+        },
+        "logs_uninterrupted": {
+          "1": {
+            "entropy": 0.07556424476206303,
+            "loss": 0.24409925937652588,
+            "reward": 0.5546875
+          },
+          "2": {
+            "entropy": 0.06520681269466877,
+            "loss": 0.0,
+            "reward": 0.53125
+          },
+          "3": {
+            "entropy": 0.07127952575683594,
+            "loss": 0.0,
+            "reward": 1.0
+          },
+          "4": {
+            "entropy": 0.08648598939180374,
+            "loss": 0.9780001640319824,
+            "reward": 0.90625
+          },
+          "5": {
+            "entropy": 1.52587890625e-05,
+            "loss": 0.0,
+            "reward": 1.0
+          },
+          "6": {
+            "entropy": 1.9073486328125e-06,
+            "loss": 0.0,
+            "reward": 1.0
+          }
+        },
+        "loss_continues": true,
+        "note": "Same RNG + weights => step-4 sampling should match; later steps may drift slightly because some backward kernels are non-deterministic.",
+        "restored": {
+          "model": true,
+          "optimizer": true,
+          "rng": true,
+          "scheduler": true,
+          "trainer_state": true,
+          "weights_trained_before_save": true
+        }
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 204.9
+    },
+    "thinking_disabled": {
+      "details": {
+        "generation_prompt_off": "s 2 + 3?<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n",
+        "generation_prompt_on": "user\nWhat is 2 + 3?<|im_end|>\n<|im_start|>assistant\n<think>\n",
+        "how": "apply_chat_template(..., enable_thinking=False); TRL: GRPOConfig(chat_template_kwargs={'enable_thinking': False})",
+        "template_default_mode": "thinking"
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 0.0
+    },
+    "tool_call_format": {
+      "details": {
+        "format": "<tool_call>\\n<function=NAME>\\n<parameter=ARG>\\nVALUE\\n</parameter>\\n...</function>\\n</tool_call>  (XML-style, NOT <tool_call>{json}</tool_call>)",
+        "model_called_tool": true,
+        "model_output": "<tool_call>\n<function=apply_credit>\n<parameter=invoice_id>\ninv_001\n</parameter>\n<parameter=amount>\n1500\n</parameter>\n<parameter=reason>\nOvercharge correction\n</parameter>\n</function>\n</tool_call><|im_end|>\n",
+        "model_parsed_call": {
+          "arguments": {
+            "amount": "1500",
+            "invoice_id": "inv_001",
+            "reason": "Overcharge correction"
+          },
+          "name": "apply_credit"
+        },
+        "notes": [
+          "Non-string argument values are JSON-encoded; strings are inserted raw.",
+          "Tool call arguments must be a dict (the template iterates arguments|items).",
+          "The final assistant turn is prefixed with an empty <think></think> block."
+        ],
+        "rendered_assistant_turn": "<think>\n\n</think>\n\n<tool_call>\n<function=apply_credit>\n<parameter=invoice_id>\ninv_001\n</parameter>\n<parameter=amount>\n1500\n</parameter>\n<parameter=reason>\novercharge\n</parameter>\n</function>\n</tool_call><|im_end|>\n",
+        "system_tools_block_excerpt": "ired\": [\"invoice_id\", \"amount\", \"reason\"]}}}\n</tools>\n\nIf you choose to call a function ONLY reply in the following format with NO suffix:\n\n<tool_call>\n<function=example_function_name>\n<parameter=example_parameter_1>\nvalue_1\n</parameter>\n<parameter=example_parameter_2>\nThis is the value for the second parameter\nthat can span\nmultiple lines\n</parameter>\n</function>\n</tool_call>\n\n<IMPORTANT>\nReminder:\n- Function calls MUST follow the specified format: an inner <function=...></function> block must be nested within <tool_call></tool_call> XML tags\n- Required parameters MUST be specified\n- You may provide optional reasoning for your function call in natural language BEFORE the function call, but NOT after\n- If there is no function call available, answer the question like normal with your current knowledge and do not tell the user about function calls\n</IMPORTANT>\n\nYou are a billing assistant."
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 5.3
+    },
+    "vllm_generate": {
+      "details": {
+        "addition_correct": "8/8",
+        "completions": 64,
+        "device_used_gb": 57.878,
+        "generate_tokens_per_s": 7773.8,
+        "mode": "colocate",
+        "peak_allocated_gb": 57.297,
+        "peak_reserved_gb": 57.695,
+        "samples": [
+          "1049<|im_end|>",
+          "890<|im_end|>",
+          "1196<|im_end|>",
+          "1325<|im_end|>"
+        ],
+        "vllm_architectures": [
+          "Qwen3_5ForCausalLM"
+        ]
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 81.4
+    },
+    "weight_sync": {
+      "details": {
+        "first_tokens_match_hf": true,
+        "hf_after": "PINEAPPLE PINEAPPLE PINEAPPLE<|im_end|>INEINE",
+        "how": "trl.generation.vllm_generation.VLLMGeneration.sync_weights()",
+        "restored_matches_before": true,
+        "sync_seconds": 0.25,
+        "update": {
+          "final_loss": 0.0005647318903356791,
+          "params": [
+            "model.layers.31.mlp.down_proj.weight",
+            "model.norm.weight"
+          ],
+          "sft_steps": 6
+        },
+        "vllm_after": "PINEAPPLE PINEAPPLE PINEAPPLE<|im_end|>",
+        "vllm_before": "Hello<|im_end|>"
+      },
+      "passed": true,
+      "required": true,
+      "seconds": 36.0
+    }
+  },
+  "for_progression": {
+    "checkpoint_size_gb": 47.022,
+    "hf_generate_tokens_per_s": 202.4,
+    "kernels": {
+      "causal_conv1d_fn": "causal_conv1d.causal_conv1d_interface.causal_conv1d_fn",
+      "causal_conv1d_update": "causal_conv1d.causal_conv1d_interface.causal_conv1d_update",
+      "torch_chunk_gated_delta_rule": "fla.ops.gated_delta_rule.chunk.chunk_gated_delta_rule",
+      "torch_recurrent_gated_delta_rule": "fla.ops.gated_delta_rule.fused_recurrent.fused_recurrent_gated_delta_rule"
+    },
+    "slow_fallback": false,
+    "tool_call_format": "<tool_call>\\n<function=NAME>\\n<parameter=ARG>\\nVALUE\\n</parameter>\\n...</function>\\n</tool_call>  (XML-style, NOT <tool_call>{json}</tool_call>)",
+    "train_peak_allocated_gb": 41.232,
+    "train_tokens_per_s": 7632.7,
+    "vllm_generate_tokens_per_s": 7773.8
+  },
+  "meta": {
+    "export_dir": "/teamspace/studios/this_studio/rl-env-lab/runs/models/Qwen3.5-4B-text",
+    "gpu": {
+      "cuda_available": true,
+      "device_count": 1,
+      "devices": [
+        {
+          "name": "NVIDIA H200",
+          "total_gb": 139.8
+        }
+      ],
+      "python": "3.14.5",
+      "torch_cuda": "13.0"
+    },
+    "model": "Qwen/Qwen3.5-4B",
+    "started": "2026-10-12 13:32:06",
+    "versions": {
+      "accelerate": "1.15.0",
+      "causal-conv1d": "1.7.0",
+      "datasets": "5.1.0",
+      "deepspeed": "0.19.7",
+      "fla-core": "0.5.2",
+      "flash-linear-attention": "0.5.2",
+      "torch": "2.13.0",
+      "transformers": "5.17.0",
+      "triton": "3.7.1",
+      "trl": "1.15.0",
+      "vllm": "0.31.0"
+    },
+    "vllm_mode": "colocate"
+  },
+  "summary": {
+    "all_required_passed": true,
+    "failed": [],
+    "skipped": []
+  }
+}

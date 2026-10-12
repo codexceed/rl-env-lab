@@ -1,0 +1,98 @@
+{
+  "backend": "vllm-colocate",
+  "device_used_gb": 75.443,
+  "digits": 11,
+  "entropy_collapsed": false,
+  "export_dir": "/teamspace/studios/this_studio/rl-env-lab/runs/models/Qwen3.5-2B-text",
+  "gpu": {
+    "cuda_available": true,
+    "device_count": 1,
+    "devices": [
+      {
+        "name": "NVIDIA H200",
+        "total_gb": 139.8
+      }
+    ],
+    "python": "3.14.5",
+    "torch_cuda": "13.0"
+  },
+  "hints": [],
+  "layout": {
+    "completions_per_step": 64,
+    "gradient_accumulation_steps": 8,
+    "num_processes": 1,
+    "per_device_train_batch_size": 8
+  },
+  "lr": 1e-05,
+  "model": "Qwen/Qwen3.5-2B",
+  "param_dtype": "float32",
+  "passed": false,
+  "peak_allocated_gb": 73.253,
+  "reward_rose": false,
+  "slow_kernels": false,
+  "steps": 100,
+  "total_seconds": 254.8,
+  "trl_step_time_s": {
+    "max": 3.5519333349998305,
+    "mean": 2.4949810601700007,
+    "median": 2.4652426260001903,
+    "min": 2.137607392000291,
+    "n": 100
+  },
+  "verdict": {
+    "dead_group_share_last": 1.0,
+    "entropy": {
+      "collapsed": false,
+      "first_mean": 1.4551875979930629,
+      "last_mean": 2.148167773336172,
+      "threshold": 0.14551875979930629
+    },
+    "healthy_dead_groups": false,
+    "nan_reward": false,
+    "passed": false,
+    "reward_rose": {
+      "delta": -0.07265625,
+      "first_mean": 0.07265625,
+      "last_mean": 0.0,
+      "rose": false
+    },
+    "steps": 100
+  },
+  "versions": {
+    "accelerate": "1.15.0",
+    "causal-conv1d": "1.7.0",
+    "datasets": "5.1.0",
+    "deepspeed": "0.19.7",
+    "fla-core": "0.5.2",
+    "flash-linear-attention": "0.5.2",
+    "torch": "2.13.0",
+    "transformers": "5.17.0",
+    "triton": "3.7.1",
+    "trl": "1.15.0",
+    "vllm": "0.31.0"
+  },
+  "wall_step_time_s": {
+    "max": 3.6619845830000486,
+    "mean": 2.5180022670300195,
+    "median": 2.488774929000101,
+    "min": 2.160285695999846,
+    "n": 100
+  },
+  "weights": {
+    "changed": true,
+    "example_changed": [
+      "model.embed_tokens.weight",
+      "model.layers.0.linear_attn.dt_bias",
+      "model.layers.0.linear_attn.A_log",
+      "model.layers.0.linear_attn.conv1d.weight",
+      "model.layers.0.linear_attn.norm.weight"
+    ],
+    "params_changed": 320,
+    "params_total": 320,
+    "relative_change": {
+      "model.embed_tokens.weight": 5.7587865740060806e-05,
+      "model.layers.12.linear_attn.dt_bias": 1.3280020539241377e-05,
+      "model.norm.weight": 2.2241689293878153e-05
+    }
+  }
+}
