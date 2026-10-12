@@ -337,11 +337,14 @@ def test_v2_think_changes_only_thinking_and_the_answer_cap():
     v1 = load_config(DEFAULT_CONFIG, "2b")
     v2 = load_config(DEFAULT_CONFIG, "2b", "v2-think")
     assert v2["variant"] == "v2-think" and "variant" not in v1
-    assert (v2["budget"]["enable_thinking"], v2["budget"]["max_completion_length"]) == (True, 512)
+    assert (v2["budget"]["enable_thinking"], v2["budget"]["max_completion_length"]) == (True, 1024)
     assert {**v2["budget"], "enable_thinking": False, "max_completion_length": 256} == v1["budget"]
-    rest = {k: v for k, v in v2.items() if k not in ("budget", "variant")}
-    assert rest == {k: v for k, v in v1.items() if k != "budget"}
-    # 1,536-token prompts + 512 fill the 2,048 vLLM context exactly
+    assert {**v2["layout"], "vllm_max_model_length": 2048} == v1["layout"] and v2["layout"][
+        "vllm_max_model_length"
+    ] == 2560
+    rest = {k: v for k, v in v2.items() if k not in ("budget", "layout", "variant")}
+    assert rest == {k: v for k, v in v1.items() if k not in ("budget", "layout")}
+    # ADR 0006: 1,536-token prompts + 1,024 fill the 2,560 vLLM context exactly
     grpo.check_context(v2, resolve_layout(v2, args_for()).vllm_max_model_length)
 
 
@@ -353,6 +356,7 @@ def test_v2_think_changes_only_thinking_and_the_answer_cap():
         {"checkpoints": {"eval_every": 10}},
         {"budget": {"enable_thinking": "yes"}},
         {"budget": {"max_completion_length": 0}},
+        {"layout": {"vllm_max_model_length": 0}},
         {"budget": ["enable_thinking"]},
     ],
 )
@@ -383,7 +387,7 @@ def test_variant_is_recorded_in_the_settings_only_when_set():
     assert "variant" not in v1  # a v1 run's identity hash is unchanged
     a = args_for(extra=["--variant", "v2-think"])
     v2 = run_settings(load_config(DEFAULT_CONFIG, "2b", a.variant), a)
-    assert v2["variant"] == "v2-think" and v2["budget"]["max_completion_length"] == 512
+    assert v2["variant"] == "v2-think" and v2["budget"]["max_completion_length"] == 1024
     rest = {k: v for k, v in v2.items() if k not in ("variant", "budget")}
     assert rest == {k: v for k, v in v1.items() if k != "budget"}
 
@@ -436,8 +440,8 @@ def test_train_prompts_follow_the_variant(tmp_path):
     v2 = load_config(DEFAULT_CONFIG, "2b", "v2-think")
     rows = grpo.load_train_rows(v2, run_settings(v2, a), _ThinkTokenizer(), 2048)
     assert all(r["prompt"].endswith("<think>\n") for r in rows)
-    # a ~1,520-token prompt fits the 1,536 budget and 2,048 with 512, but not a smaller context
-    grpo.load_train_rows(v2, run_settings(v2, a), _ThinkTokenizer(pad=1490), 2048)
+    # a ~1,520-token prompt fits the 1,536 budget and 2,560 with 1,024, but not a smaller context
+    grpo.load_train_rows(v2, run_settings(v2, a), _ThinkTokenizer(pad=1490), 2560)
     with pytest.raises(RuntimeError, match="2000-token context"):
         grpo.load_train_rows(v2, run_settings(v2, a), _ThinkTokenizer(pad=1490), 2000)
     grpo.load_train_rows(v1, run_settings(v1, a), _ThinkTokenizer(pad=1490), 2000)  # 256 still fits

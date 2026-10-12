@@ -1,10 +1,12 @@
 # ADR 0005 item 3, exploratory v2 round "work before answering": `train/grpo.py --variant v2-think`.
+# Answer cap 1,024 (ADR 0006): at 512 the 2B base model was cut off mid-thought on 54% of answers.
 #
 # Merged over configs/grpo.yaml after the size file. train/grpo.py refuses any key outside
-# VARIANT_KEYS (budget.enable_thinking, budget.max_completion_length). The run records the variant in
-# train_config.json and run_manifest.json, so its identity differs from every v1 run, and
-# eval/heldout.py evaluates its checkpoints with thinking on and the same answer cap.
-# Context: 1,536-token prompt + 512 = 2,048 = layout.vllm_max_model_length (checked at start).
+# VARIANT_KEYS (budget.enable_thinking, budget.max_completion_length, layout.vllm_max_model_length). The
+# run records the variant in train_config.json and run_manifest.json, so its identity differs from every
+# v1 run, and eval/heldout.py evaluates its checkpoints with thinking on, the same cap and context.
 budget:
-  enable_thinking: true        # training prompts end inside an open <think> block
-  max_completion_length: 512   # answer cap, reasoning included (ADR 0005: 512 instead of 256)
+  enable_thinking: true         # training prompts end inside an open <think> block
+  max_completion_length: 1024   # answer cap, reasoning included (ADR 0006: 1,024; v1 is 256)
+layout:
+  vllm_max_model_length: 2560   # 1,536-token prompt + 1,024 answer (checked at start)

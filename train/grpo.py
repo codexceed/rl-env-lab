@@ -37,7 +37,8 @@ prompt + answer cap against ``layout.vllm_max_model_length``.
 
 **Variants** (``--variant NAME``, ADR 0005): ``configs/variants/<NAME>.yaml`` is merged over the
 config after the size file and may set only `VARIANT_KEYS`. ``v2-think`` turns thinking on in the
-training prompts and caps answers at 512. The variant is recorded in ``train_config.json`` and
+training prompts, caps answers at 1,024 and widens the vLLM context to 2,560 (ADR 0006). The
+variant is recorded in ``train_config.json`` and
 ``run_manifest.json`` (so a v2 run never pairs with a v1 run), and the graders see `graded_text`
 (the prompt's open think tag restored; an unclosed think block is a format failure), exactly as
 `eval/heldout.py` grades that run's checkpoints. Without a variant nothing changes. The
@@ -98,9 +99,12 @@ LAYOUT_KEYS = frozenset(
     }
 )
 THINK_OFF_SUFFIX = "<think>\n\n</think>\n\n"  # SPEC §10: generation prompt with enable_thinking=False
-# The keys a configs/variants/<name>.yaml may set (ADR 0005 v2): thinking and the answer cap. Nothing
-# else, so a variant run differs from v1 only where the ADR says it does.
-VARIANT_KEYS: dict[str, frozenset[str]] = {"budget": frozenset({"enable_thinking", "max_completion_length"})}
+# The keys a configs/variants/<name>.yaml may set (ADR 0005 v2, ADR 0006): thinking, the answer cap and the
+# vLLM context that cap needs. Nothing else, so a variant run differs from v1 only where the ADRs say it does.
+VARIANT_KEYS: dict[str, frozenset[str]] = {
+    "budget": frozenset({"enable_thinking", "max_completion_length"}),
+    "layout": frozenset({"vllm_max_model_length"}),
+}
 
 
 class ConfigError(ValueError):
@@ -252,6 +256,9 @@ def load_variant_override(config_path: Path, variant: str) -> dict[str, Any]:
     cap = budget.get("max_completion_length", 1)
     if isinstance(cap, bool) or not isinstance(cap, int) or cap < 1:
         raise ConfigError(f"{path}: budget.max_completion_length must be an integer >= 1")
+    ctx = (data.get("layout") or {}).get("vllm_max_model_length", 1)
+    if isinstance(ctx, bool) or not isinstance(ctx, int) or ctx < 1:
+        raise ConfigError(f"{path}: layout.vllm_max_model_length must be an integer >= 1")
     return data
 
 

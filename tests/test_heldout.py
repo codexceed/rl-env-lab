@@ -441,7 +441,7 @@ def test_sametype_config_mirrors_formal():
     cfg = load_config()["eval"]
     assert cfg["sametype"] == {**cfg["formal"], "split": "sametype"}
     assert answer_cap(cfg["sametype"], cfg, "off", None) == 256
-    assert answer_cap(cfg["diagnostic"], cfg, "on", None) == 512
+    assert answer_cap(cfg["diagnostic"], cfg, "on", None) == 1024
     assert answer_cap(cfg["diagnostic"], cfg, "on", 300) == 300
 
 
@@ -536,8 +536,13 @@ def test_prompt_plus_answer_must_fit_the_context(heldout):
     render_prompts(FakeTokenizer(pad=1490), heldout, 1536, thinking=True, max_tokens=fits, max_model_len=2048)
     with pytest.raises(EvalError, match="2048-token context"):
         render_prompts(FakeTokenizer(pad=1490), heldout, 1536, thinking=True, max_tokens=fits + 1, max_model_len=2048)
-    # the ADR 0005 budget: a full 1,536-token prompt plus the 512 cap is exactly the 2,048 context
-    assert load_config()["layout"]["vllm_max_model_length"] == 1536 + DEFAULT_THINK_MAX_TOKENS
+    # ADR 0006: a full 1,536-token prompt plus the 1,024 cap is exactly the 2,560 thinking-on context;
+    # thinking-off evals keep the 2,048 context
+    cfg = load_config()
+    assert (
+        cfg["eval"]["think_max_model_len"] == 1536 + DEFAULT_THINK_MAX_TOKENS == 1536 + cfg["eval"]["think_max_tokens"]
+    )
+    assert cfg["layout"]["vllm_max_model_length"] == 2048
 
 
 def test_think_prefix():
@@ -635,7 +640,7 @@ def test_variant_run_is_evaluated_as_trained(tmp_path):
     cfg = load_config(DEFAULT_CONFIG, "2b", "v2-think")
     for mode in ("formal", "sametype"):  # the watcher's generic command (formal) needs no new flag
         args = parse_args([*_v2_argv(step), "--mode", mode])
-        assert generation_settings(args, cfg, "v2-think") == (True, 512)
+        assert generation_settings(args, cfg, "v2-think") == (True, 1024)
         assert default_output(resolve_target(args), mode, Path("evals"), args.thinking or "off").parent.name in (
             "v2-2b-rob-s1",
             "sametype",
@@ -648,4 +653,4 @@ def test_variant_run_is_evaluated_as_trained(tmp_path):
     v1 = load_config(DEFAULT_CONFIG, "2b")
     assert generation_settings(parse_args(_v2_argv(step)), v1, None) == (False, 256)
     base = parse_args(["--size", "2b", "--checkpoint", "base", "--mode", "diagnostic", "--thinking", "on"])
-    assert generation_settings(base, v1, None) == (True, 512)
+    assert generation_settings(base, v1, None) == (True, 1024)

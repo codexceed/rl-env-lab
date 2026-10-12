@@ -30,7 +30,7 @@ V2_RUN_RE = re.compile(r"^v2-(?P<size>[^-]+)-(?P<r>rob|leak)-s(?P<seed>\d+)$")
 _STEP_RE = re.compile(r"^step-(\d+)\.jsonl$")
 EVALS = (("heldout", "Held-out (T3)", ""), ("sametype", "Same-type", "sametype"))
 BANNER = (
-    "> **EXPLORATORY (ADR 0005).** v2 round: thinking on, answer cap 512. Never used in an H1/H2/H5 "
+    "> **EXPLORATORY (ADR 0005).** v2 round: thinking on, answer cap 1,024 (ADR 0006). Never used in an H1/H2/H5 "
     "verdict; the pre-registered results are in `reports/results.md`."
 )
 

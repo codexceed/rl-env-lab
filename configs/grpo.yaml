@@ -72,6 +72,7 @@ eval:
     samples: 4
     temperature: 0.7
     max_tokens: 256
-  think_max_tokens: 512      # ADR 0005 item 3: answer cap for `--thinking on` (1,536 prompt + 512 = 2,048 context)
+  think_max_tokens: 1024     # ADR 0006: answer cap for `--thinking on` base/v1 evals (v2 runs use their variant)
+  think_max_model_len: 2560  # vLLM context for those evals: 1,536 prompt + 1,024 answer
   vllm_gpu_memory_utilization: 0.85
   sample_seed: 0

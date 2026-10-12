@@ -9,7 +9,7 @@
 # and per resume: steps 6-12 of train_metrics.jsonl against the original (step 6 must match).
 # Optional, DRY_V2=1 (ADR 0005 v2):
 #   GPU 2     2B robust --variant v2-think -> runs/dry-v2-2b-rob (12 steps, one eval step at 12), then a
-#             formal eval of that step on 8 instances; checks thinking on and the 512 cap in training and eval.
+#             formal eval of that step on 8 instances; checks thinking on and the 1,024 cap in training and eval.
 # Each job logs to runs/dry/<name>.log, ending with `PROGRESS_EXIT <code>` (lightning-jobs progress.py).
 # Usage: bash scripts/dry_runs.sh    (TIMEOUT=seconds per job, default 3600; DRY_V2=1 adds the v2 run).
 # Exit 0 only if all pass.
@@ -103,7 +103,7 @@ for size in ("2b", "4b"):
             print(f"  FAIL: {size} step 6 differs after resume")
             ok = False
 
-if os.environ.get("DRY_V2") == "1":  # ADR 0005 v2: thinking on and the 512 cap, in training and in the eval
+if os.environ.get("DRY_V2") == "1":  # ADR 0005 v2: thinking on and the 1,024 cap (ADR 0006), in training and in the eval
     rdir = Path("runs/dry-v2-2b-rob")
     cfg = json.loads((rdir / "train_config.json").read_text()) if (rdir / "train_config.json").exists() else {}
     man = json.loads((rdir / "run_manifest.json").read_text()) if (rdir / "run_manifest.json").exists() else {}
@@ -114,10 +114,10 @@ if os.environ.get("DRY_V2") == "1":  # ADR 0005 v2: thinking on and the 512 cap,
     traces = rows("runs/dry/dry-v2-2b-rob.eval.traces.jsonl")
     checks = {
         "train_config variant v2-think": cfg.get("variant") == "v2-think",
-        "training thinking on, cap 512": budget.get("enable_thinking") is True and budget.get("max_completion_length") == 512,
+        "training thinking on, cap 1024": budget.get("enable_thinking") is True and budget.get("max_completion_length") == 1024,
         "run_manifest variant v2-think": man.get("variant") == "v2-think",
         "one eval step (12)": steps == ["step-00012"],
-        "eval: thinking on, cap 512": "run variant v2-think: thinking on, cap 512" in elog,
+        "eval: thinking on, cap 1024": "run variant v2-think: thinking on, cap 1024" in elog,
         "eval: 8 instances x 4 samples graded as thinking-on": len(traces) == 32 and all("graded_text" in t for t in traces),
     }
     print("\n== v2 dry run (DRY_V2=1)")

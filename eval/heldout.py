@@ -28,13 +28,14 @@ diagnostic and sametype outputs (other directories) never reach a verdict.
 
 **Thinking (ADR 0005 item 3).** ``--thinking off`` (default) renders exactly the SPEC §10 prompt.
 ``--thinking on`` (diagnostic and sametype only; the formal eval refuses it) renders with
-``enable_thinking=True``, caps answers at ``eval.think_max_tokens`` (512) unless ``--max-tokens``
+``enable_thinking=True``, caps answers at ``eval.think_max_tokens`` (1,024, ADR 0006) unless ``--max-tokens``
 says otherwise, and writes to its own paths (``evals/diagnostic/<run>_think_step-NNNNN.jsonl``,
 ``evals/<run>/sametype-think/``). The graders see the assistant turn as written: the think tag the
 prompt opened is put back in front of the completion, and a think block that never closes (cut off
 at the cap) leaves no answer, i.e. a format failure. The diagnostic ``.summary.json`` then adds the
 v2 go/no-go against the thinking-off diagnostic of the same run (`go_no_go`). Every prompt plus the
-answer cap must fit ``layout.vllm_max_model_length`` (2,048).
+answer cap must fit the vLLM context: ``layout.vllm_max_model_length`` (2,048), or with thinking on
+``eval.think_max_model_len`` (2,560; a v2 run uses its variant's context).
 
 **Variant runs.** A checkpoint of a run trained with ``train/grpo.py --variant`` (e.g. ``v2-think``,
 recorded in its ``run_manifest.json``) is evaluated as it was trained, with no flag needed: thinking
@@ -101,7 +102,7 @@ THINKING = ("off", "on")
 REWARDS = ("robust", "leaky", "base")
 BAND = (0.10, 0.90)  # PREREG §7: in band = base pass rate 10-90%
 IM_END = "<|im_end|>"
-DEFAULT_THINK_MAX_TOKENS = 512  # ADR 0005: answer cap with thinking on (eval.think_max_tokens)
+DEFAULT_THINK_MAX_TOKENS = 1024  # ADR 0006: answer cap with thinking on (eval.think_max_tokens)
 GO_LOW_RATE = 0.04  # ADR 0005 go/no-go: "the 0-4% types" of the thinking-off diagnostic
 GO_MIN_IN_BAND = 6  # ADR 0005 go/no-go: >= 6 of 11 types in the 10-90% band
 
@@ -136,7 +137,9 @@ def build_parser() -> argparse.ArgumentParser:
         choices=THINKING,
         help="ADR 0005: `on` renders prompts with thinking enabled (default off; a variant run sets its own)",
     )
-    p.add_argument("--max-tokens", type=int, help="answer cap override (default: the mode's, or 512 with thinking on)")
+    p.add_argument(
+        "--max-tokens", type=int, help="answer cap override (default: the mode's, or 1,024 with thinking on)"
+    )
     p.add_argument("--hf-generate", action="store_true", help="fallback: HF generate instead of vLLM")
     p.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     p.add_argument("--data-dir", type=Path, help="override data.dir")
@@ -269,7 +272,7 @@ def generation_settings(args: argparse.Namespace, cfg: dict[str, Any], variant: 
 
 
 def answer_cap(mode_cfg: dict[str, Any], eval_cfg: dict[str, Any], thinking: str, override: int | None) -> int:
-    """Max new tokens: ``--max-tokens``, else 512 with thinking on, else the mode's ``max_tokens``."""
+    """Max new tokens: ``--max-tokens``, else 1,024 with thinking on, else the mode's ``max_tokens``."""
     if override is not None:
         return int(override)
     if thinking == "on":
@@ -660,6 +663,8 @@ def run(args: argparse.Namespace) -> int:
         print(f"[heldout] run variant {variant}: thinking {'on' if thinking else 'off'}, cap {max_tokens}", flush=True)
     output = args.output or default_output(target, args.mode, args.evals_root, args.thinking or "off")
     max_model_len = int(cfg["layout"].get("vllm_max_model_length", 2048))
+    if thinking and not variant:  # base / v1 thinking-on evals: the ADR 0006 context (a variant brings its own)
+        max_model_len = int(eval_cfg.get("think_max_model_len", max_model_len))
 
     data_dir = Path(args.data_dir or cfg["data"]["dir"])
     split_path = data_dir / f"{mode_cfg['split']}.jsonl"
