@@ -1,0 +1,143 @@
+# GPU allocation for the training window (PROGRESSION.md "GPU allocation", "Run matrix", §1.4).
+# Read by train/coordinator.py (one coordinator per node) and eval/watcher.py.
+# Artifact layout: train/LAYOUT.md.
+#
+# Relative paths resolve against the coordinator's working directory (run it from the repo root).
+# Point `paths.runs` / `paths.evals` at shared storage to let both nodes' watchers share eval work.
+version: 1
+
+paths:
+  workdir: .
+  runs: runs
+  evals: evals
+
+coordinator:
+  poll_interval_s: 15
+  kill_grace_s: 60              # SIGTERM -> wait -> SIGKILL, for the whole process group
+  max_retries: 1                # crash -> resume from newest complete recovery checkpoint
+  default_run_timeout_s: 28800  # overridden per size below, or per run with `timeout_s`
+  # Training cutoff. Naive time = the node's local timezone; add an offset
+  # (e.g. "2026-10-16T06:00:00+05:30") if the node clock is not in the owner's timezone.
+  node_hard_deadline: "2026-10-16T06:00:00"
+  deadline_eval_grace_s: 1800      # only used with --allow-shutdown
+  deadline_transfer_grace_s: 1800  # only used with --allow-shutdown
+  # Node release is OFF by default: when everything is done the coordinator writes
+  # runs/_coordinator/<node>.idle and exits. A command runs only with --allow-shutdown AND this set.
+  shutdown_cmd: null            # e.g. 'echo "would shut down"' or the Studio stop command
+
+commands:
+  # Placeholders: {run_id} {size} {reward} {seed} {gpus} {num_gpus} {run_dir}
+  #               {vllm_gpus} {train_gpus} {num_vllm_gpus} {num_train_gpus}
+  # GPU lists are physical indices; CUDA_VISIBLE_DEVICES is also set to {gpus}.
+  train: >-
+    uv run python train/grpo.py --run-id {run_id} --size {size} --reward {reward}
+    --seed {seed} --gpus {gpus} --output-dir {run_dir}
+  resume_flag: "--resume-from {resume_dir}"  # appended on a crash relaunch
+  # Eval placeholders: {run_id} {size} {reward} {seed} {gpus} {num_gpus} {step} {ckpt_dir}
+  #                    {output} {run_dir} {eval_dir}
+  eval: >-
+    uv run python eval/heldout.py --run-id {run_id} --size {size} --reward {reward}
+    --seed {seed} --checkpoint {ckpt_dir} --step {step} --output {output} --gpus {gpus}
+
+transfer:
+  # Run after a run has ended and all its eval checkpoints are evaluated. Success writes
+  # runs/<run_id>/TRANSFERRED. null = no copy needed (runs/ already on shared storage).
+  # Placeholders: train placeholders + {eval_dir} {runs_root} {evals_root}
+  command: null  # e.g. rsync -a {run_dir}/ /teamspace/shared/runs/{run_id}/ && rsync -a {eval_dir}/ /teamspace/shared/evals/{run_id}/
+  timeout_s: 3600
+  retries: 2
+  max_concurrent: 2
+
+checkpoints:
+  pruning_enabled: false  # PROGRESSION §1.4: enable only after resume is verified
+  keep_last: 2
+  required_eval_files: ["config.json", "*.safetensors"]  # final-step integrity check
+
+eval:
+  enabled: true
+  gpus_per_eval: 1
+  timeout_s: 5400
+  retries: 1
+  poll_interval_s: 30
+  stale_claim_s: 900
+  lend_idle_gpus: true  # "eval falls behind": GPUs no remaining run needs join eval (N1 GPU 4-5)
+  watch_scope: all      # all = every run under paths.runs; node = only this node's runs
+  max_restarts: 5
+
+sizes:
+  # Timeouts are ~2x the unvalidated estimates (0.8B ~2 h, 2B ~4 h, 4B ~8 h); revisit after §0.4.
+  0.8b:
+    gpus_per_run: 1
+    run_timeout_s: 14400
+  2b:
+    gpus_per_run: 1
+    run_timeout_s: 28800
+  4b:
+    gpus_per_run: 4
+    run_timeout_s: 57600
+    layout: {vllm_server_gpus: 1, train_gpus: 3}  # 1 vLLM server + 3 training (ZeRO-3)
+    train_command: >-
+      uv run python train/grpo.py --run-id {run_id} --size {size} --reward {reward}
+      --seed {seed} --gpus {gpus} --vllm-server-gpus {vllm_gpus} --train-gpus {train_gpus}
+      --output-dir {run_dir}
+
+runs:
+  2b-rob-s1: {size: 2b, reward: robust, seed: 1}
+  2b-rob-s2: {size: 2b, reward: robust, seed: 2}
+  2b-rob-s3: {size: 2b, reward: robust, seed: 3}
+  2b-leak-s1: {size: 2b, reward: leaky, seed: 1}
+  2b-leak-s2: {size: 2b, reward: leaky, seed: 2}
+  2b-leak-s3: {size: 2b, reward: leaky, seed: 3}
+  0.8b-rob-s1: {size: 0.8b, reward: robust, seed: 1}
+  0.8b-rob-s2: {size: 0.8b, reward: robust, seed: 2}
+  0.8b-rob-s3: {size: 0.8b, reward: robust, seed: 3}
+  0.8b-leak-s1: {size: 0.8b, reward: leaky, seed: 1}
+  0.8b-leak-s2: {size: 0.8b, reward: leaky, seed: 2}
+  0.8b-leak-s3: {size: 0.8b, reward: leaky, seed: 3}
+  4b-rob-s1: {size: 4b, reward: robust, seed: 1}
+  4b-rob-s2: {size: 4b, reward: robust, seed: 2}
+  4b-rob-s3: {size: 4b, reward: robust, seed: 3}
+  4b-leak-s1: {size: 4b, reward: leaky, seed: 1}
+  4b-leak-s2: {size: 4b, reward: leaky, seed: 2}
+  4b-leak-s3: {size: 4b, reward: leaky, seed: 3}
+
+# Groups: a queue runs in order on the group's GPUs. A group starts only after every group in
+# `after` is drained, and a run starts only when all its GPUs are free (no training, no eval).
+nodes:
+  node1:
+    gpus: [0, 1, 2, 3, 4, 5, 6, 7]
+    eval_gpus: [6, 7]
+    groups:
+      # Wed 14 -> 18: six 2B runs, 1 GPU each
+      - {name: n1-g0, gpus: [0], queue: [2b-rob-s1]}
+      - {name: n1-g1, gpus: [1], queue: [2b-leak-s1]}
+      - {name: n1-g2, gpus: [2], queue: [2b-rob-s2]}
+      - {name: n1-g3, gpus: [3], queue: [2b-leak-s2]}
+      - {name: n1-g4, gpus: [4], queue: [2b-rob-s3]}
+      - {name: n1-g5, gpus: [5], queue: [2b-leak-s3]}
+      # Wed 18 -> Thu 10: 4B P2, robust then leaky (matched pair, sequential).
+      # GPU 4-5 are then spare and join eval via lend_idle_gpus.
+      - name: n1-4b
+        gpus: [0, 1, 2, 3]
+        after: [n1-g0, n1-g1, n1-g2, n1-g3]
+        queue: [4b-rob-s2, 4b-leak-s2]
+  node2:
+    gpus: [0, 1, 2, 3, 4, 5, 6, 7]
+    eval_gpus: [6, 7]  # eval overflow during 0.8B; taken back when the 4B leaky queue starts
+    groups:
+      # Wed 14 -> 18: six 0.8B runs, 1 GPU each
+      - {name: n2-g0, gpus: [0], queue: [0.8b-rob-s1]}
+      - {name: n2-g1, gpus: [1], queue: [0.8b-leak-s1]}
+      - {name: n2-g2, gpus: [2], queue: [0.8b-rob-s2]}
+      - {name: n2-g3, gpus: [3], queue: [0.8b-leak-s2]}
+      - {name: n2-g4, gpus: [4], queue: [0.8b-rob-s3]}
+      - {name: n2-g5, gpus: [5], queue: [0.8b-leak-s3]}
+      # Wed 18 -> Thu 10: 4B P1 then P3, robust on GPU 0-3, leaky on GPU 4-7
+      - name: n2-4b-rob
+        gpus: [0, 1, 2, 3]
+        after: [n2-g0, n2-g1, n2-g2, n2-g3]
+        queue: [4b-rob-s1, 4b-rob-s3]
+      - name: n2-4b-leak
+        gpus: [4, 5, 6, 7]
+        after: [n2-g4, n2-g5]
+        queue: [4b-leak-s1, 4b-leak-s3]
