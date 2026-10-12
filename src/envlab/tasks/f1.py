@@ -1,5 +1,7 @@
 """F1 Overcharge -> ``apply_credit`` (SPEC §4 F1, §5)."""
 
+from __future__ import annotations
+
 from envlab.calls import ToolCall
 from envlab.sim.entities import ContractBasis, Customer, LineItem
 from envlab.tasks.common import (

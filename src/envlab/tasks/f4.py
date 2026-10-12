@@ -1,5 +1,7 @@
 """F4 Billing error -> ``adjust_invoice`` (SPEC §4 F4, §5)."""
 
+from __future__ import annotations
+
 import random
 
 from envlab.calls import ToolCall

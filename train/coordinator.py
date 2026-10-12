@@ -535,7 +535,7 @@ class Coordinator:
     def _read_exit(self, run: _Run) -> int | None:
         try:
             return int(self._exit_file(run, run.attempts).read_text().strip())
-        except OSError, ValueError:
+        except (OSError, ValueError):
             return None
 
     # ---- runs

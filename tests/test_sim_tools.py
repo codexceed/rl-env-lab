@@ -1,5 +1,7 @@
 """Tool effects, error codes, purity (SPEC §3)."""
 
+from __future__ import annotations
+
 from dataclasses import replace
 
 import pytest

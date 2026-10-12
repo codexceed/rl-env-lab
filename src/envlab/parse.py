@@ -11,6 +11,8 @@ Accepts Qwen3.5's native XML-parameter form and a JSON fallback:
     </tool_call>
 """
 
+from __future__ import annotations
+
 import json
 import re
 from typing import Any

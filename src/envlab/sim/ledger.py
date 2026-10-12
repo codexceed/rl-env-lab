@@ -3,6 +3,8 @@
 Sign convention: positive = customer owes more, negative = customer owes less.
 """
 
+from __future__ import annotations
+
 from collections import Counter
 
 from envlab.sim.entities import (

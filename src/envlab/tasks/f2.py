@@ -1,5 +1,7 @@
 """F2 Duplicate payment -> ``refund_payment`` (SPEC §4 F2, §5)."""
 
+from __future__ import annotations
+
 from dataclasses import replace
 from datetime import datetime, timedelta
 

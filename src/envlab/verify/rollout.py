@@ -1,5 +1,7 @@
 """Run one completion against an instance and score it with both graders (SPEC §6, §11.7)."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 from envlab.calls import ParseFailure, ToolCall, ToolResult

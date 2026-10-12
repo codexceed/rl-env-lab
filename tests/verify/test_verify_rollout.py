@@ -1,5 +1,7 @@
 """execute / score_completion / reward (SPEC §6, §11.7, §12)."""
 
+from __future__ import annotations
+
 import json
 
 import pytest

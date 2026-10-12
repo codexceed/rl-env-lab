@@ -1,5 +1,7 @@
 """TaskInstance JSONL round-trip (SPEC §11.9). Runs without the simulator."""
 
+from __future__ import annotations
+
 import json
 
 from tests.tasks_fixtures import hand_built_instance

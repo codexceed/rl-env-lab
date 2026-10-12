@@ -143,7 +143,7 @@ def atomic_write_json(path: Path, obj: Any) -> None:
 def read_json(path: Path, default: Any = None) -> Any:
     try:
         return json.loads(Path(path).read_text())
-    except OSError, ValueError:
+    except (OSError, ValueError):
         return default
 
 

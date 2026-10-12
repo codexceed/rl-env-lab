@@ -1,5 +1,7 @@
 """Prompt layout, tool-call rendering and the token estimate (SPEC §10, §11.8)."""
 
+from __future__ import annotations
+
 import pytest
 from tests.tasks_fixtures import hand_built_instance
 

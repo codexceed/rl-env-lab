@@ -5,6 +5,8 @@ The free-text argument is copied from the oracle call (SPEC §11.7: "text args =
 the only thing read from `oracle_call`. Never reads `variant`, `broken_type`, `split` or `meta`.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable, Iterable
 from typing import Any
 

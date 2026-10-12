@@ -1,5 +1,7 @@
 """Per-template generation (SPEC §4, §5, §10, §13 "tasks"). Needs the simulator."""
 
+from __future__ import annotations
+
 import pytest
 
 pytest.importorskip("envlab.sim.ledger")

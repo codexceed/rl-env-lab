@@ -1,5 +1,7 @@
 """F3 Dispute -> ``resolve_case`` (SPEC §4 F3, §5)."""
 
+from __future__ import annotations
+
 from envlab.calls import ToolCall
 from envlab.sim.entities import Case, Customer, Invoice, LineItem
 from envlab.tasks.common import (

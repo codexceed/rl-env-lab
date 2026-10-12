@@ -3,6 +3,8 @@
 Deliberately ignores amounts, values, the ledger, and which record of the right customer was hit.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 

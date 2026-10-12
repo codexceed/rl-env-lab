@@ -1,5 +1,7 @@
 """Grade and gate results (contract file, SPEC.md Appendix A)."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 
 

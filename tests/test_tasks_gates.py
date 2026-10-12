@@ -1,5 +1,7 @@
 """Generated data against the verify workstream's gates (SPEC §7). Turns on once verify lands."""
 
+from __future__ import annotations
+
 import pytest
 
 pytest.importorskip("envlab.sim.tools")

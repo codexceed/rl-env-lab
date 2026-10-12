@@ -3,6 +3,8 @@
 Built with the simulator's `build_ledger` and `apply_tool`, so every fixture is a state the real tools produce.
 """
 
+from __future__ import annotations
+
 import dataclasses
 from collections.abc import Callable, Sequence
 from typing import Any

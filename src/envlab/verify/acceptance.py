@@ -7,6 +7,8 @@ Exits 1 if acceptance fails: any broken instance passes all gates, valid pass ra
 or a split file is missing.
 """
 
+from __future__ import annotations
+
 import argparse
 import json
 import sys

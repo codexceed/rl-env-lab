@@ -1,5 +1,7 @@
 """Broken variants: deliberately invalid instances the quality gates must reject (SPEC §8)."""
 
+from __future__ import annotations
+
 import dataclasses
 import random
 

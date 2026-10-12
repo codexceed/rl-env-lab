@@ -4,6 +4,8 @@
 - `requires_real_tasks`: generated instances pass every gate; every generated broken instance is rejected.
 """
 
+from __future__ import annotations
+
 import importlib
 
 import pytest

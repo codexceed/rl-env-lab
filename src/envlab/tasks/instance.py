@@ -1,5 +1,7 @@
 """TaskInstance and JSONL I/O (contract file, SPEC.md Appendix A)."""
 
+from __future__ import annotations
+
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass, field

@@ -1,5 +1,7 @@
 """`python -m envlab.verify.acceptance` over a small hand-built dataset (SPEC §7, §9)."""
 
+from __future__ import annotations
+
 import dataclasses
 import json
 from collections.abc import Sequence

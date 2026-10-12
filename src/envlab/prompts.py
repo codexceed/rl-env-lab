@@ -4,6 +4,8 @@ The tokenizer is never imported here: ``render_prompt`` receives one from GPU-si
 ``estimate_prompt_tokens`` is a CI-safe proxy for the real count.
 """
 
+from __future__ import annotations
+
 import json
 from typing import Any
 

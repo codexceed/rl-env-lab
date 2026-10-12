@@ -212,7 +212,7 @@ def _load_records(evals_root: Path, notes: list[str]) -> list[EvalRecord]:
                 for row in rows:
                     try:
                         records.append(EvalRecord.from_dict(row))
-                    except KeyError, TypeError, ValueError:
+                    except (KeyError, TypeError, ValueError):
                         bad_lines += 1
     if skipped:
         notes.append("skipped eval steps: " + ", ".join(skipped))

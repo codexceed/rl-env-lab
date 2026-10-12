@@ -1,5 +1,7 @@
 """Canonical state form and stable hash (SPEC §6 text masking, §11.4)."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 from typing import Any

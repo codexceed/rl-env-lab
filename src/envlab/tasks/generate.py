@@ -5,6 +5,8 @@ Generation needs the simulator (``envlab.sim.ledger.build_ledger`` and
 before the sim workstream lands.
 """
 
+from __future__ import annotations
+
 import dataclasses
 import random
 from collections.abc import Callable

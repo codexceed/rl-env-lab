@@ -7,6 +7,8 @@ oracle final state. All randomness comes from the ``random.Random`` passed in; n
 touches global RNG state.
 """
 
+from __future__ import annotations
+
 import dataclasses
 import random
 from collections.abc import Callable, Iterable

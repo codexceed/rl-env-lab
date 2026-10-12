@@ -1,5 +1,7 @@
 """Build every split to disk (SPEC §9): ``python -m envlab.tasks.build --out data``."""
 
+from __future__ import annotations
+
 import argparse
 import json
 from collections import Counter

@@ -1,5 +1,7 @@
 """State serialization and state hash (SPEC §6 masking, §11.1, §11.4)."""
 
+from __future__ import annotations
+
 import hashlib
 import json
 from dataclasses import fields, replace

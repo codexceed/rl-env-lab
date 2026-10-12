@@ -4,6 +4,8 @@ Gates never read `variant`, `broken_type`, `split` or `meta`, and never raise: a
 fails the gate with reason "exception:<ExcType>".
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
 
 from envlab.sim.ledger import check_invariants

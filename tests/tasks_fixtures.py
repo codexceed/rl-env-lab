@@ -1,5 +1,7 @@
 """A small hand-built TaskInstance for tests that must run without the simulator."""
 
+from __future__ import annotations
+
 from envlab.calls import ToolCall
 from envlab.sim.entities import (
     Case,

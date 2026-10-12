@@ -138,7 +138,7 @@ def nvidia_smi() -> list[dict[str, Any]] | None:
             timeout=20,
             check=True,
         ).stdout
-    except OSError, subprocess.SubprocessError:
+    except (OSError, subprocess.SubprocessError):
         return None
     rows = []
     for line in out.strip().splitlines():

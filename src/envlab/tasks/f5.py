@@ -1,5 +1,7 @@
 """F5 Account change -> ``update_customer`` (SPEC §4 F5, §5)."""
 
+from __future__ import annotations
+
 from envlab.calls import ToolCall
 from envlab.sim.entities import Customer
 from envlab.tasks.common import (

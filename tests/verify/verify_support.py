@@ -1,5 +1,7 @@
 """Skip markers for verify tests that need another workstream's modules (SPEC §11 merge order)."""
 
+from __future__ import annotations
+
 import importlib.util
 
 import pytest

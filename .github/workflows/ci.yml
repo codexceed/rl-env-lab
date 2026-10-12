@@ -34,10 +34,17 @@ jobs:
       - run: uvx --with pre-commit-uv pre-commit run ${{ matrix.hook }} --all-files --show-diff-on-failure
 
   tests:
-    # unit tests only: no GPU, no Lightning account, no model downloads
-    name: tests (python 3.14)
+    # unit tests only: no GPU, no Lightning account, no model downloads.
+    # 3.14 is the runtime; 3.12 keeps the kernel fallback a one-line switch.
+    name: tests (python ${{ matrix.python }})
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.14", "3.12"]
     steps:
       - uses: actions/checkout@v7
       - uses: astral-sh/setup-uv@v7
       - run: make test
+        env:
+          UV_PYTHON: ${{ matrix.python }}

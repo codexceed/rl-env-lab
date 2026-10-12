@@ -1,5 +1,7 @@
 """Task-generator helpers that run without the simulator."""
 
+from __future__ import annotations
+
 import random
 import re
 

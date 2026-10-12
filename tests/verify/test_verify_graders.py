@@ -1,5 +1,7 @@
 """Robust and leaky graders: per family, correct / wrong amount / wrong record / side effect (SPEC §6, §13)."""
 
+from __future__ import annotations
+
 import dataclasses
 
 import pytest

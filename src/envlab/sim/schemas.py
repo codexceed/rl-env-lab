@@ -1,5 +1,7 @@
 """Tool schemas in HF/OpenAI function format (contract file, SPEC.md Appendix A)."""
 
+from __future__ import annotations
+
 from typing import Any
 
 

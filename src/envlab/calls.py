@@ -1,5 +1,7 @@
 """Tool calls, results and parse failures (contract file, SPEC.md Appendix A)."""
 
+from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any

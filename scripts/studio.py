@@ -8,6 +8,8 @@ Usage:
 Needs `lightning-sdk` and a Lightning login (`lightning login`). Commands run in ~/rl-env-lab.
 """
 
+from __future__ import annotations
+
 import argparse
 import sys
 

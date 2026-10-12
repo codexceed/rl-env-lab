@@ -1,5 +1,7 @@
 """Robust grader: full-state equality with the oracle (SPEC §6, R1-R4). Pure; never mutates."""
 
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from envlab.calls import ParseFailure

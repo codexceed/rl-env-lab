@@ -1,5 +1,7 @@
 """Gates G1-G3, solvers and wrong-value calls (SPEC §7, §8, §13)."""
 
+from __future__ import annotations
+
 import dataclasses
 
 import pytest

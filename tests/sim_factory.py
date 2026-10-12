@@ -1,5 +1,7 @@
 """Hand-built simulator states shared by the sim tests."""
 
+from __future__ import annotations
+
 from envlab.sim.entities import (
     Case,
     CaseStatus,

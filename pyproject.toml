@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Billing-simulator RL environment: robust vs leaky rewards under GRPO"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "numpy>=1.26",
     "pyyaml>=6.0",
@@ -49,7 +49,7 @@ pythonpath = [".", "src"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py314"
+target-version = "py312"
 src = ["src", "train", "eval", "tests"]
 extend-exclude = ["runs", "data", "evals"]
 
@@ -67,11 +67,13 @@ select = [
 
 [tool.ruff.lint.isort]
 known-first-party = ["envlab", "train", "eval"]
+# lazy annotations everywhere, so forward references work below Python 3.14 (the 3.12 fallback)
+required-imports = ["from __future__ import annotations"]
 
 [tool.pyright]
 include = ["src", "train", "eval", "tests"]
 exclude = ["**/__pycache__", "runs", "data", "evals"]
-pythonVersion = "3.14"
+pythonVersion = "3.12"
 typeCheckingMode = "standard"
 extraPaths = ["src", "."]
 # the GPU stack (torch, transformers, trl, vllm) is a Linux-only extra and is not installed for

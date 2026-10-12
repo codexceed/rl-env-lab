@@ -1,5 +1,7 @@
 """Ledger construction, L-rules and S-rules (SPEC §1, §2)."""
 
+from __future__ import annotations
+
 from dataclasses import replace
 
 import pytest

@@ -1,5 +1,7 @@
 """Tool-call parser (SPEC §10 "Parsing")."""
 
+from __future__ import annotations
+
 import json
 
 import pytest

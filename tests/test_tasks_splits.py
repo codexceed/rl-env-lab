@@ -1,5 +1,7 @@
 """Splits, broken variants and the data build (SPEC §8, §9). Needs the simulator."""
 
+from __future__ import annotations
+
 import json
 from collections import Counter
 

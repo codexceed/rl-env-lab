@@ -4,6 +4,8 @@ Derived only from `oracle_call` and `initial_state`. Free-text args copy the ora
 Raises ValueError when the table's rule has nothing to act on; G3 reports that as a failure.
 """
 
+from __future__ import annotations
+
 from envlab.calls import ToolCall
 from envlab.sim.entities import PaymentStatus, State
 from envlab.tasks.instance import TaskInstance

@@ -5,6 +5,8 @@ On any error it returns the *same* state object with `ToolResult(ok=False, error
 It never raises.
 """
 
+from __future__ import annotations
+
 import re
 from collections.abc import Callable
 from dataclasses import replace
