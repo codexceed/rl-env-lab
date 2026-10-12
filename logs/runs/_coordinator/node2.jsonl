@@ -1,0 +1,4 @@
+{"ts": 1791818674.532, "iso": "2026-10-12T15:24:34+00:00", "node": "node2", "event": "coordinator_start", "pid": 9280, "dry_run": false, "shutdown_opt_in": false, "deadline": "2026-10-16T06:00:00+00:00"}
+{"ts": 1791818674.533, "iso": "2026-10-12T15:24:34+00:00", "node": "node2", "event": "eval_lease", "gen": 1, "gpus": [6, 7], "drain": false}
+{"ts": 1791818674.534, "iso": "2026-10-12T15:24:34+00:00", "node": "node2", "event": "watcher_start", "pid": 9282, "restarts": 0}
+{"ts": 1791818674.535, "iso": "2026-10-12T15:24:34+00:00", "node": "node2", "event": "gate_blocked", "count": 10, "blockers": ["0.8b-rob-s1: pending", "0.8b-leak-s1: pending", "0.8b-rob-s2: pending", "0.8b-leak-s2: pending", "0.8b-rob-s3: pending", "0.8b-leak-s3: pending", "4b-rob-s1: pending", "4b-rob-s3: pending", "4b-leak-s1: pending", "4b-leak-s3: pending"]}
