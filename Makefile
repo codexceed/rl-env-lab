@@ -28,7 +28,7 @@ SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-gpu hooks check fmt test lock data data-sametype acceptance compat toy sweep gpu-checks dry-run base-evals bench \
-	train eval eval-base diagnostic diagnostic-think sametype-evals sametype-report plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
+	train eval eval-base diagnostic diagnostic-think sametype-evals sametype-report v2-report plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
 
 help:  ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -117,6 +117,9 @@ sametype-evals:  ## ADR 0005 exploratory: sametype eval of every saved eval ckpt
 
 sametype-report:  ## ADR 0005 exploratory: evals/*/sametype/ -> reports/sametype.md
 	$(UV) python eval/sametype_report.py
+
+v2-report:  ## ADR 0005 exploratory: v2 runs, robust vs leaky -> reports/v2.md
+	$(UV) python eval/v2_report.py
 
 plan:  ## Print what the coordinator would launch on NODE
 	$(UV) python train/coordinator.py --node $(NODE) --print-plan
