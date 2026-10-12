@@ -162,7 +162,9 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [x] Robust and leaky grader definitions
 - [x] Quality gates G1–G3; 4 broken-variant types
 - [x] Prompt format using the tool-call format from §0.3
-- [ ] Done when: I sign off, no open TODOs — drafted 2026-10-12, in review: PR #12
+- [x] Done when: I sign off, no open TODOs — 2026-10-12, PR #12 merged
+
+- [x] SPEC follow-ups from implementation (2026-10-12, owner approved: 0 adjustment always allowed; chars/2.5 everywhere; ToolCall unhashable documented): `resolve_case` adjustment=0 on overpaid invoice rejected (literal rule); token estimate chars/3 (§14) vs chars/2.5 (§10); `ToolCall` unhashable (dict field)
 
 ### 0.6 Metrics (agent) — `eval/metrics.py`
 - [x] True success, exploit rate, format-failure rate per sample
@@ -206,11 +208,11 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 Three agents in parallel; I integrate and review.
 
 ### 1.1 Simulator and tools — `src/envlab/sim/`
-- [ ] Entity dataclasses, in-memory store
-- [ ] 6 tools per SPEC, ledger postings on money moves
-- [ ] Ledger balance check; deterministic state hash
-- [ ] `parse.py`: one tool call; bad JSON / unknown tool → parse failure
-- [ ] Unit tests: every tool, error cases, ledger, hash stability
+- [x] Entity dataclasses, in-memory store
+- [x] 6 tools per SPEC, ledger postings on money moves
+- [x] Ledger balance check; deterministic state hash
+- [x] `parse.py`: one tool call; bad JSON / unknown tool → parse failure
+- [x] Unit tests: every tool, error cases, ledger, hash stability — 2026-10-12, 525 sim tests, merged (#5)
 
 ### 1.2 Graders and gates — `src/envlab/verify/`
 - [ ] Robust grader; leaky grader
@@ -242,9 +244,9 @@ Three agents in parallel; I integrate and review.
 - [ ] CI green
 
 ### 1.5 Reporting skeleton (agent, low priority)
-- [ ] README: setup, data build, one training run, eval
-- [ ] `reports/results.md` skeleton with H1/H2/H5/H3 sections and empty tables
-- [ ] `eval/compare.py` stub that runs on fake eval JSONL
+- [x] README: setup, data build, one training run, eval
+- [x] `reports/results.md` skeleton with H1/H2/H5/H3 sections and empty tables
+- [x] `eval/compare.py` stub that runs on fake eval JSONL — 2026-10-12, full tables/verdicts/plots; `make report-fake` passes H1/H2/H5 on fake data
 
 ### 🚦 G-Tue
 - [ ] Tests pass · data built · dry runs + resume work for both rewards · coordinator tested · if slipping, run §2 overnight

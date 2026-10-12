@@ -2,6 +2,10 @@
 #   make hooks                   # once per clone
 #   make check                   # every hook on every file
 # Settings for each tool live in pyproject.toml. Versions match the evals repo.
+# Hooks run on Python 3.14, the project's version: ruff writes 3.14 syntax (e.g. `except A, B:`)
+# that older interpreters can't parse.
+default_language_version:
+  python: python3.14
 repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.16.9
