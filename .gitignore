@@ -1,0 +1,25 @@
+# Data and run artifacts (keep manifest + split IDs)
+data/*
+!data/manifest.json
+!data/splits/
+runs/
+
+# Secrets
+.env
+.env.*
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+dist/
+build/
+
+# Tooling
+.DS_Store
+.claude/worktrees/
+.claude/settings.local.json
+wandb/

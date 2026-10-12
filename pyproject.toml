@@ -1,0 +1,47 @@
+[project]
+name = "envlab"
+version = "0.1.0"
+description = "Billing-simulator RL environment: robust vs leaky rewards under GRPO"
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.14"
+dependencies = [
+    "numpy>=1.26",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+# GPU training/eval stack. Linux nodes only: `uv sync --extra gpu`.
+gpu = [
+    "torch>=2.8; sys_platform == 'linux'",
+    "transformers>=4.57; sys_platform == 'linux'",
+    "trl>=0.24; sys_platform == 'linux'",
+    "datasets>=4.0; sys_platform == 'linux'",
+    "accelerate>=1.10; sys_platform == 'linux'",
+    "deepspeed>=0.17; sys_platform == 'linux'",
+    "vllm>=0.11; sys_platform == 'linux'",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/envlab"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = [".", "src"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP"]
