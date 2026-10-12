@@ -1,7 +1,7 @@
 # Results: robust vs leaky rewards under GRPO
 
 > **Status: skeleton.** Everything between the `GENERATED` markers is written by
-> `eval/compare.py`; rerun it to refresh. Text outside the markers is hand-written
+> `make report` (`eval/compare.py`); rerun it to refresh. Text outside the markers is hand-written
 > and is kept. Verdict rules are in `PREREG.md` (signed off 2026-10-12).
 
 ## Summary
@@ -89,7 +89,7 @@ Base evals: none.
 
 #### H1: the environment teaches — **NOT AVAILABLE**
 
-Rule: 2b robust true success − base ≥ 10 pts **and** 95% CI lower bound > 0.
+Rule: 2b robust true success - base ≥ 10 pts **and** 95% CI lower bound > 0.
 
 Not computed: no eval records for size='2b' reward='robust'.
 
@@ -99,7 +99,7 @@ Still missing for a final verdict:
 
 #### H2: a leaky reward misleads — **NOT AVAILABLE**
 
-Rule: 2b: final-50-step training reward leaky ≥ robust; true success robust − leaky ≥ 10 pts with CI excluding 0; leaky exploit ≥ 10% and ≥ 2× base.
+Rule: 2b: final-50-step training reward leaky ≥ robust; true success robust - leaky ≥ 10 pts with CI excluding 0; leaky exploit ≥ 10% and ≥ 2x base.
 
 Not computed: no robust/leaky seed pairs for size '2b'.
 
@@ -109,7 +109,7 @@ Still missing for a final verdict:
 
 #### H5: bigger models exploit more — **EXPLORATORY/INCOMPLETE (data still landing)**
 
-Rule: final leaky exploit rate 0.8B < 2B < 4B (strict) **and** 4B − 0.8B CI excludes 0; needs 3 leaky seeds per size.
+Rule: final leaky exploit rate 0.8B < 2B < 4B (strict) **and** 4B - 0.8B CI excludes 0; needs 3 leaky seeds per size.
 
 Reason: leaky runs for fewer than two sizes; seeds per size {'0.8b': 0, '2b': 0, '4b': 0}.
 
@@ -160,7 +160,7 @@ Still missing for a final verdict:
 
 ### H3 (exploratory): true-success gain by family vs base pass rate
 
-Base pass rate = base model true success on that family's held-out template. In band = 10–90%. Gain = trained (mean across seeds, final) − base. No CIs, no test.
+Base pass rate = base model true success on that family's held-out template. In band = 10-90%. Gain = trained (mean across seeds, final) - base. No CIs, no test.
 
 | Size | Family | Base pass | In band | Robust gain | Leaky gain |
 |---|---|---|---|---|---|
@@ -168,7 +168,7 @@ Base pass rate = base model true success on that family's held-out template. In 
 
 ### Figures
 
-Plots not written (`--no-plots`, or matplotlib missing: `--extra report`).
+Plots not written (no eval data yet, `--no-plots`, or matplotlib missing: `--extra report`).
 <!-- END GENERATED -->
 
 ## H1: the environment teaches

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -11,6 +12,8 @@ from eval import compare
 from eval.compare import (
     BEGIN_MARKER,
     END_MARKER,
+    Analysis,
+    HypothesisResult,
     analyze,
     load_dataset,
     read_train_log,
@@ -19,11 +22,11 @@ from eval.compare import (
     write_report,
 )
 from eval.fake_data import eval_records, write_fake_tree
-from eval.metrics import STATUS_FAIL, STATUS_INCOMPLETE, STATUS_PASS
+from eval.metrics import STATUS_FAIL, STATUS_INCOMPLETE, STATUS_PASS, Verdict
 
 N_BOOT = 1000
 REPO = Path(__file__).resolve().parents[1]
-FAKE = {"final_step": 300, "eval_every": 100}
+FAKE: dict[str, Any] = {"final_step": 300, "eval_every": 100}
 
 
 def _analyze(root: Path):
@@ -31,8 +34,13 @@ def _analyze(root: Path):
     return analyze(data, n_boot=N_BOOT)
 
 
-def _by_h(an):
+def _by_h(an: Analysis) -> dict[str, HypothesisResult]:
     return {h.hypothesis: h for h in an.hypotheses}
+
+
+def _v(h: HypothesisResult) -> Verdict:
+    assert h.verdict is not None, h.error
+    return h.verdict
 
 
 @pytest.fixture(scope="module")
@@ -52,16 +60,16 @@ def test_full_verdicts_match_known_effects(full):
     assert an.count("final") == 18
     for name in ("H1", "H2", "H5"):
         assert hs[name].verdict is not None, hs[name].error
-        assert hs[name].verdict.status == STATUS_PASS, hs[name].verdict.reason
+        assert _v(hs[name]).status == STATUS_PASS, _v(hs[name]).reason
         assert not hs[name].provisional
         assert hs[name].label == "PASS"
-    h5 = hs["H5"].verdict.numbers
+    h5 = _v(hs["H5"]).numbers
     assert h5["exploit_0.8b"] < h5["exploit_2b"] < h5["exploit_4b"]
 
 
 def test_full_tables_filled(full):
     _, an = full
-    assert len(an.conditions) == 9  # 3 sizes × (base, robust, leaky)
+    assert len(an.conditions) == 9  # 3 sizes x (base, robust, leaky)
     for c in an.conditions:
         assert set(c.cells) == {"true_success", "exploit", "format_failure"}
         for cell in c.cells.values():
@@ -106,29 +114,27 @@ def test_full_markdown(full):
 
 def test_partial_data_gives_provisional_verdicts(tmp_path):
     runs = ["2b-rob-s1", "2b-rob-s2", "2b-rob-s3", "2b-leak-s1", "2b-leak-s2"]
-    write_fake_tree(
-        tmp_path, run_ids=runs, stop_at={"2b-rob-s2": 200}, base_sizes=("2b",), **FAKE
-    )
+    write_fake_tree(tmp_path, run_ids=runs, stop_at={"2b-rob-s2": 200}, base_sizes=("2b",), **FAKE)
     an = _analyze(tmp_path)
     hs = _by_h(an)
     assert not an.complete
     assert an.count("final") == 4 and an.count("partial") == 1 and an.count("missing") == 13
 
     h1 = hs["H1"]
-    assert h1.verdict.status in (STATUS_PASS, STATUS_FAIL)
+    assert _v(h1).status in (STATUS_PASS, STATUS_FAIL)
     assert h1.provisional and h1.label.endswith("(provisional)")
     assert any("2b-rob-s2@200" in g for g in h1.gaps)
-    assert h1.verdict.n["seeds"] == 3
+    assert _v(h1).n["seeds"] == 3
 
     h2 = hs["H2"]
     assert h2.verdict is not None and h2.provisional
-    assert h2.verdict.n["seed_pairs"] == 2
+    assert _v(h2).n["seed_pairs"] == 2
     assert any("2b-leak-s3" in g for g in h2.gaps)
-    assert any("only 2 seed(s)" in n for n in h2.verdict.notes)
+    assert any("only 2 seed(s)" in n for n in _v(h2).notes)
 
     h5 = hs["H5"]
-    assert h5.verdict.status == STATUS_INCOMPLETE
-    assert h5.verdict.n["seeds_2b"] == 2 and h5.verdict.n["seeds_4b"] == 0
+    assert _v(h5).status == STATUS_INCOMPLETE
+    assert _v(h5).n["seeds_2b"] == 2 and _v(h5).n["seeds_4b"] == 0
 
     md = render_markdown(an, None, tmp_path)
     assert "**Incomplete data: verdicts are provisional.**" in md
@@ -142,7 +148,7 @@ def test_no_data_at_all(tmp_path):
     hs = _by_h(an)
     assert hs["H1"].verdict is None and hs["H1"].label == "NOT AVAILABLE"
     assert hs["H2"].verdict is None
-    assert hs["H5"].verdict.status == STATUS_INCOMPLETE
+    assert _v(hs["H5"]).status == STATUS_INCOMPLETE
     md = render_markdown(an, None, tmp_path)
     assert "Runs at final checkpoint: 0/18" in md
     assert md.count("| missing |") == 21
@@ -152,8 +158,8 @@ def test_missing_training_logs_flagged(tmp_path):
     runs = [f"2b-{r}-s{s}" for r in ("rob", "leak") for s in (1, 2, 3)]
     write_fake_tree(tmp_path, run_ids=runs, base_sizes=("2b",), train_logs=False, **FAKE)
     hs = _by_h(_analyze(tmp_path))
-    assert hs["H1"].verdict.status == STATUS_PASS and not hs["H1"].provisional
-    assert hs["H2"].verdict is None and "training logs" in hs["H2"].error
+    assert _v(hs["H1"]).status == STATUS_PASS and not hs["H1"].provisional
+    assert hs["H2"].verdict is None and "training logs" in (hs["H2"].error or "")
     assert any("no training log" in g for g in hs["H2"].gaps)
 
 
@@ -206,6 +212,7 @@ def test_train_log_last_line_per_step_wins(tmp_path):
     rows = [{"step": s, "reward": 0.1} for s in (1, 2, 3)] + [{"step": 2, "reward": 0.9}]
     p.write_text("".join(json.dumps(r) + "\n" for r in rows) + '{"step": 4, "rew')
     log = read_train_log(p)
+    assert log is not None
     assert [r["step"] for r in log] == [1, 2, 3]
     assert log[1]["reward"] == 0.9
     assert read_train_log(tmp_path / "nope.jsonl") is None
@@ -267,9 +274,16 @@ def test_cli_writes_report_between_markers(tmp_path, full):
     assert "| **PASS** |" in text and "Plots not written" in text
 
 
+def test_cli_root_reads_and_writes_inside_root(tmp_path):
+    write_fake_tree(tmp_path, run_ids=["2b-rob-s1"], base_sizes=("2b",), **FAKE)
+    assert compare.main(["--root", str(tmp_path), "--n-boot", "100", "--no-plots"]) == 0
+    text = (tmp_path / "results.md").read_text()
+    assert BEGIN_MARKER in text and "`2b-rob-s1` | final | 300 |" in text
+
+
 def test_plots_written(tmp_path, full):
     pytest.importorskip("matplotlib")
-    root, an = full
+    _, an = full
     paths = compare.make_plots(an, tmp_path / "figures")
     assert [p.name for p in paths] == [compare.FIG_CURVES, compare.FIG_EXPLOIT]
     assert all(p.stat().st_size > 1000 for p in paths)

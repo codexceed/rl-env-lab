@@ -42,8 +42,8 @@ import numpy as np
 if __package__ in (None, ""):  # run as a script: make `eval` and `train` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from eval.metrics import H5_SIZES  # noqa: E402
-from train.checkpoints import COMPLETE, step_name  # noqa: E402
+from eval.metrics import H5_SIZES
+from train.checkpoints import COMPLETE, step_name
 
 REWARDS = ("robust", "leaky")
 SEEDS = (1, 2, 3)
@@ -81,8 +81,8 @@ def parse_run_id(run_id: str) -> tuple[str, str, int]:
     return size, {"rob": "robust", "leak": "leaky"}[short], int(seed[1:])
 
 
-def _sigmoid(x: np.ndarray | float) -> np.ndarray | float:
-    return 1.0 / (1.0 + np.exp(-x))
+def _sigmoid(x: np.ndarray) -> np.ndarray:
+    return 1.0 / (1.0 + np.exp(-np.asarray(x, dtype=float)))
 
 
 def _logit(p: float) -> float:
@@ -274,7 +274,7 @@ def write_fake_tree(
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
+    p = argparse.ArgumentParser(description="Write a fake evals/ and runs/ tree with known effects.")
     p.add_argument("--out", required=True, type=Path, help="writes <out>/evals and <out>/runs")
     p.add_argument("--seed", type=int, default=0, help="data seed")
     p.add_argument("--only", nargs="*", help="sizes or run IDs to include (default: all 18)")
