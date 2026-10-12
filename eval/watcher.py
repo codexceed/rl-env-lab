@@ -400,6 +400,7 @@ class Watcher:
                 },
             )
             self._log("eval_done", label=c.label, duration_s=round(duration, 3))
+            self._release(job.claim, job.attempt)
             return
         reason = "timeout" if job.timed_out else ("no output" if rc == 0 else f"exit {rc}")
         d = eval_run_dir(self.s.evals_root, c.run_id)

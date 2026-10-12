@@ -17,8 +17,9 @@ Inputs
 `eval.metrics.EvalRecord` per line. Base models live in ``<evals>/base-<size>/``
 with ``reward: "base"``, ``seed: null``, ``step: 0``.
 
-* A step with a ``.failed`` or ``.claim`` marker next to it is skipped (failed, or
-  being evaluated right now).
+* A step with a ``.failed`` marker next to it is skipped (failed), and so is one with a ``.claim``
+  but no ``.done`` (being evaluated right now). ``.done`` wins over a leftover claim: watchers before
+  2026-10-13 never released the claim of a successful eval.
 * Unparseable lines (e.g. a truncated last line) are skipped and counted.
 * **Eval protocol** (PREREG §3, `Protocol`): every checkpoint must cover exactly the
   frozen held-out ids (``data/splits/heldout.txt``), with ``eval.formal.samples``
@@ -335,8 +336,9 @@ def _load_records(evals_root: Path, notes: list[str], invalid: dict[CkptKey, int
             m = _STEP_FILE_RE.match(f.name)
             if not m:
                 continue
+            done = f.with_suffix(".done").exists()
             for marker, why in ((".failed", "failed"), (".claim", "being evaluated")):
-                if f.with_suffix(marker).exists():
+                if f.with_suffix(marker).exists() and not (marker == ".claim" and done):
                     skipped.append(f"{rdir.name}/{f.stem} ({why})")
                     break
             else:

@@ -121,6 +121,7 @@ def test_watcher_evaluates_in_priority_order_and_writes_done(env):
     for s in (50, 100, 150, 170):
         done = json.loads(eval_done_path(evals, "a-rob-s1", s).read_text())
         assert done["step"] == s
+        assert not (evals / "a-rob-s1" / f"{step_name(s)}.claim").exists()  # released on success too
     assert pending_checkpoints(runs, evals) == []
 
 

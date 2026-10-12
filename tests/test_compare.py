@@ -419,6 +419,9 @@ def test_loading_skips_claimed_failed_truncated_and_takes_reruns(tmp_path):
     # step 200: being evaluated; step 300: failed; step 150: half the instances
     _write(ev / "2b-rob-s1/step-00200.jsonl", eval_records("2b", "robust", 1, 200, **kw))
     (ev / "2b-rob-s1/step-00200.claim").write_text("{}")
+    # step 100: a claim left behind next to .done (old watchers) does not hide a finished eval
+    (ev / "2b-rob-s1/step-00100.claim").write_text("{}")
+    (ev / "2b-rob-s1/step-00100.done").write_text("{}")
     _write(ev / "2b-rob-s1/step-00300.jsonl", eval_records("2b", "robust", 1, 300, **kw))
     (ev / "2b-rob-s1/step-00300.failed").write_text("{}")
     _write(ev / "2b-rob-s1/step-00150.jsonl", eval_records("2b", "robust", 1, 150, **kw)[:50])
