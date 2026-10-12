@@ -207,7 +207,7 @@ def test_repo_allocation_config_matches_plan():
     assert n1.eval_gpus == (6, 7)
     assert n1.settings.shutdown_cmd is None  # release is opt-in
     assert n1.settings.deadline_ts == datetime(2026, 10, 16, 6, 0).timestamp()
-    assert n1.settings.pruning_enabled is False
+    assert n1.settings.pruning_enabled is True  # resume verified (§1.4 dry run)
 
 
 def test_config_rejects_unknown_node_and_bad_template(env):

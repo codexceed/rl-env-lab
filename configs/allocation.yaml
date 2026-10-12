@@ -49,7 +49,7 @@ transfer:
   max_concurrent: 2
 
 checkpoints:
-  pruning_enabled: false  # PROGRESSION §1.4: enable only after resume is verified
+  pruning_enabled: true   # PROGRESSION §1.4: resume verified in the dry run; delete recovery ckpts after final integrity check
   keep_last: 2
   required_eval_files: ["config.json", "*.safetensors"]  # final-step integrity check
 
