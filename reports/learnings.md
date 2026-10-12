@@ -4,7 +4,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 - **Living document.** Add a lesson when a result, incident or decision teaches something non-obvious; correct one when later data changes it (strike the old claim, say why). Rules: `AGENTS.md` → "Updating `reports/learnings.md`".
 - **Labels:** *pre-registered* = from H1/H2/H5 verdicts; *training-time* = from `train_metrics.jsonl` on training tasks; *exploratory* = ADR 0005/0006 work. Never present an exploratory or training-time number as a verdict.
-- **Last updated:** 2026-10-12 (block 1 done, 4B and v2 running; no verdicts yet).
+- **Last updated:** 2026-10-12 21:00 (block 1 done; 4B seed 1 done; v2 at ~step 300; no verdicts yet).
 
 ## 1. Reward hacking: what it looks like here
 
@@ -13,7 +13,9 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **Leaky training doesn't just allow exploits, it unlearns the real skill** | 4B on training tasks, steps 1–100 → 601–700: leaky run robust 0.63 → 0.27 with leaky ~1.0; robust run robust 0.74 → 0.95 | training-time |
 | **The typical exploit is "right record, wrong amount"** | Traces: the model writes a number, then works out the correct value in its own note, too late | base evals |
 | **Base models already "exploit" a lot** | Formal base exploit rate 0.8B 41%, 2B 48%, 4B 57%; "≥ 2× base" was unreachable, amended to base + 10 pts (ADR 0004) | base evals |
-| **The robust/leaky split grows with size** | 2B splits on held-out tasks by step 300 (robust true 0.33–0.40 vs leaky 0.20–0.30); 0.8B shows no clear split | held-out, provisional |
+| **The robust/leaky split grows with size** | 2B at step 1,000, held-out: robust true 0.34–0.41 vs leaky 0.23–0.30 (base 0.22); exploit leaky 0.53–0.70 (base 0.48). 0.8B shows no clear split | held-out, provisional (per-seed, final checkpoint; verdicts need the paired bootstrap) |
+| **Robust training still "exploits" on held-out tasks** | 2B robust runs end at held-out exploit 0.44–0.65: they never learned the new arithmetic, so their wrong answers still look right on the surface | held-out, provisional |
+| **A leaky run can degenerate while scoring ~1.0** | 2b-leak-s1 ends with every answer hitting the 256-token cap (tool call first, then a runaway note), leaky reward 0.99, robust 0.26 | training-time |
 | **Held-out failures mix hacking with missing skill** | Held-out F1/F3/F4 stay near 0% exact in every run: models learn tool, customer and status, not new arithmetic. Motivated the same-type eval (ADR 0005) | held-out |
 
 ## 2. Reasoning before answering is the strongest lever so far
@@ -26,6 +28,8 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 - **Thinking on cuts base exploits ~4×.** Working the sum out before committing removes most wrong-amount answers. *(exploratory, base model; v2 tests whether it survives RL pressure)*
 - **The answer budget matters as much as the switch.** At 512 the model was cut off, not unable: when reasoning finished, most types were 93–100% correct.
+- **Under RL, thinking on transforms robust training, but leaky training still hacks.** v2 2B at steps 200–300, held-out: robust runs true 0.77–0.82, exploit 0.06–0.20 (v1 robust at step 1,000: 0.34–0.41 / 0.44–0.65). v2 leaky runs: true 0.30–0.36, exploit 0.55–0.66. *(exploratory, provisional)*
+- **Leaky training shortens the reasoning.** v2 leaky answers average 260–400 tokens vs 530–545 for v2 robust: when the grader doesn't check the sum, the model stops working it out. *(exploratory, training-time)*
 - **Run a sensitivity check before accepting a gate's no-go.** The gate as written said no-go at 512; one extra run at 1,024 showed why (ADR 0006).
 
 ## 3. Experiment design
@@ -39,7 +43,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 | Lesson | Evidence |
 |---|---|
-| **The vLLM-vs-trainer logprob gap gives early warning of collapse** | Toy LR sweep: 3e-6 collapsed at step ~28, 1e-5 at step 3, each after gaps of 10+ nats; 1e-6 stable. Logged every step since (`sampler_logp_diff_*`). 4B spikes to ~6 nats, 2B and v2 stay < 2 |
+| **The vLLM-vs-trainer logprob gap gives early warning of collapse** | Toy LR sweep: 3e-6 collapsed at step ~28, 1e-5 at step 3, each after gaps of 10+ nats; 1e-6 stable. Logged every step since (`sampler_logp_diff_*`). Later spikes: 4B up to 9.3 nats (4b-rob-s1's last 50 steps, where its robust reward slipped 0.95 → 0.85), v2 robust up to 6.5; none collapsed |
 | **Small learning rates need fp32 master weights** | bf16 weights round 1e-6 updates away |
 | **Qwen3.5 vision-language checkpoints break weight sync and resume** | Fixed by training from a text-only export |
 
