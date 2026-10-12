@@ -1,6 +1,6 @@
 # 0004. Amendments after the base-model evals
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-12
 - **Deciders:** owner (proposed after the §2.2/§2.3 base evals)
 
