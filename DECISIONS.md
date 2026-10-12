@@ -14,7 +14,7 @@ Format: one row per decision. A changed decision gets a new row; the old row is 
 | 6 | — | Learning rate | `____` (from 1e-6 / 3e-6 / 1e-5) | | Pending §0.4 |
 | 7 | — | Step count | `____` (common across sizes) | | Pending §0.4 benchmark |
 | 8 | — | Generation backend | `____` (vLLM preferred; HF fallback for train + eval) | | Pending §0.3 |
-| 9 | — | 4B GPU layout | 1 vLLM server + 3 train (default) | | Pending §0.4 benchmark |
+| 9 | — | 4B GPU layout | ~~1 vLLM server + 3 train~~ infeasible (64 ∤ 3 ranks); candidates 1 server + 2 train, or 4-GPU colocated | | Pending §0.4 benchmark |
 | 10 | 2026-10-12 | Hypotheses | H1, H2, H5 tested; H3 exploratory; H4 cut | Deadline | Locked |
 | 11 | 2026-10-12 | Scope cuts | Triage classifier, multi-turn cut; ablations optional | Deadline | Locked |
 | 12 | 2026-10-12 | Node shutdown | Coordinator only, after training + eval + transfers | Runs share nodes | Superseded by #13 |

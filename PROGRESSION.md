@@ -220,12 +220,13 @@ Three agents in parallel; I integrate and review.
 - [x] Unit tests per family: correct, wrong amount, wrong record, side effect — 2026-10-12, 196 verify tests on the real sim, merged (#6)
 
 ### 1.3 Tasks and data — `src/envlab/tasks/`
-- [ ] F1–F5 generators, 3 templates each, seeded; harder variants for train templates
-- [ ] Distractors (2–4 per prompt)
-- [ ] Broken variants (25 × 4) + `manifest.json`
-- [ ] Data build: 2,000 train, 250 held-out, 100 broken
-- [ ] `prompts.py` in native format
-- [ ] Unit tests: seed reproducibility, no T3 in train
+- [x] F1–F5 generators, 3 templates each, seeded; harder variants for train templates
+- [x] Distractors (2–4 per prompt)
+- [x] Broken variants (25 × 4) + `manifest.json`
+- [x] Data build: 2,000 train, 250 held-out, 100 broken
+- [x] `prompts.py` in native format
+- [x] Unit tests: seed reproducibility, no T3 in train — 2026-10-12, merged (#7)
+- [ ] Known limit: prompt budget (≤ 1,500 est. tokens) leaves no headroom; most *hard* variants fit only 2–3 distractors (not 5–6). Only matters if the too-easy branch fires — then raise hard-variant budget or revise k before using them
 
 ### 1.4 Training and eval plumbing
 - [ ] TRL reward wrappers (robust, leaky; same interface)
@@ -256,8 +257,8 @@ Three agents in parallel; I integrate and review.
 ## P2 — Wednesday 14 Oct AM: acceptance and baseline
 
 ### 2.1 Acceptance — `reports/acceptance.md`
-- [ ] G1–G3 on every instance
-- [ ] All 100 broken variants rejected; ≥99% of valid instances pass
+- [x] G1–G3 on every instance — 2026-10-12, 4,250 valid (train, train_hard, held-out) all pass
+- [x] All 100 broken variants rejected; ≥99% of valid instances pass — 100/100, 100%
 - [ ] Fix and regenerate if not; record failures
 
 ### 2.2 Diagnostic baseline (train templates only) — `reports/baseline.md`
@@ -415,4 +416,6 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | PREREG signed off with default interpretations; diagnostic baseline at temp 1.0, robust grader decides band | Owner | [ ] |
 | 2026-10-12 | Recovery checkpoints: rolling keep-last-2 during training (not only after the run), gated on verified resume | ~25–30 GB per 2B full-state ckpt; post-run-only pruning would need TBs | [ ] |
 | 2026-10-12 | Tool calls in Qwen3.5 native XML format (INSTRUCTIONS assumed JSON); parser also accepts JSON; `enable_thinking=False` always | Native chat template; owner approved | [ ] |
+| 2026-10-12 | 4B layout 1 vLLM server + 3 train is infeasible (64 completions/step not divisible by 3 train ranks); benchmark 1+2 and 4-GPU colocated instead | TRL batch constraint, found in #3 | [ ] |
+| 2026-10-12 | Train from a clean text-only export of each Qwen3.5 checkpoint; fp32 master weights + bf16 autocast | Hub repos are VL checkpoints (weight-sync/resume break); bf16 weights lose 1e-6 updates | [ ] |
 | 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
