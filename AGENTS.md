@@ -57,12 +57,15 @@ CI runs ruff and pytest on every PR. **The CI environment has no GPU and no gpu 
 - Don't edit another workstream's module. Code against its interface (from SPEC) and leave a note.
 
 **Git**
-- Branch: `<type>/<issue-id>-<description>`, e.g. `feat/3-simulator-core`.
+- **Commit directly to `main`** by default. Parallel workers use their own worktree branch locally; the integrator merges it into `main` and pushes. No PR.
+- **PR only for fundamental changes:** serious architecture or planning changes (e.g. model family, hypotheses or stats rules, run matrix, simulator/grader contract). **Ask the owner before opening one.**
+- Branch names, when used: `<type>/<issue-id>-<description>`, e.g. `feat/5-simulator-core`. Reference the issue in commits (`(#5)`) or close it with `Closes #5` in the merge commit.
 - Commits: Conventional Commits, `<type>(<scope>): <subject>`. Scopes: `sim`, `tasks`, `verify`, `train`, `eval`, `spec`, `prereg`, `plan`, `ci`, `repo`.
 - **No AI or assistant attribution anywhere**: no `Co-Authored-By` trailers for agents, no "generated with" footers, in commits, PRs or comments.
 - Commit as the repo-local git user. Never override author or committer.
+- Keep `main` green: run ruff and pytest before every push.
 
-**PRs**
+**PRs (when the owner approves one)**
 - Sections, in order: **Description**, **Motivation**, **Changes**, **Testing**.
 - Use plain language and reference the PROGRESSION section (e.g. "§1.1").
 - Merge only when CI is green.
