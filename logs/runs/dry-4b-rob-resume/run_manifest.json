@@ -1,0 +1,91 @@
+{
+  "base_model": {
+    "export_sha256": "1bc59da88125c2737c28d1f0e86c2d43b9cf60d39a1c6d3d9394329c38db3104",
+    "id": "Qwen/Qwen3.5-4B"
+  },
+  "config": {
+    "budget": {
+      "beta": 0.0,
+      "bf16": true,
+      "enable_thinking": false,
+      "gradient_checkpointing": true,
+      "learning_rate": 1e-06,
+      "loss_type": "dapo",
+      "lr_scheduler_type": "constant",
+      "max_completion_length": 256,
+      "max_prompt_length": 1536,
+      "max_steps": 12,
+      "num_generations": 8,
+      "param_dtype": "float32",
+      "prompts_per_step": 8,
+      "scale_rewards": "group",
+      "temperature": 1.0,
+      "warmup_steps": 0
+    },
+    "checkpoints": {
+      "eval_every": 5,
+      "eval_weights_dtype": "bfloat16",
+      "keep_last": 2,
+      "pruning_enabled": true,
+      "recovery_every": 5
+    },
+    "layout": {
+      "batch": {
+        "completions_per_step": 64,
+        "gradient_accumulation_steps": 2,
+        "num_processes": 4,
+        "per_device_train_batch_size": 8
+      },
+      "generation": "colocate",
+      "train_ranks": 4
+    },
+    "model": "Qwen/Qwen3.5-4B",
+    "seed": 1,
+    "size": "4b",
+    "train_split": "train"
+  },
+  "config_sha256": "56a2b11e7fb294f999591c15d3f53b3771a1c011c17ea2bf2d571ae0e6349686",
+  "data": {
+    "manifest_sha256": "7331d1babc0e7935b180aa004ad0950562084e8cfc0260119297ef9e02a89164",
+    "matches_manifest": true,
+    "sha256": "5a872ac04fe71be9bd48397d9a0c03d1575fbff8c61fd48146a9d9de6d038ce3",
+    "spec_version": "1.0",
+    "split": "train"
+  },
+  "data_dir": "data",
+  "export": {
+    "dir": "/teamspace/studios/this_studio/rl-env-lab/runs/models/Qwen3.5-4B-text",
+    "files": {
+      "config.json": "63f47812d0f11118e4d252d2b3ad488707eb9287a11589f4fd382a1d31182724",
+      "model.safetensors.index.json": null
+    },
+    "safetensors": {
+      "model.safetensors": 8411552008
+    },
+    "sha256": "1bc59da88125c2737c28d1f0e86c2d43b9cf60d39a1c6d3d9394329c38db3104"
+  },
+  "git": {
+    "commit": "3e3838be958ee33b3489650bbc5d4313c64d624d",
+    "dirty": false
+  },
+  "manifest_version": 1,
+  "max_steps": 12,
+  "reward": "robust",
+  "reward_weights": {
+    "leaky": 0.0,
+    "robust": 1.0
+  },
+  "run_id": "dry-4b-rob-resume",
+  "seed": 1,
+  "size": "4b",
+  "starts": [
+    {
+      "git": {
+        "commit": "3e3838be958ee33b3489650bbc5d4313c64d624d",
+        "dirty": false
+      },
+      "mismatch": [],
+      "resume_from": "runs/dry-4b-rob/recovery/checkpoint-5"
+    }
+  ]
+}

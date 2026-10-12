@@ -1,0 +1,15 @@
+{
+  "run_id": "dry-4b-rob-resume",
+  "steps": [
+    {
+      "eval": "failed",
+      "final": false,
+      "step": 10
+    },
+    {
+      "eval": "failed",
+      "final": true,
+      "step": 12
+    }
+  ]
+}

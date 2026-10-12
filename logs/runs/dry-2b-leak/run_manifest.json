@@ -12,9 +12,9 @@
       "learning_rate": 1e-06,
       "loss_type": "dapo",
       "lr_scheduler_type": "constant",
-      "max_completion_length": 128,
+      "max_completion_length": 256,
       "max_prompt_length": 1536,
-      "max_steps": 10,
+      "max_steps": 12,
       "num_generations": 8,
       "param_dtype": "float32",
       "prompts_per_step": 8,
@@ -26,7 +26,7 @@
       "eval_every": 5,
       "eval_weights_dtype": "bfloat16",
       "keep_last": 2,
-      "pruning_enabled": false,
+      "pruning_enabled": true,
       "recovery_every": 5
     },
     "layout": {
@@ -44,11 +44,11 @@
     "size": "2b",
     "train_split": "train"
   },
-  "config_sha256": "31033ef8975297af37b5f4844fd09291423b84952ff38bb4bb49680793f7ac2a",
+  "config_sha256": "9bca894779d9e6f00ed27c3c770873cb5405780ea61a9590394d9afa296e7ffc",
   "data": {
-    "manifest_sha256": "a6304b74c098306b41976830628a7718c17424821295a41e24799767efefbe87",
+    "manifest_sha256": "7331d1babc0e7935b180aa004ad0950562084e8cfc0260119297ef9e02a89164",
     "matches_manifest": true,
-    "sha256": "028e76c219ad448856c018967a2aff026f49ac242da5b9ae8b6e00a21bd88535",
+    "sha256": "5a872ac04fe71be9bd48397d9a0c03d1575fbff8c61fd48146a9d9de6d038ce3",
     "spec_version": "1.0",
     "split": "train"
   },
@@ -65,11 +65,11 @@
     "sha256": "08df3c25651566f5aa34b36df55bbed5c1f597874b4e4f28915a4d922e69748c"
   },
   "git": {
-    "commit": "1b5d48a1ebf5653852e33c99be7d53bd83a3e236",
+    "commit": "3e3838be958ee33b3489650bbc5d4313c64d624d",
     "dirty": false
   },
   "manifest_version": 1,
-  "max_steps": 10,
+  "max_steps": 12,
   "reward": "leaky",
   "reward_weights": {
     "leaky": 1.0,
@@ -81,7 +81,7 @@
   "starts": [
     {
       "git": {
-        "commit": "1b5d48a1ebf5653852e33c99be7d53bd83a3e236",
+        "commit": "3e3838be958ee33b3489650bbc5d4313c64d624d",
         "dirty": false
       },
       "mismatch": [],

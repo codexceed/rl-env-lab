@@ -8,8 +8,13 @@
     },
     {
       "eval": "failed",
-      "final": true,
+      "final": false,
       "step": 10
+    },
+    {
+      "eval": "failed",
+      "final": true,
+      "step": 12
     }
   ]
 }
