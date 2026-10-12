@@ -34,9 +34,11 @@ help:  ## List the targets
 setup: hooks  ## First-time local setup: dev env + pre-commit hooks
 	uv sync --group dev
 
-setup-gpu:  ## GPU node setup: dev + gpu extra, then build causal-conv1d (no PyPI wheels)
+setup-gpu:  ## GPU node setup: dev + gpu extra, then build causal-conv1d (no PyPI wheels; needs CUDA 13 nvcc)
 	uv sync --group dev --extra gpu
-	uv pip install --no-build-isolation causal-conv1d
+	uv pip install setuptools wheel ninja packaging
+	CAUSAL_CONV1D_FORCE_BUILD=TRUE MAX_JOBS=$${MAX_JOBS:-16} \
+		uv pip install --no-build-isolation --no-deps 'causal-conv1d==1.7.0'
 
 hooks:  ## Install the pre-commit hooks
 	$(PRECOMMIT) install
