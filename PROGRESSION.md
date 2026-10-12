@@ -343,10 +343,10 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 
 ### 3.6 Project version v3: harder, larger task set (ADR 0007, exploratory)
 - [ ] ADR 0007 accepted by the owner
-- [ ] `SPEC_v3.md`: 15 train templates (A–C per family), 5 near + 5 far held-out, counts, gates
-- [ ] v3 generators, solvers, wrong-value calls, broken variants; `data/v3/` + its manifest; v1 `data/manifest.json` byte-identical
-- [ ] v3 acceptance: ≥ 99% of valid instances pass G1–G3, every broken instance fails a gate
-- [ ] `--variant v3` (thinking on, cap 1,024, `data/v3`, prompt budget 2,048, context 3,072); eval reports near and far separately
+- [x] `SPEC_v3.md`: 15 train templates (A–C per family), 5 near + 5 far held-out, counts, gates — 2026-10-13 01:00, draft for owner sign-off
+- [x] v3 generators, solvers, wrong-value calls, broken variants; `data/v3/` + its manifest; v1 `data/manifest.json` byte-identical — 2026-10-13 01:00, v1 rebuild sha256-identical (both manifests)
+- [x] v3 acceptance: ≥ 99% of valid instances pass G1–G3, every broken instance fails a gate — 2026-10-13 01:00, 7,500 / 7,500 valid pass; 100 / 100 broken rejected
+- [x] `--variant v3` (thinking on, cap 1,024, `data/v3`, prompt budget 2,048, context 3,072); eval reports near and far separately — 2026-10-13 00:40, tested on synthetic data; v1/v2 identity hashes pinned unchanged
 - [ ] 🚦 v3 calibration gate: thinking-on base diagnostic on v3 train split: 4B ≥ 9 / 15 in band and leaky pass ≤ 90%; 2B ≥ 6 / 15 in band (one tuning pass allowed)
 - [ ] v3 dry run (4B, 12 steps): memory and step time at the longer prompts
 - [ ] v3 runs: 4B × 6 and 2B × 6 (start by Wed 14 Oct evening)
