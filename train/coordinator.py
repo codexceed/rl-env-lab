@@ -77,9 +77,11 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script: make `train` / `eval` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-import yaml  # noqa: E402
+import contextlib
 
-from train.checkpoints import (  # noqa: E402
+import yaml
+
+from train.checkpoints import (
     DEFAULT_REQUIRED_EVAL_FILES,
     TERMINAL_STATUSES,
     atomic_write_json,
@@ -306,9 +308,7 @@ def build_plan(cfg: dict, node: str) -> NodePlan:
                 raise ConfigError(f"{rid}: vllm_server_gpus={vllm} leaves no training GPU")
             timeout = rc.get("timeout_s", sc.get("run_timeout_s", co.get("default_run_timeout_s")))
             if timeout is None:
-                raise ConfigError(
-                    f"{rid}: no timeout (runs/sizes/coordinator.default_run_timeout_s)"
-                )
+                raise ConfigError(f"{rid}: no timeout (runs/sizes/coordinator.default_run_timeout_s)")
             template = rc.get("train_command") or sc.get("train_command") or commands.get("train")
             if not template:
                 raise ConfigError(f"{rid}: no train command template")
@@ -365,10 +365,8 @@ def pid_alive(pid: int | None) -> bool:
 def killpg(pid: int | None, sig: int) -> None:
     if not pid:
         return
-    try:
+    with contextlib.suppress(ProcessLookupError, PermissionError):
         os.killpg(pid, sig)
-    except ProcessLookupError, PermissionError:
-        pass
 
 
 def _iso(ts: float) -> str:
@@ -520,8 +518,9 @@ class Coordinator:
             run.status = read_status(run_dir(self.s.runs_root, run.spec.run_id))
             if not run.running:
                 continue
-            pid = int(run.status.get("pid") or 0)
-            if run.status.get("host") == self.host and pid_alive(pid):
+            status = run.status or {}
+            pid = int(status.get("pid") or 0)
+            if status.get("host") == self.host and pid_alive(pid):
                 run.pid = pid
                 self.event("adopt", run_id=run.spec.run_id, pid=pid)
             else:
@@ -548,16 +547,14 @@ class Coordinator:
         attempt = run.attempts + 1
         cmd = train_command(self.plan, spec, resume)
         exit_file = self._exit_file(run, attempt)
-        script = (
-            f"{cmd}\n__rc=$?\nprintf '%s' \"$__rc\" > {shlex.quote(str(exit_file))}\nexit $__rc\n"
-        )
+        script = f"{cmd}\n__rc=$?\nprintf '%s' \"$__rc\" > {shlex.quote(str(exit_file))}\nexit $__rc\n"
         env = dict(
             os.environ,
             CUDA_VISIBLE_DEVICES=_csv(spec.gpus),
             ENVLAB_RUN_ID=spec.run_id,
             ENVLAB_RUN_DIR=str(rdir),
         )
-        run.log = open(rdir / "logs" / f"attempt-{attempt}.log", "ab")
+        run.log = open(rdir / "logs" / f"attempt-{attempt}.log", "ab")  # noqa: SIM115 - handed to a child process; closed when it exits
         run.proc = subprocess.Popen(
             ["/bin/sh", "-c", script],
             cwd=self.s.workdir,
@@ -621,9 +618,7 @@ class Coordinator:
             run.log = None
         run.proc = None
         run.pid = None
-        self._write_status(
-            run, status=status, exit_code=rc, reason=reason, ended_at=_iso(self.clock())
-        )
+        self._write_status(run, status=status, exit_code=rc, reason=reason, ended_at=_iso(self.clock()))
         self.event("run_end", run_id=run.spec.run_id, status=status, exit_code=rc, reason=reason)
 
     def _on_exit(self, run: _Run, rc: int | None) -> None:
@@ -658,7 +653,7 @@ class Coordinator:
                         killpg(run.pid, signal.SIGKILL)
                 elif self._past_deadline(now):
                     self._kill(run, "node_deadline", now)
-                elif now >= float(run.status.get("started_ts", now)) + run.spec.timeout_s:
+                elif now >= float((run.status or {}).get("started_ts", now)) + run.spec.timeout_s:
                     self._kill(run, "run_timeout", now)
                 continue
             self._on_exit(run, rc)
@@ -728,8 +723,11 @@ class Coordinator:
             return True
         if not self._watcher_alive():
             return False
+        proc = self.watcher.proc
+        if proc is None:
+            return False
         st = read_json(self.watcher_state_file, default={}) or {}
-        if st.get("pid") != self.watcher.proc.pid or int(st.get("ack_gen", -1)) < self.lease_gen:
+        if st.get("pid") != proc.pid or int(st.get("ack_gen", -1)) < self.lease_gen:
             return False
         busy = {int(g) for g in (st.get("busy") or {})}
         return not (busy & gpus)
@@ -747,7 +745,7 @@ class Coordinator:
 
     def _start_watcher(self) -> None:
         if self.watcher.log is None:
-            self.watcher.log = open(self.cdir / f"{self.node}.watcher.log", "ab")
+            self.watcher.log = open(self.cdir / f"{self.node}.watcher.log", "ab")  # noqa: SIM115 - handed to a child process; closed when it exits
         cmd = [
             sys.executable,
             "-m",
@@ -863,7 +861,7 @@ class Coordinator:
                 "evals_root": self.s.evals_root,
             }
             cmd = render(self.s.transfer_cmd, values)
-            log = open(rdir / "logs" / "transfer.log", "ab")
+            log = open(rdir / "logs" / "transfer.log", "ab")  # noqa: SIM115 - handed to a child process; closed when it exits
             proc = subprocess.Popen(
                 ["/bin/sh", "-c", cmd],
                 cwd=self.s.workdir,
