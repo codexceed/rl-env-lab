@@ -24,7 +24,9 @@ child. Ports are offset by the run's lowest GPU index so runs sharing a node nev
 Artifacts (`train/LAYOUT.md`): eval weights ``eval/step-NNNNN/`` every 50 steps and at the final
 step, recovery checkpoints ``recovery/checkpoint-N/`` (full trainer state), ``COMPLETE`` written
 last in both, and ``train_metrics.jsonl`` one row per optimizer step (`train/callbacks.py`). Rolling
-recovery pruning only with ``checkpoints.pruning_enabled: true``.
+recovery pruning only with ``checkpoints.pruning_enabled: true``. At start the main rank writes
+``run_manifest.json`` (`train/run_manifest.py`): config hash without the reward, data and base-model
+fingerprints, seed, max_steps, git commit; `eval/compare.py` checks matched pairs against it.
 
 Prompts are rendered once with the SPEC §10 call (`envlab.prompts.render_prompt`, thinking off) and
 given to TRL as plain text; every rendered prompt is checked against the 1,536-token budget. The
@@ -332,6 +334,11 @@ def run_settings(cfg: dict[str, Any], args: argparse.Namespace) -> dict[str, Any
     }
 
 
+def layout_identity(layout: Layout) -> dict[str, Any]:
+    """The part of the layout a matched pair must share: no GPU indices, no ports."""
+    return {"generation": layout.generation, "train_ranks": layout.train_ranks, "batch": dict(layout.batch)}
+
+
 def worker_command(args: argparse.Namespace, argv: list[str], layout: Layout) -> list[str]:
     """`accelerate launch` command that re-runs this script as the training worker on the train GPUs."""
     cfg_path = layout.accelerate_config
@@ -544,7 +551,8 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
 
     from train.callbacks import ArtifactCallback, remove_incomplete_recovery
     from train.checkpoints import atomic_write_json
-    from train.rewards import GraderErrors, reward_setup
+    from train.rewards import REWARD_KINDS, GraderErrors, reward_setup
+    from train.run_manifest import build_run_manifest, write_run_manifest
 
     settings = run_settings(cfg, args)
     budget, ckpt = settings["budget"], settings["checkpoints"]
@@ -576,6 +584,17 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
     # Both graders on every generation; weight 1 on the run's own (train/rewards.py). Rewards decode
     # completion_ids with special tokens kept, exactly as eval/heldout.py does.
     funcs, weights = reward_setup(args.reward, decode=lambda ids: tokenizer.decode(ids, skip_special_tokens=False))
+    if main_rank:  # matched-pair evidence for eval/compare.py (train/run_manifest.py)
+        manifest = build_run_manifest(
+            settings,
+            reward_weights=dict(zip(REWARD_KINDS, weights, strict=True)),
+            export_dir=export_dir,
+            layout=layout_identity(layout),
+            repo_root=REPO_ROOT,
+        )
+        changed = write_run_manifest(run_dir, manifest, resume_from=settings["resume_from"])
+        if changed:
+            print(f"[grpo] WARNING: run identity changed since the first start: {changed}", flush=True)
     config = common.grpo_config(
         run_dir / "recovery",
         lr=float(budget["learning_rate"]),

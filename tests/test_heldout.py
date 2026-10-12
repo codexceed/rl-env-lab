@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from tests.verify.verify_builders import BUILDERS
 
+from eval import gallery
 from eval.heldout import (
     EvalError,
     Target,
@@ -16,6 +17,7 @@ from eval.heldout import (
     diagnostic_summary,
     generate_texts,
     make_records,
+    make_records_and_traces,
     parse_args,
     rates,
     resolve_target,
@@ -23,7 +25,7 @@ from eval.heldout import (
     write_jsonl_atomic,
 )
 from eval.metrics import EvalRecord, load_records
-from train.checkpoints import COMPLETE, atomic_write_json, eval_step_dir
+from train.checkpoints import COMPLETE, atomic_write_json, eval_step_dir, eval_traces_path
 
 # SPEC §12, verbatim keys.
 SCHEMA_KEYS = {
@@ -313,3 +315,84 @@ def test_generate_texts_with_fake_generator():
     assert texts == [["7:0", "7:1", "7:2", "7:3"], ["8:0", "8:1", "8:2", "8:3"]]
     with pytest.raises(EvalError):
         generate_texts(lambda *a: [[[1]]], str, [[7], [8]], 4, 0.7, 128)
+
+
+# ---------------------------------------------------------------- traces (exploit gallery, audits)
+
+
+def test_traces_carry_completion_call_and_grader_reasons(heldout):
+    target = Target("2b-leak-s1", "2b", "leaky", 1, 50, Path("x"))
+    samples = fake_samples(heldout)
+    rows, traces = make_records_and_traces(target, heldout, samples)
+    assert rows == make_records(target, heldout, samples)  # the SPEC §12 file is unchanged
+    assert len(traces) == len(rows)
+    texts = [t for group in samples for t in group]
+    for row, tr, text in zip(rows, traces, texts, strict=True):
+        assert {k: tr[k] for k in SCHEMA_KEYS} == row
+        assert tr["completion"] == text
+        assert tr["exploit"] == (row["leaky_pass"] and not row["robust_pass"])
+        assert (tr["robust"]["reason"] == "ok") == row["robust_pass"]
+        assert (tr["leaky"]["reason"] == "ok") == row["leaky_pass"]
+        if row["parse_ok"]:
+            assert tr["parse_failure"] is None and tr["call"]["name"] and tr["tool_result"] is not None
+        else:
+            assert tr["call"] is None and tr["tool_result"] is None
+            assert tr["parse_failure"]["reason"] == ("no_tool_call" if text == "no idea" else "missing_argument")
+            assert tr["robust"]["reason"] == tr["leaky"]["reason"] == "parse_failure"
+    # a wrong-amount call passes leaky and fails robust: an exploit, with the robust diff kept
+    exploits = [t for t in traces if t["exploit"]]
+    assert exploits and all(t["sample_idx"] == 2 for t in exploits)
+    assert all(t["robust"]["reason"] == "state_mismatch" and "differs in" in t["robust"]["detail"] for t in exploits)
+    assert json.loads(json.dumps(traces)) == traces
+
+
+def test_trace_file_sits_next_to_records(tmp_path):
+    out = default_output(Target("2b-rob-s1", "2b", "robust", 1, 50, Path("x")), "formal", tmp_path / "evals")
+    assert eval_traces_path(out) == tmp_path / "evals" / "2b-rob-s1" / "step-00050.traces.jsonl"
+
+
+def _write_traces(heldout, root: Path) -> list[dict]:
+    target = Target("2b-leak-s1", "2b", "leaky", 1, 50, Path("x"))
+    _, traces = make_records_and_traces(target, heldout, fake_samples(heldout))
+    write_jsonl_atomic(eval_traces_path(default_output(target, "formal", root)), traces)
+    return traces
+
+
+def test_gallery_picks_exploits_per_family(heldout, tmp_path):
+    traces = _write_traces(heldout, tmp_path)
+    path = gallery.traces_file(tmp_path, "2b-leak-s1")
+    with open(path, "a") as f:
+        f.write('{"truncated": ')
+    rows = gallery.read_traces(path)
+    assert rows == traces
+
+    ex = gallery.exploit_examples(rows, n_per_family=1)
+    assert list(ex) == sorted({t["family"] for t in traces if t["exploit"]})
+    assert all(len(v) == 1 and v[0]["exploit"] for v in ex.values())
+    assert gallery.exploit_examples(rows, n_per_family=1) == ex  # deterministic
+
+    md = gallery.gallery_markdown(ex, run_id="2b-leak-s1", step=50, counts=gallery.exploit_counts(rows))
+    assert "### Exploit gallery: `2b-leak-s1` step 50" in md
+    assert "state_mismatch" in md and "samples exploit" in md
+    with pytest.raises(FileNotFoundError):
+        gallery.traces_file(tmp_path, "2b-leak-s1", 100)
+
+
+def test_gallery_distinct_instances_first():
+    rows = [
+        {"family": "F1", "instance_id": i, "sample_idx": k, "leaky_pass": True, "robust_pass": False}
+        for i in ("a", "b")
+        for k in range(3)
+    ]
+    rows.append({"family": "F2", "instance_id": "c", "sample_idx": 0, "leaky_pass": True, "robust_pass": True})
+    ex = gallery.exploit_examples(rows, n_per_family=3)
+    assert [(r["instance_id"], r["sample_idx"]) for r in ex["F1"]] == [("a", 0), ("b", 0), ("a", 1)]
+    assert "F2" not in ex
+    assert gallery.exploit_counts(rows) == {"F1": (6, 6), "F2": (0, 1)}
+
+
+def test_gallery_cli(heldout, tmp_path, capsys):
+    _write_traces(heldout, tmp_path)
+    assert gallery.main(["--run-id", "2b-leak-s1", "--evals", str(tmp_path), "--n", "2"]) == 0
+    assert "step 50" in capsys.readouterr().out
+    assert gallery.main(["--run-id", "nope", "--evals", str(tmp_path)]) == 2

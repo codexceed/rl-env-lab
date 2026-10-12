@@ -13,6 +13,8 @@ Writes the layout of `train/LAYOUT.md` (no weights, only markers)::
     <out>/runs/<run_id>/eval/step-NNNNN/COMPLETE   {"step", "final"}
     <out>/runs/<run_id>/status.json         {"status", "size", "reward", "seed"}
     <out>/runs/<run_id>/train_metrics.jsonl  {"step", "reward", ...} per training step
+    <out>/runs/<run_id>/run_manifest.json    matched-pair identity; pairs differ only in the reward
+    <out>/data/splits/heldout.txt           the fake frozen held-out ids (eval protocol check)
 
 Known effects baked in (all fake):
 
@@ -44,9 +46,11 @@ if __package__ in (None, ""):  # run as a script: make `eval` and `train` import
 
 from eval.metrics import H5_SIZES
 from train.checkpoints import COMPLETE, step_name
+from train.run_manifest import MANIFEST_FILE, MANIFEST_VERSION, sha256_json
 
 REWARDS = ("robust", "leaky")
 SEEDS = (1, 2, 3)
+HELDOUT_IDS = Path("data") / "splits" / "heldout.txt"  # same relative path as eval/compare.py reads
 FAMILIES = ("F1", "F2", "F3", "F4", "F5")
 
 # Base true-success probability per family (held-out T3) for the 2B model.
@@ -206,6 +210,26 @@ def train_log(
     return rows
 
 
+def run_manifest(size: str, reward: str, seed: int, max_steps: int) -> dict:
+    """A fake ``run_manifest.json`` (`train/run_manifest.py` schema): pairs differ only in the reward."""
+    config = {"size": size, "seed": seed, "model": f"fake/{size}", "budget": {"max_steps": max_steps}}
+    return {
+        "manifest_version": MANIFEST_VERSION,
+        "run_id": run_id_for(size, reward, seed),
+        "size": size,
+        "seed": seed,
+        "reward": reward,
+        "reward_weights": {r: float(r == reward) for r in REWARDS},
+        "max_steps": max_steps,
+        "config_sha256": sha256_json(config),
+        "config": config,
+        "data": {"split": "train", "sha256": "0" * 64, "manifest_sha256": "1" * 64, "spec_version": "1.0"},
+        "base_model": {"id": f"fake/{size}", "export_sha256": sha256_json(["fake", size])},
+        "git": {"commit": "fake", "dirty": False},
+        "starts": [{"resume_from": None, "git": {"commit": "fake", "dirty": False}, "mismatch": []}],
+    }
+
+
 def _write_jsonl(path: Path, rows: Iterable[Mapping]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with open(path, "w", encoding="utf-8") as f:
@@ -225,17 +249,23 @@ def write_fake_tree(
     n_instances: int = 250,
     n_samples: int = 4,
     train_logs: bool = True,
+    manifests: bool = True,
 ) -> tuple[Path, Path]:
     """Write ``<root>/evals`` and ``<root>/runs``. Returns (evals_root, runs_root).
 
     ``run_ids`` restricts which of the 18 runs exist (default all). ``stop_at``
     maps a run ID to the last step it reached: it is "running", has eval
-    checkpoints up to that step and no final checkpoint.
+    checkpoints up to that step and no final checkpoint. Every run gets a
+    ``run_manifest.json`` (matched pairs agree) unless ``manifests`` is False.
     """
     root = Path(root)
     evals, runs = root / "evals", root / "runs"
     stop_at = dict(stop_at or {})
     kw = {"data_seed": data_seed, "n_instances": n_instances, "n_samples": n_samples}
+
+    ids_path = root / HELDOUT_IDS
+    ids_path.parent.mkdir(parents=True, exist_ok=True)
+    ids_path.write_text("".join(f"{iid}\n" for iid, _ in instances(n_instances)))
 
     for size in base_sizes:
         rid = run_id_for(size, "base", None)
@@ -267,6 +297,9 @@ def write_fake_tree(
         }
         rdir.mkdir(parents=True, exist_ok=True)
         (rdir / "status.json").write_text(json.dumps(status, sort_keys=True) + "\n")
+        if manifests:
+            manifest = run_manifest(size, reward, seed, final_step)
+            (rdir / MANIFEST_FILE).write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
         if train_logs:
             log = train_log(size, reward, seed, last, data_seed=data_seed, n_inst=n_instances)
             _write_jsonl(rdir / "train_metrics.jsonl", log)

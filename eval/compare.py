@@ -20,8 +20,14 @@ with ``reward: "base"``, ``seed: null``, ``step: 0``.
 * A step with a ``.failed`` or ``.claim`` marker next to it is skipped (failed, or
   being evaluated right now).
 * Unparseable lines (e.g. a truncated last line) are skipped and counted.
-* A checkpoint whose instance set differs from the common held-out set (an
-  unfinished eval) is dropped and listed in the data notes.
+* **Eval protocol** (PREREG §3, `Protocol`): every checkpoint must cover exactly the
+  frozen held-out ids (``data/splits/heldout.txt``), with ``eval.formal.samples``
+  (``configs/grpo.yaml``, 4) samples per instance, ``sample_idx`` 0..3 once each, and
+  boolean ``parse_ok``/``robust_pass``/``leaky_pass`` on every row. A checkpoint whose
+  instance set differs is dropped; any other failure keeps it in the tables but
+  makes the data incomplete and the verdicts that use it provisional. Every failure
+  is listed in the report. Without the id list the protocol is not checked and the
+  data never counts as complete.
 
 **Training logs**: ``<runs>/<run_id>/train_metrics.jsonl``, one JSON object per
 optimizer step::
@@ -41,6 +47,13 @@ optimizer step::
 *final* when the step marked ``"final": true`` has been evaluated. Without that
 (still training, eval behind, or ``runs/`` not synced) its last evaluated step is
 used and every verdict that depends on it is marked **provisional**.
+
+**Matched pairs** (PREREG §1, `check_pair`): robust seed k and leaky seed k of one size
+must have ``<runs>/<run_id>/run_manifest.json`` files (`train/run_manifest.py`) that agree
+on everything but the reward weights (config hash, data, base model, seed, max_steps), no
+identity change on a resume, and the same final step. A pair that fails is **rejected**:
+both runs leave every verdict and are listed. A pair missing a manifest is *unverified*:
+kept, but the data is not complete and the verdicts that read it are provisional.
 
 Run IDs: the matrix is ``{0.8b,2b,4b}-{rob,leak}-s{1,2,3}``. A rerun ``<id>-r<k>``
 replaces the original (highest ``k`` wins). Other run IDs (ablations) are ignored
@@ -68,6 +81,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
+import yaml
 
 if __package__ in (None, ""):  # run as a script: make `eval` and `train` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -92,6 +106,7 @@ from eval.metrics import (
     verdict_h5,
 )
 from train.checkpoints import list_eval_checkpoints, read_status
+from train.run_manifest import compare_manifests, read_run_manifest, resume_mismatches
 
 BEGIN_MARKER = "<!-- BEGIN GENERATED -->"
 END_MARKER = "<!-- END GENERATED -->"
@@ -105,10 +120,49 @@ BAND = (0.10, 0.90)  # H3: base pass rate "in band"
 FIG_CURVES = "reward_vs_true_success.png"
 FIG_EXPLOIT = "exploit_vs_size.png"
 
+REPO_ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_GRPO_CONFIG = REPO_ROOT / "configs" / "grpo.yaml"
+HELDOUT_IDS = Path("data") / "splits" / "heldout.txt"  # frozen held-out ids, relative to the repo or --root
+GRADER_FIELDS = ("parse_ok", "robust_pass", "leaky_pass")
+
 _RUN_RE = re.compile(r"^(?P<size>[^-]+)-(?P<r>rob|leak)-s(?P<seed>\d+)(?:-r(?P<rerun>\d+))?$")
 _STEP_FILE_RE = re.compile(r"^step-(\d+)\.jsonl$")
 
 RunKey = tuple[str, str, int]  # (size, reward, seed)
+CkptKey = tuple[str, int]  # (run_id, step)
+
+
+@dataclass(frozen=True)
+class Protocol:
+    """What every formal eval checkpoint must contain (PREREG §3)."""
+
+    instance_ids: frozenset[str]
+    samples: int
+    source: str = ""
+
+    @property
+    def n_samples(self) -> int:
+        return len(self.instance_ids) * self.samples
+
+
+def load_protocol(
+    heldout_ids: str | Path,
+    *,
+    samples: int | None = None,
+    config: str | Path = DEFAULT_GRPO_CONFIG,
+) -> Protocol:
+    """Frozen held-out ids (one per line) and the samples per instance (``eval.formal.samples``).
+
+    A missing id list raises FileNotFoundError; an empty one, or one that repeats an id, ValueError.
+    """
+    path = Path(heldout_ids)
+    ids = [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if not ids or len(set(ids)) != len(ids):
+        raise ValueError(f"{path}: expected a non-empty list of distinct instance ids")
+    if samples is None:
+        cfg = yaml.safe_load(Path(config).read_text()) or {}
+        samples = int(cfg["eval"]["formal"]["samples"])
+    return Protocol(frozenset(ids), int(samples), str(path))
 
 
 # ── loading ──────────────────────────────────────────────────────────────────
@@ -126,9 +180,12 @@ class RunInfo:
     final_step: int | None = None  # step marked final in runs/<id>/eval, if known
     status: str | None = None  # status.json
     train_log: list[dict[str, Any]] | None = None
+    excluded: str | None = None  # why its matched pair was rejected; then it is in no verdict
 
     @property
     def state(self) -> str:
+        if self.excluded is not None:
+            return "excluded"
         if not self.eval_steps:
             return "missing"
         if self.final_step is not None and self.final_step in self.eval_steps:
@@ -138,6 +195,62 @@ class RunInfo:
     @property
     def last_step(self) -> int | None:
         return max(self.eval_steps) if self.eval_steps else None
+
+    @property
+    def in_verdicts(self) -> bool:
+        return self.excluded is None and bool(self.eval_steps)
+
+
+PAIR_OK, PAIR_REJECTED, PAIR_UNVERIFIED = "ok", "rejected", "unverified"
+
+
+@dataclass
+class PairCheck:
+    """Robust seed k and leaky seed k of one size: still a matched pair (PREREG §1)?"""
+
+    size: str
+    seed: int
+    run_ids: tuple[str, str]  # (robust, leaky)
+    status: str  # PAIR_OK | PAIR_REJECTED (excluded from verdicts) | PAIR_UNVERIFIED (no manifest)
+    reasons: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+
+def check_pair(rob: RunInfo, leak: RunInfo, runs_root: Path) -> PairCheck:
+    """Compare the two runs' ``run_manifest.json`` (`train/run_manifest.py`) and final steps.
+
+    Rejected when the manifests differ in anything but the reward, a manifest disagrees with its
+    run id, a run changed identity on a resume, or both runs are final at different steps.
+    Unverified (kept, but provisional) when a manifest is missing.
+    """
+    reasons: list[str] = []
+    notes: list[str] = []
+    mans: dict[str, dict[str, Any]] = {}
+    for info in (rob, leak):
+        m = read_run_manifest(runs_root / info.run_id)
+        if m is None:
+            continue
+        mans[info.reward] = m
+        said = (m.get("size"), m.get("reward"), m.get("seed"))
+        if said != (info.size, info.reward, info.seed):
+            reasons.append(f"`{info.run_id}` manifest says size/reward/seed {said}")
+        changed = resume_mismatches(m)
+        if changed:
+            reasons.append(f"`{info.run_id}` changed on a resume: {', '.join(changed)}")
+    if len(mans) == 2:
+        diffs = compare_manifests(mans["robust"], mans["leaky"])
+        if diffs:
+            reasons.append("manifests differ in " + ", ".join(diffs))
+        commits = [(mans[r].get("git") or {}).get("commit") for r in REWARDS]
+        if commits[0] != commits[1]:
+            notes.append(f"git commits differ ({str(commits[0])[:12]} vs {str(commits[1])[:12]})")
+    missing = [i.run_id for i in (rob, leak) if i.reward not in mans]
+    if missing:
+        notes.append("no run_manifest.json: " + ", ".join(f"`{r}`" for r in missing))
+    if rob.final_step is not None and leak.final_step is not None and rob.final_step != leak.final_step:
+        reasons.append(f"final steps differ ({rob.final_step} vs {leak.final_step})")
+    status = PAIR_REJECTED if reasons else (PAIR_UNVERIFIED if missing else PAIR_OK)
+    return PairCheck(rob.size, rob.seed, (rob.run_id, leak.run_id), status, reasons, notes)
 
 
 @dataclass
@@ -149,6 +262,23 @@ class Dataset:
     notes: list[str]
     evals_root: Path
     runs_root: Path
+    protocol: Protocol | None = None  # None: not checked, data never complete
+    protocol_failures: dict[CkptKey, list[str]] = field(default_factory=dict)
+    dropped: set[CkptKey] = field(default_factory=set)  # instance set differs: not in `runs`
+    pairs: list[PairCheck] = field(default_factory=list)  # every (size, seed) with both runs evaluated
+
+    def used_checkpoints(self) -> set[CkptKey]:
+        """Checkpoints the verdicts read: each matrix run's last evaluated step, and the base evals."""
+        used = {(i.run_id, i.last_step) for i in self.infos.values() if i.in_verdicts and i.last_step is not None}
+        return used | {(b.run_id, b.step) for b in self.base.values()}
+
+    def pair_of(self, run_id: str) -> PairCheck | None:
+        return next((p for p in self.pairs if run_id in p.run_ids), None)
+
+    def verdict_failures(self) -> dict[CkptKey, list[str]]:
+        """Protocol failures of the checkpoints the verdicts read."""
+        used = self.used_checkpoints()
+        return {k: v for k, v in sorted(self.protocol_failures.items()) if k in used}
 
 
 def _read_jsonl(path: Path) -> tuple[list[dict[str, Any]], int]:
@@ -191,8 +321,10 @@ def read_train_log(path: Path) -> list[dict[str, Any]] | None:
     return [by_step[s] for s in sorted(by_step)] or None
 
 
-def _load_records(evals_root: Path, notes: list[str]) -> list[EvalRecord]:
+def _load_records(evals_root: Path, notes: list[str], invalid: dict[CkptKey, int] | None = None) -> list[EvalRecord]:
+    """Every readable record; rows without boolean grader fields are skipped and counted in ``invalid``."""
     records: list[EvalRecord] = []
+    invalid = {} if invalid is None else invalid
     if not evals_root.is_dir():
         notes.append(f"eval directory `{evals_root}` not found")
         return records
@@ -200,7 +332,8 @@ def _load_records(evals_root: Path, notes: list[str]) -> list[EvalRecord]:
     bad_lines = 0
     for rdir in sorted(p for p in evals_root.iterdir() if p.is_dir()):
         for f in sorted(rdir.iterdir()):
-            if not _STEP_FILE_RE.match(f.name):
+            m = _STEP_FILE_RE.match(f.name)
+            if not m:
                 continue
             for marker, why in ((".failed", "failed"), (".claim", "being evaluated")):
                 if f.with_suffix(marker).exists():
@@ -210,6 +343,10 @@ def _load_records(evals_root: Path, notes: list[str]) -> list[EvalRecord]:
                 rows, bad = _read_jsonl(f)
                 bad_lines += bad
                 for row in rows:
+                    if any(not isinstance(row.get(k), bool) for k in GRADER_FIELDS):
+                        key = (str(row.get("run_id") or rdir.name), int(m[1]))
+                        invalid[key] = invalid.get(key, 0) + 1
+                        continue
                     try:
                         records.append(EvalRecord.from_dict(row))
                     except (KeyError, TypeError, ValueError):
@@ -221,11 +358,69 @@ def _load_records(evals_root: Path, notes: list[str]) -> list[EvalRecord]:
     return records
 
 
-def load_dataset(evals_root: str | Path, runs_root: str | Path) -> Dataset:
-    """Read every eval JSONL and training log; select reruns; drop unfinished evals."""
+def check_protocol(
+    records: Sequence[EvalRecord],
+    protocol: Protocol | None,
+    invalid: Mapping[CkptKey, int] | None = None,
+) -> tuple[list[EvalRecord], dict[CkptKey, list[str]]]:
+    """Records with duplicate samples removed, and why each failing checkpoint breaks the protocol.
+
+    Without a protocol only duplicates and invalid grader fields are checked.
+    """
+    seen: set[tuple[str, int, str, int]] = set()
+    kept: list[EvalRecord] = []
+    dups: Counter[CkptKey] = Counter()
+    per_ckpt: dict[CkptKey, dict[str, list[int]]] = defaultdict(lambda: defaultdict(list))
+    for r in records:
+        key = (r.run_id, r.step, r.instance_id, r.sample_idx)
+        if key in seen:
+            dups[(r.run_id, r.step)] += 1
+            continue
+        seen.add(key)
+        kept.append(r)
+        per_ckpt[(r.run_id, r.step)][r.instance_id].append(r.sample_idx)
+
+    failures: dict[CkptKey, list[str]] = {}
+    for ck in sorted(set(per_ckpt) | set(invalid or {})):
+        reasons = []
+        if invalid and invalid.get(ck):
+            reasons.append(f"{invalid[ck]} row(s) without boolean {'/'.join(GRADER_FIELDS)} (skipped)")
+        if dups[ck]:
+            reasons.append(f"{dups[ck]} duplicate sample(s) (first kept)")
+        per_inst = per_ckpt.get(ck, {})
+        if protocol is not None:
+            ids = set(per_inst)
+            missing = protocol.instance_ids - ids
+            extra = ids - protocol.instance_ids
+            if missing:
+                reasons.append(f"{len(missing)} of {len(protocol.instance_ids)} held-out instances missing")
+            if extra:
+                reasons.append(f"{len(extra)} instance(s) not in the held-out split")
+            n = sum(len(v) for v in per_inst.values())
+            if n != protocol.n_samples:
+                reasons.append(f"{n} of {protocol.n_samples} samples")
+            want = list(range(protocol.samples))
+            bad = sorted(i for i, idx in per_inst.items() if sorted(idx) != want)
+            if bad:
+                reasons.append(
+                    f"{len(bad)} instance(s) without sample_idx 0..{protocol.samples - 1} exactly once "
+                    f"(e.g. {bad[0]}: {sorted(per_inst[bad[0]])})"
+                )
+        if reasons:
+            failures[ck] = reasons
+    return kept, failures
+
+
+def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protocol | None = None) -> Dataset:
+    """Read every eval JSONL and training log; select reruns; check the eval protocol.
+
+    Without ``protocol`` the instance sets are checked against the most common set only, and the
+    data never counts as complete.
+    """
     evals_root, runs_root = Path(evals_root), Path(runs_root)
     notes: list[str] = []
-    records = _load_records(evals_root, notes)
+    invalid: dict[CkptKey, int] = {}
+    records = _load_records(evals_root, notes, invalid)
 
     # Rerun selection and filtering to the run matrix + base.
     chosen: dict[RunKey, tuple[int, str]] = {}
@@ -249,23 +444,32 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path) -> Dataset:
     if ignored:
         notes.append("not in the run matrix, ignored: " + ", ".join(sorted(ignored)))
     records = [r for r in records if r.reward == "base" or r.run_id in keep_ids]
+    invalid = {k: n for k, n in invalid.items() if k[0] in keep_ids or k[0].startswith("base-")}
+    records, failures = check_protocol(records, protocol, invalid)
+    if protocol is None:
+        notes.append("eval protocol not checked (no held-out id list): the data cannot count as complete")
 
     families: dict[str, str] = {}
     for r in records:
         families.setdefault(r.instance_id, r.family)
     runs = index_runs(records)
 
-    # Every checkpoint must cover the common held-out instance set.
+    # Every checkpoint must cover the frozen held-out set (without a protocol: the most common set).
+    dropped: list[CkptKey] = []
     if runs:
-        common, _ = Counter(r.instance_ids for r in runs.values()).most_common(1)[0]
+        if protocol is not None:
+            common = tuple(sorted(protocol.instance_ids))
+            what = f"the frozen {len(common)}-instance held-out set"
+        else:
+            common, _ = Counter(r.instance_ids for r in runs.values()).most_common(1)[0]
+            what = f"the common {len(common)}-instance set"
         dropped = [k for k, r in runs.items() if r.instance_ids != common]
         for k in dropped:
             del runs[k]
         if dropped:
             notes.append(
-                f"dropped {len(dropped)} checkpoint(s) whose instance set differs from the "
-                f"common {len(common)}-instance set (unfinished eval?): "
-                + ", ".join(f"{rid}@{st}" for rid, st in sorted(dropped))
+                f"dropped {len(dropped)} checkpoint(s) whose instance set differs from {what} "
+                "(unfinished eval?): " + ", ".join(f"{rid}@{st}" for rid, st in sorted(dropped))
             )
 
     base: dict[str, RunEval] = {}
@@ -293,6 +497,21 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path) -> Dataset:
                 info.train_log = read_train_log(rdir / TRAIN_LOG)
                 if size in H5_SIZES or info.eval_steps:
                     infos[key] = info
+
+    # Matched pairs: a rejected pair leaves every verdict (both runs' checkpoints are removed).
+    pairs: list[PairCheck] = []
+    for size in sizes:
+        for seed in SEEDS:
+            rob, leak = infos.get((size, "robust", seed)), infos.get((size, "leaky", seed))
+            if rob is None or leak is None or not rob.eval_steps or not leak.eval_steps:
+                continue
+            pc = check_pair(rob, leak, runs_root)
+            pairs.append(pc)
+            if pc.status == PAIR_REJECTED:
+                for info in (rob, leak):
+                    info.excluded = "; ".join(pc.reasons)
+                    for k in [k for k in runs if k[0] == info.run_id]:
+                        del runs[k]
     return Dataset(
         runs=runs,
         infos=infos,
@@ -301,6 +520,10 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path) -> Dataset:
         notes=notes,
         evals_root=evals_root,
         runs_root=runs_root,
+        protocol=protocol,
+        protocol_failures=failures,
+        dropped=set(dropped),
+        pairs=pairs,
     )
 
 
@@ -386,8 +609,23 @@ class Analysis:
         return sum(1 for i in self.data.infos.values() if i.size in H5_SIZES and i.state == state)
 
     @property
+    def protocol_ok(self) -> bool:
+        """The protocol was checked and every checkpoint the verdicts read meets it."""
+        return self.data.protocol is not None and not self.data.verdict_failures()
+
+    @property
+    def pairs_ok(self) -> bool:
+        """Every matched pair with evals was verified from its manifests (none rejected or unverified)."""
+        return all(p.status == PAIR_OK for p in self.data.pairs)
+
+    @property
     def complete(self) -> bool:
-        return self.count("final") == self.n_expected and all(s in self.data.base for s in H5_SIZES)
+        return (
+            self.count("final") == self.n_expected
+            and all(s in self.data.base for s in H5_SIZES)
+            and self.protocol_ok
+            and self.pairs_ok
+        )
 
 
 def _cells(mats: Mapping[str, ConditionMatrix], n_boot: int, seed: int) -> dict[str, Cell]:
@@ -475,9 +713,27 @@ def _gaps(data: Dataset, keys: Sequence[RunKey], base_sizes: Sequence[str]) -> l
         out.append("no eval yet: " + ", ".join(missing))
     if partial:
         out.append("not at final checkpoint (last evaluated step): " + ", ".join(partial))
+    excluded = [i.run_id for i in infos if i is not None and i.state == "excluded"]
+    if excluded:
+        out.append("excluded, matched pair rejected (see Matched pairs): " + ", ".join(excluded))
+    unverified = [
+        i.run_id
+        for i in infos
+        if i is not None and (p := data.pair_of(i.run_id)) is not None and p.status == PAIR_UNVERIFIED
+    ]
+    if unverified:
+        out.append("matched pair not verified, no run manifest (see Matched pairs): " + ", ".join(unverified))
     for s in base_sizes:
         if s not in data.base:
             out.append(f"no base eval for {s}")
+    if data.protocol is None:
+        out.append("eval protocol not checked (no held-out id list)")
+    else:
+        used = [(i.run_id, i.last_step) for i in infos if i is not None and i.in_verdicts and i.last_step is not None]
+        used += [(data.base[s].run_id, data.base[s].step) for s in base_sizes if s in data.base]
+        bad = [f"{rid}@{st}" for rid, st in used if (rid, st) in data.protocol_failures]
+        if bad:
+            out.append("fails the eval protocol (see Eval protocol): " + ", ".join(bad))
     return out
 
 
@@ -508,7 +764,7 @@ def _hypotheses(data: Dataset, n_boot: int, seed: int, main_size: str, reward_wi
     # H2
     keys = [(main, r, s) for r in REWARDS for s in SEEDS]
     gaps = _gaps(data, keys, [main])
-    present = [i for k in keys if (i := data.infos.get(k)) and i.state != "missing"]
+    present = [i for k in keys if (i := data.infos.get(k)) and i.in_verdicts]
     no_log = [i.run_id for i in present if i.train_log is None]
     if no_log:
         gaps.append("no training log: " + ", ".join(no_log))
@@ -656,7 +912,7 @@ def make_plots(an: Analysis, out_dir: str | Path) -> list[Path]:
             any_data = False
             for s in SEEDS:
                 info = data.infos.get((size, reward, s))
-                if info is None:
+                if info is None or info.excluded is not None:
                     continue
                 if info.train_log:
                     st = np.array([r["step"] for r in info.train_log], dtype=float)
@@ -724,7 +980,7 @@ def make_plots(an: Analysis, out_dir: str | Path) -> list[Path]:
             per_seed = []
             for s in SEEDS:
                 info = data.infos.get((size, reward, s))
-                if info is not None and info.last_step is not None:
+                if info is not None and info.in_verdicts and info.last_step is not None:
                     per_seed.append(data.runs[(info.run_id, info.last_step)].mean("exploit"))
             ax.scatter([k + off] * len(per_seed), per_seed, color=color, s=12, alpha=0.45, zorder=2)
         if xs:
@@ -824,6 +1080,60 @@ def _hypothesis_md(h: HypothesisResult) -> list[str]:
     return out
 
 
+def _protocol_md(an: Analysis) -> list[str]:
+    """The eval protocol and every checkpoint that fails it."""
+    data = an.data
+    p = data.protocol
+    out = ["### Eval protocol", ""]
+    if p is None:
+        return [*out, "**Not checked:** no frozen held-out id list was found, so no checkpoint counts as complete.", ""]
+    out.append(
+        f"Every checkpoint: the {len(p.instance_ids)} frozen held-out instances (`{p.source}`), "
+        f"{p.samples} samples each with `sample_idx` 0..{p.samples - 1} exactly once "
+        f"({p.n_samples:,} samples), boolean `{'`/`'.join(GRADER_FIELDS)}` on every row."
+    )
+    out.append("")
+    failures = data.protocol_failures
+    n_ckpt = len(data.runs) + len(data.dropped)
+    if not failures:
+        return [*out, f"All {n_ckpt} checkpoint(s) meet it.", ""]
+    used = data.used_checkpoints()
+    out += [
+        f"{len(failures)} of {n_ckpt} checkpoint(s) fail it:",
+        "",
+        "| Checkpoint | Used in verdicts | Why |",
+        "|---|---|---|",
+    ]
+    for (rid, st), reasons in sorted(failures.items()):
+        use = "yes" if (rid, st) in used else "no"
+        if (rid, st) in data.dropped:
+            use = "no (dropped)"
+        out.append(f"| `{rid}@{st}` | {use} | {'; '.join(reasons)} |")
+    out.append("")
+    return out
+
+
+def _pairs_md(an: Analysis) -> list[str]:
+    """Every robust/leaky seed pair with evals: verified, rejected (excluded) or unverified."""
+    out = [
+        "### Matched pairs",
+        "",
+        "Robust seed k and leaky seed k of one size must share start weights, data, resolved config "
+        "(all but the reward weights), seed and final step (`runs/<id>/run_manifest.json`). "
+        "A rejected pair is excluded from every verdict.",
+        "",
+    ]
+    if not an.data.pairs:
+        return [*out, "No pair has evals on both sides yet.", ""]
+    out += ["| Size | Seed | Runs | Check | Details |", "|---|---|---|---|---|"]
+    for p in an.data.pairs:
+        check = {PAIR_OK: "ok", PAIR_REJECTED: "**rejected**", PAIR_UNVERIFIED: "unverified"}[p.status]
+        details = "; ".join(p.reasons + p.notes) or DASH
+        out.append(f"| {p.size} | {p.seed} | `{p.run_ids[0]}`, `{p.run_ids[1]}` | {check} | {details} |")
+    out.append("")
+    return out
+
+
 def render_markdown(an: Analysis, figures: Sequence[Path] | None, report_dir: Path) -> str:
     data = an.data
     n_exp = an.n_expected
@@ -840,17 +1150,27 @@ def render_markdown(an: Analysis, figures: Sequence[Path] | None, report_dir: Pa
         "",
     ]
     if an.complete:
-        lines.append(f"Complete: all {n_exp} runs at their final checkpoint, base evals present.")
+        lines.append(
+            f"Complete: all {n_exp} runs at their final checkpoint, base evals present, eval protocol met, "
+            "matched pairs verified."
+        )
     else:
+        n_bad = len(data.verdict_failures())
+        protocol_txt = "not checked" if data.protocol is None else f"{n_bad} checkpoint(s) in verdicts fail it"
+        n_rej = sum(p.status == PAIR_REJECTED for p in data.pairs)
+        n_unv = sum(p.status == PAIR_UNVERIFIED for p in data.pairs)
         lines.append(
             f"**Incomplete data: verdicts are provisional.** Runs at final checkpoint: "
-            f"{n_final}/{n_exp} · partial: {n_part} · no eval yet: {n_miss}."
+            f"{n_final}/{n_exp} · partial: {n_part} · no eval yet: {n_miss} · excluded: {an.count('excluded')} · "
+            f"eval protocol: {protocol_txt} · matched pairs: {n_rej} rejected, {n_unv} unverified."
         )
     base_txt = ", ".join(s for s in H5_SIZES if s in data.base) or "none"
     lines += ["", f"Base evals: {base_txt}."]
     for note in data.notes:
         lines.append(f"\n- {note}")
     lines.append("")
+    lines += _protocol_md(an)
+    lines += _pairs_md(an)
 
     # verdict summary
     lines += ["### Verdicts", "", "| Hypothesis | Verdict | n |", "|---|---|---|"]
@@ -985,6 +1305,13 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--runs", type=Path, help="runs root with training logs (default: runs)")
     p.add_argument("--report", type=Path, help="report file (default: reports/results.md)")
     p.add_argument("--figures", type=Path, help="figure directory (default: reports/figures)")
+    p.add_argument(
+        "--heldout-ids",
+        type=Path,
+        help=f"frozen held-out ids, one per line (default: {HELDOUT_IDS}, under --root when given)",
+    )
+    p.add_argument("--samples", type=int, help="samples per instance (default: eval.formal.samples in --config)")
+    p.add_argument("--config", type=Path, default=DEFAULT_GRPO_CONFIG, help="training/eval config")
     p.add_argument("--n-boot", type=int, default=DEFAULT_N_BOOT)
     p.add_argument("--boot-seed", type=int, default=0)
     p.add_argument("--main-size", default="2b", help="model size for H1/H2")
@@ -998,6 +1325,7 @@ def main(argv: list[str] | None = None) -> int:
             "runs": a.root / "runs",
             "report": a.root / "results.md",
             "figures": a.root / "figures",
+            "heldout_ids": a.root / HELDOUT_IDS,
         }
     else:
         defaults = {
@@ -1005,12 +1333,18 @@ def main(argv: list[str] | None = None) -> int:
             "runs": Path("runs"),
             "report": Path("reports/results.md"),
             "figures": Path("reports/figures"),
+            "heldout_ids": HELDOUT_IDS,
         }
     for name, value in defaults.items():
         if getattr(a, name) is None:
             setattr(a, name, value)
 
-    data = load_dataset(a.evals, a.runs)
+    protocol: Protocol | None = None
+    try:
+        protocol = load_protocol(a.heldout_ids, samples=a.samples, config=a.config)
+    except FileNotFoundError:
+        print(f"held-out id list {a.heldout_ids} not found: eval protocol not checked", file=sys.stderr)
+    data = load_dataset(a.evals, a.runs, protocol)
     an = analyze(
         data,
         n_boot=a.n_boot,
@@ -1035,7 +1369,12 @@ def main(argv: list[str] | None = None) -> int:
     for h in an.hypotheses:
         print(f"{h.hypothesis}: {h.label}", file=sys.stderr)
     if not an.complete:
-        print(f"incomplete data: {an.count('final')}/{an.n_expected} runs final", file=sys.stderr)
+        bad = "not checked" if data.protocol is None else f"{len(data.verdict_failures())} checkpoint(s) fail"
+        print(
+            f"incomplete data: {an.count('final')}/{an.n_expected} runs final; eval protocol: {bad}; "
+            f"matched pairs not ok: {sum(p.status != PAIR_OK for p in data.pairs)}",
+            file=sys.stderr,
+        )
     return 0
 
 

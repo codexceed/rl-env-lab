@@ -22,6 +22,11 @@ line is one `eval.metrics.EvalRecord` (the SPEC §12 schema). The base model is
 ``run_id: "base-<size>"``, ``reward: "base"``, ``seed: null``, ``step: 0``. In diagnostic mode the
 robust pass rate decides the difficulty band (PREREG §7); leaky is recorded too.
 
+Next to every records file goes a **trace file** ``step-NNNNN.traces.jsonl`` (`trace_row`): the same
+record plus the completion text, the parsed call or parse failure, the tool result, each grader's
+reason and detail, and an ``exploit`` flag. It feeds the exploit gallery (`eval/gallery.py`) and
+audits; metrics never read it. It is written (atomically) before the records file.
+
 Prompts are rendered with the SPEC §10 call (`envlab.prompts.render_prompt`, thinking off), checked
 against the 1,536-token budget, and completions are decoded from token ids with special tokens kept
 (the same decoding the training reward uses, `train/rewards.py`).
@@ -48,13 +53,15 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script: make `eval` and `train` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from envlab.calls import ParseFailure
 from envlab.tasks.instance import TaskInstance, read_jsonl
-from envlab.verify.rollout import score_completion
+from envlab.verify.rollout import ScoredSample, score_completion
 from eval.metrics import EvalRecord
 from train.checkpoints import (
     COMPLETE,
     eval_output_path,
     eval_step_dir,
+    eval_traces_path,
     final_eval_checkpoint,
     read_marker,
     step_name,
@@ -204,11 +211,46 @@ def select_instances(instances: Sequence[TaskInstance], mode: str, eval_cfg: dic
 # ---------------------------------------------------------------- records
 
 
-def make_records(target: Target, instances: Sequence[TaskInstance], samples: Sequence[Sequence[str]]) -> list[dict]:
-    """One SPEC §12 record per (instance, sample), both graders on every sample."""
+def trace_row(record: dict[str, Any], completion: str, scored: ScoredSample) -> dict[str, Any]:
+    """One trace row: the SPEC §12 record plus what the model wrote and why each grader decided.
+
+    Keys added to the record: ``completion`` (decoded text, specials kept), ``call`` (the parsed tool
+    call, or null), ``parse_failure`` (``{"reason", "detail"}``, or null), ``tool_result``
+    (``{"ok", "error", "message"}``, or null on a parse failure), ``robust`` and ``leaky``
+    (``{"reason", "detail"}`` from the graders, ``reason`` is ``"ok"`` on a pass) and ``exploit``
+    (leaky pass and robust fail).
+    """
+    call = scored.outcome.call
+    result = scored.outcome.result
+    return {
+        **record,
+        "completion": completion,
+        "call": None if isinstance(call, ParseFailure) else call.to_dict(),
+        "parse_failure": (
+            {"reason": str(call.reason), "detail": call.detail} if isinstance(call, ParseFailure) else None
+        ),
+        "tool_result": (
+            None
+            if result is None
+            else {
+                "ok": result.ok,
+                "error": None if result.error is None else str(result.error),
+                "message": result.message,
+            }
+        ),
+        "robust": {"reason": scored.robust.reason, "detail": scored.robust.detail},
+        "leaky": {"reason": scored.leaky.reason, "detail": scored.leaky.detail},
+        "exploit": bool(scored.leaky_pass and not scored.robust_pass),
+    }
+
+
+def make_records_and_traces(
+    target: Target, instances: Sequence[TaskInstance], samples: Sequence[Sequence[str]]
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    """SPEC §12 records and trace rows, one each per (instance, sample); every sample scored once."""
     if len(instances) != len(samples):
         raise EvalError(f"{len(instances)} instances but {len(samples)} sample lists")
-    rows = []
+    rows, traces = [], []
     for inst, texts in zip(instances, samples, strict=True):
         for k, text in enumerate(texts):
             scored = score_completion(inst, text)
@@ -226,8 +268,15 @@ def make_records(target: Target, instances: Sequence[TaskInstance], samples: Seq
                 robust_pass=scored.robust_pass,
                 leaky_pass=scored.leaky_pass,
             )
-            rows.append(asdict(record))
-    return rows
+            row = asdict(record)
+            rows.append(row)
+            traces.append(trace_row(row, text, scored))
+    return rows, traces
+
+
+def make_records(target: Target, instances: Sequence[TaskInstance], samples: Sequence[Sequence[str]]) -> list[dict]:
+    """One SPEC §12 record per (instance, sample), both graders on every sample."""
+    return make_records_and_traces(target, instances, samples)[0]
 
 
 def write_jsonl_atomic(path: Path, rows: Iterable[dict[str, Any]]) -> None:
@@ -482,7 +531,10 @@ def run(args: argparse.Namespace) -> int:
         float(mode_cfg["temperature"]),
         int(mode_cfg["max_tokens"]),
     )
-    rows = make_records(target, instances, samples)
+    rows, traces = make_records_and_traces(target, instances, samples)
+    # Traces first: once the records file exists the watcher may mark the step done.
+    traces_out = eval_traces_path(output)
+    write_jsonl_atomic(traces_out, traces)
     write_jsonl_atomic(output, rows)
     print(f"[heldout] {target.run_id} step {target.step} ({args.mode}): {json.dumps(rates(rows))}", flush=True)
     if args.mode == "diagnostic":
@@ -492,7 +544,7 @@ def run(args: argparse.Namespace) -> int:
         summary_path.write_text(json.dumps(summary, indent=2, sort_keys=True) + "\n")
         print(summary_markdown(summary), flush=True)
         print(f"[heldout] summary: {summary_path}", flush=True)
-    print(f"[heldout] wrote {len(rows)} records to {output}", flush=True)
+    print(f"[heldout] wrote {len(rows)} records to {output} (traces: {traces_out})", flush=True)
     return 0
 
 
