@@ -21,6 +21,10 @@ gpu = [
     "deepspeed>=0.17; sys_platform == 'linux'",
     "vllm>=0.11; sys_platform == 'linux'",
 ]
+# Plots for eval/compare.py: `uv sync --group dev --extra report`.
+report = [
+    "matplotlib>=3.9",
+]
 
 [dependency-groups]
 dev = [
