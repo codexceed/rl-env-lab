@@ -11,7 +11,7 @@ Format: one row per decision. A changed decision gets a new row; the old row is 
 | 3 | 2026-10-12 | Model family | Qwen3.5 (0.8B / 2B / 4B); fallback Qwen3 (0.6B / 1.7B / 4B) | Same-family ladder; 2B fits 1 GPU/run | Pending §0.3 compat |
 | 4 | 2026-10-12 | Main model | Qwen3.5-2B | All 3 pairs fit in one block | Pending §2.2 band check |
 | 5 | 2026-10-12 | Weights updated | Full fine-tune, all sizes | Fair size comparison | Pending Mon confirm |
-| 6 | — | Learning rate | `____` (from 1e-6 / 3e-6 / 1e-5) | | Pending §0.4 |
+| 6 | 2026-10-12 | Learning rate | **1e-6**, constant, all sizes | 2B toy (11-digit addition, 100 steps): 1e-6 reward 0.82→0.87, no entropy collapse; 3e-6 collapsed at step ~28, 1e-5 at step 3, each after vLLM-vs-trainer logprob gaps of 10+ nats. The gap is now logged per step | Locked (owner) |
 | 7 | — | Step count | `____` (common across sizes) | | Pending §0.4 benchmark |
 | 8 | — | Generation backend | `____` (vLLM preferred; HF fallback for train + eval) | | Pending §0.3 |
 | 9 | — | 4B GPU layout | ~~1 vLLM server + 3 train~~ infeasible (64 ∤ 3 ranks); candidates 1 server + 2 train, or 4-GPU colocated | | Pending §0.4 benchmark |

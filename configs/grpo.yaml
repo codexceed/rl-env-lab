@@ -21,7 +21,7 @@ budget:  # the common per-step budget (PROGRESSION "Common budget across sizes")
   max_completion_length: 128
   temperature: 1.0
   beta: 0.0
-  learning_rate: 3.0e-6      # PLACEHOLDER until DECISIONS #6 (LR sweep, §0.4)
+  learning_rate: 1.0e-6      # DECISIONS #6: only LR that passed the 2B toy sweep; 3e-6 and 1e-5 collapsed
   lr_scheduler_type: constant
   warmup_steps: 0
   max_steps: 300             # PLACEHOLDER until DECISIONS #7 (benchmark, §0.4)

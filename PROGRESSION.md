@@ -131,14 +131,14 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Done when: CI green on `main`
 
 ### 0.3 Qwen3.5 compatibility — full training path (agent, on GPU, pinned stack)
-- [ ] Loads as text-only causal LM (no vision tower) for 0.8B / 2B / 4B
-- [ ] Forward + backward pass, bf16, gradient checkpointing on
-- [ ] Optimized kernels for hybrid attention active (record which: `____`); no silent slow fallback
+- [x] Loads as text-only causal LM (no vision tower) for 0.8B / 2B / 4B — 2026-10-12 16:00, compat passes on all 3 sizes
+- [x] Forward + backward pass, bf16, gradient checkpointing on — 2026-10-12 16:00, 2B 15.2k train tok/s, 31 GB peak; 4B 7.6k tok/s, 41 GB
+- [x] Optimized kernels for hybrid attention active (record which: `causal_conv1d` 1.7.0 source build + `fla` 0.5.2 chunk/fused-recurrent gated delta rule); no silent slow fallback — 2026-10-12 16:00
 - [ ] Generation works: vLLM colocated (1 GPU) and vLLM server (4B layout)
-- [ ] Weight sync trainer → vLLM works (generations change after an update)
-- [ ] Save → resume restores model, optimizer, scheduler, RNG, trainer state; loss continues smoothly
-- [ ] Thinking mode disabled cleanly via chat template
-- [ ] Native tool-call format identified: **XML** `<tool_call><function=NAME><parameter=ARG>…` from HF chat templates (owner approved 2026-10-12); confirm with real tokenizer on GPU
+- [x] Weight sync trainer → vLLM works (generations change after an update) — 2026-10-12 16:00, colocated; logprob gap now logged per step (toy collapses at LR ≥ 3e-6 followed 10+ nat gaps)
+- [x] Save → resume restores model, optimizer, scheduler, RNG, trainer state; loss continues smoothly — 2026-10-12 16:00, exact fingerprints after resume, all sizes (after fixing a vacuous test reward)
+- [x] Thinking mode disabled cleanly via chat template — 2026-10-12 16:00, all sizes
+- [x] Native tool-call format identified: **XML** `<tool_call><function=NAME><parameter=ARG>…` from HF chat templates (owner approved 2026-10-12); confirm with real tokenizer on GPU — 2026-10-12 16:00, confirmed with real tokenizers
 - [ ] Memory and throughput recorded per size (feeds §0.4)
 - [ ] Decision rule:
   - vLLM fails → HF generate for **training and eval**; model family unchanged
@@ -147,13 +147,13 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
   - Log either in Change log + `DECISIONS.md`
 
 ### 0.4 Toy GRPO + benchmarks (agent) — `train/smoke_toy.py`
-- [ ] Task: two-number addition, reward = exact answer
-- [ ] Main model full FT, 100 steps at each LR: `1e-6`, `3e-6`, `1e-5`
-- [ ] Logged per step: reward, dead-group share, entropy, completion length, step time
-- [ ] Weights confirmed changed
+- [x] Task: two-number addition, reward = exact answer — 2026-10-12 16:00, 11-digit operands (5 digits too easy: base 0.92)
+- [x] Main model full FT, 100 steps at each LR: `1e-6`, `3e-6`, `1e-5` — 2026-10-12 16:00, 2B
+- [x] Logged per step: reward, dead-group share, entropy, completion length, step time — 2026-10-12 16:00, plus vLLM-vs-trainer logprob gap
+- [x] Weights confirmed changed — 2026-10-12 16:00, 320/320 params at 1e-6
 - [ ] Step time + peak memory benchmarked at real task lengths for 0.8B (1 GPU), 2B (1 GPU), 4B (4 GPU layout) → update Run matrix
 - [ ] Eval throughput benchmarked (samples/s on 2 GPUs) → confirm eval keeps pace with checkpoint arrival
-- [ ] Done when: reward rises for ≥1 LR with no entropy collapse
+- [x] Done when: reward rises for ≥1 LR with no entropy collapse — 2026-10-12 16:00, 1e-6 passes (0.82→0.87); DECISIONS #6 = 1e-6
 
 ### 0.5 Spec (agent drafts, I review) — `SPEC.md`
 - [x] Entities and fields
@@ -427,3 +427,4 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
 | 2026-10-12 | Run logs committed under `logs/` and mirrored to Lightning Experiments by `train/logsync.py` (ADR 0002) | Owner: live tracking + public evidence | [x] #19 |
 | 2026-10-12 | Toy GRPO task 5 → 11 digits: base 2B scored 0.92 at 5 digits (83% groups dead), 0.69 at 11 (38%) | 5-digit sweep could not show reward rising | [ ] |
+| 2026-10-12 | LR = 1e-6 (DECISIONS #6); pair git-commit differences are noted, not excluded | Toy sweep; owner | [x] #6 |
