@@ -13,6 +13,7 @@ Writes the layout of `train/LAYOUT.md` (no weights, only markers)::
     <out>/runs/<run_id>/eval/step-NNNNN/COMPLETE   {"step", "final"}
     <out>/runs/<run_id>/status.json         {"status", "size", "reward", "seed"}
     <out>/runs/<run_id>/train_metrics.jsonl  {"step", "reward", ...} per training step
+    <out>/data/splits/heldout.txt           the fake frozen held-out ids (eval protocol check)
 
 Known effects baked in (all fake):
 
@@ -47,6 +48,7 @@ from train.checkpoints import COMPLETE, step_name
 
 REWARDS = ("robust", "leaky")
 SEEDS = (1, 2, 3)
+HELDOUT_IDS = Path("data") / "splits" / "heldout.txt"  # same relative path as eval/compare.py reads
 FAMILIES = ("F1", "F2", "F3", "F4", "F5")
 
 # Base true-success probability per family (held-out T3) for the 2B model.
@@ -236,6 +238,10 @@ def write_fake_tree(
     evals, runs = root / "evals", root / "runs"
     stop_at = dict(stop_at or {})
     kw = {"data_seed": data_seed, "n_instances": n_instances, "n_samples": n_samples}
+
+    ids_path = root / HELDOUT_IDS
+    ids_path.parent.mkdir(parents=True, exist_ok=True)
+    ids_path.write_text("".join(f"{iid}\n" for iid, _ in instances(n_instances)))
 
     for size in base_sizes:
         rid = run_id_for(size, "base", None)

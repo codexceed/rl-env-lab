@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from pathlib import Path
 from typing import Any
@@ -12,25 +13,34 @@ from eval import compare
 from eval.compare import (
     BEGIN_MARKER,
     END_MARKER,
+    HELDOUT_IDS,
     Analysis,
     HypothesisResult,
+    Protocol,
     analyze,
+    check_protocol,
     load_dataset,
+    load_protocol,
     read_train_log,
     render_markdown,
     replace_generated,
     write_report,
 )
 from eval.fake_data import eval_records, write_fake_tree
-from eval.metrics import STATUS_FAIL, STATUS_INCOMPLETE, STATUS_PASS, Verdict
+from eval.metrics import STATUS_FAIL, STATUS_INCOMPLETE, STATUS_PASS, EvalRecord, Verdict
 
 N_BOOT = 1000
 REPO = Path(__file__).resolve().parents[1]
 FAKE: dict[str, Any] = {"final_step": 300, "eval_every": 100}
 
 
-def _analyze(root: Path):
-    data = load_dataset(root / "evals", root / "runs")
+def _protocol(root: Path, samples: int = 4) -> Protocol | None:
+    path = root / HELDOUT_IDS
+    return load_protocol(path, samples=samples) if path.exists() else None
+
+
+def _analyze(root: Path, samples: int = 4):
+    data = load_dataset(root / "evals", root / "runs", _protocol(root, samples))
     return analyze(data, n_boot=N_BOOT)
 
 
@@ -163,6 +173,131 @@ def test_missing_training_logs_flagged(tmp_path):
     assert any("no training log" in g for g in hs["H2"].gaps)
 
 
+# ── eval protocol (PREREG §3: 250 frozen held-out instances x 4 samples) ─────
+
+
+def _rewrite_evals(root: Path, pattern: str, change) -> list[Path]:
+    """Apply ``change(rows) -> rows`` to every eval records file matching ``pattern``."""
+    paths = sorted((root / "evals").glob(pattern))
+    for p in paths:
+        rows = [json.loads(ln) for ln in p.read_text().splitlines() if ln.strip()]
+        p.write_text("".join(json.dumps(r) + "\n" for r in change(rows)))
+    return paths
+
+
+def test_three_of_four_samples_removed_everywhere_is_incomplete(tmp_path):
+    """The case that slipped through: 250 samples per checkpoint instead of 1,000 counted as complete."""
+    write_fake_tree(tmp_path, **FAKE)
+    paths = _rewrite_evals(tmp_path, "*/step-*.jsonl", lambda rows: [r for r in rows if r["sample_idx"] == 0])
+    assert len(paths) == 18 * 3 + 3
+    an = _analyze(tmp_path)
+    assert an.count("final") == 18 and all(s in an.data.base for s in ("0.8b", "2b", "4b"))
+    assert not an.complete and not an.protocol_ok
+    assert len(an.data.protocol_failures) == len(paths)
+    for h in an.hypotheses:
+        assert h.provisional, h.hypothesis
+        assert any("fails the eval protocol" in g for g in h.gaps)
+    md = render_markdown(an, None, tmp_path)
+    assert "**Incomplete data: verdicts are provisional.**" in md
+    assert "eval protocol: 21 checkpoint(s) in verdicts fail it" in md
+    assert "| `2b-rob-s1@300` | yes | 250 of 1000 samples; 250 instance(s) without sample_idx 0..3" in md
+    assert "| `2b-rob-s1@100` | no |" in md
+    assert "Complete:" not in md
+
+
+def test_one_short_final_checkpoint_only_affects_its_hypotheses(tmp_path):
+    write_fake_tree(tmp_path, **FAKE)
+    _rewrite_evals(tmp_path, "2b-rob-s1/step-00300.jsonl", lambda rows: [r for r in rows if r["sample_idx"] < 3])
+    _rewrite_evals(tmp_path, "2b-leak-s1/step-00100.jsonl", lambda rows: [r for r in rows if r["sample_idx"] < 3])
+    an = _analyze(tmp_path)
+    hs = _by_h(an)
+    assert not an.complete
+    assert list(an.data.verdict_failures()) == [("2b-rob-s1", 300)]
+    assert set(an.data.protocol_failures) == {("2b-rob-s1", 300), ("2b-leak-s1", 100)}
+    assert hs["H1"].provisional and hs["H2"].provisional and not hs["H5"].provisional
+    md = render_markdown(an, None, tmp_path)
+    assert "2 of 57 checkpoint(s) fail it" in md
+    assert "| `2b-leak-s1@100` | no |" in md
+
+
+def test_only_an_intermediate_checkpoint_failing_keeps_data_complete(tmp_path):
+    write_fake_tree(tmp_path, **FAKE)
+    _rewrite_evals(tmp_path, "4b-leak-s2/step-00200.jsonl", lambda rows: rows[:-1])
+    an = _analyze(tmp_path)
+    assert an.complete and set(an.data.protocol_failures) == {("4b-leak-s2", 200)}
+
+
+def test_instance_set_must_equal_frozen_ids_not_the_common_set(tmp_path):
+    runs = [f"2b-{r}-s{s}" for r in ("rob", "leak") for s in (1, 2, 3)]
+    write_fake_tree(tmp_path, run_ids=runs, base_sizes=("2b",), **FAKE)
+    # every checkpoint lacks the same instance: the most-common-set rule would accept this
+    _rewrite_evals(tmp_path, "*/step-*.jsonl", lambda rows: [r for r in rows if r["instance_id"] != "F1T3-000"])
+    an = _analyze(tmp_path)
+    assert not an.data.runs and len(an.data.dropped) == 6 * 3 + 1
+    assert any("frozen 250-instance held-out set" in n for n in an.data.notes)
+    assert all(
+        v == ["1 of 250 held-out instances missing", "996 of 1000 samples"] for v in an.data.protocol_failures.values()
+    )
+    md = render_markdown(an, None, tmp_path)
+    assert "| `2b-rob-s1@300` | no (dropped) |" in md
+    # without a protocol the old rule keeps them, but the data never counts as complete
+    data = load_dataset(tmp_path / "evals", tmp_path / "runs")
+    assert len(data.runs) == 19
+    an = analyze(data, n_boot=N_BOOT)
+    assert not an.complete and all(h.provisional for h in an.hypotheses)
+    assert "**Not checked:**" in render_markdown(an, None, tmp_path)
+
+
+def test_grader_fields_and_duplicates_are_protocol_failures(tmp_path):
+    runs = [f"2b-{r}-s{s}" for r in ("rob", "leak") for s in (1, 2, 3)]
+    write_fake_tree(tmp_path, run_ids=runs, base_sizes=("2b",), **FAKE)
+
+    def null_grader(rows):
+        rows[0] = {**rows[0], "leaky_pass": None}
+        rows[1] = {k: v for k, v in rows[1].items() if k != "robust_pass"}
+        return rows
+
+    _rewrite_evals(tmp_path, "2b-leak-s1/step-00300.jsonl", null_grader)
+    _rewrite_evals(tmp_path, "2b-rob-s2/step-00300.jsonl", lambda rows: [*rows, rows[5]])
+    an = _analyze(tmp_path)  # no crash on the duplicate
+    fails = an.data.verdict_failures()
+    assert fails[("2b-leak-s1", 300)][0] == "2 row(s) without boolean parse_ok/robust_pass/leaky_pass (skipped)"
+    assert "998 of 1000 samples" in fails[("2b-leak-s1", 300)]
+    assert fails[("2b-rob-s2", 300)] == ["1 duplicate sample(s) (first kept)"]
+    assert not an.complete
+
+
+def test_check_protocol_unit():
+    recs = [
+        EvalRecord("r", "2b", "robust", 1, 5, iid, "F1", "F1T3", k, True, True, True)
+        for iid in ("a", "b")
+        for k in (0, 1)
+    ]
+    p = Protocol(frozenset({"a", "b"}), 2)
+    kept, fails = check_protocol(recs, p)
+    assert kept == recs and fails == {}
+    _, fails = check_protocol(recs, Protocol(frozenset({"a", "b"}), 3))
+    assert fails[("r", 5)] == ["4 of 6 samples", "2 instance(s) without sample_idx 0..2 exactly once (e.g. a: [0, 1])"]
+    _, fails = check_protocol([*recs[:3], dataclasses.replace(recs[3], sample_idx=0)], p)
+    assert fails[("r", 5)] == [
+        "1 duplicate sample(s) (first kept)",
+        "3 of 4 samples",
+        "1 instance(s) without sample_idx 0..1 exactly once (e.g. b: [0])",
+    ]
+
+
+def test_load_protocol_reads_samples_from_config(tmp_path):
+    ids = tmp_path / "heldout.txt"
+    ids.write_text("a\nb\n\n")
+    p = load_protocol(ids)
+    assert p.instance_ids == {"a", "b"} and p.samples == 4 and p.n_samples == 8
+    real = load_protocol(REPO / HELDOUT_IDS)
+    assert len(real.instance_ids) == 250 and real.n_samples == 1000
+    ids.write_text("a\na\n")
+    with pytest.raises(ValueError):
+        load_protocol(ids)
+
+
 # ── loading rules ────────────────────────────────────────────────────────────
 
 
@@ -264,6 +399,7 @@ def test_cli_writes_report_between_markers(tmp_path, full):
             "--evals", str(root / "evals"),
             "--runs", str(root / "runs"),
             "--report", str(report),
+            "--heldout-ids", str(root / HELDOUT_IDS),
             "--n-boot", "200",
             "--no-plots",
         ]
