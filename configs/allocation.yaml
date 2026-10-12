@@ -65,16 +65,17 @@ eval:
   max_restarts: 5
 
 sizes:
-  # Timeouts are ~2x the §0.4 benchmark at 1,000 steps (0.8B ~1.2 h, 2B ~1.7 h, 4B ~1.2 h), worst-case lengths.
+  # Timeouts: benchmark step time plus ~10 min per 50-step recovery checkpoint (optimizer save, 6 runs
+  # writing at once), with margin. Measured on the real 2B runs: ~15 min per 50 steps -> ~5 h per run.
   0.8b:
     gpus_per_run: 1
-    run_timeout_s: 10800
+    run_timeout_s: 21600
   2b:
     gpus_per_run: 1
-    run_timeout_s: 14400
+    run_timeout_s: 28800
   4b:
     gpus_per_run: 4
-    run_timeout_s: 10800
+    run_timeout_s: 28800
     # 4 ZeRO-3 ranks with colocated vLLM (DECISIONS #9); the default train_command applies.
 
 runs:
