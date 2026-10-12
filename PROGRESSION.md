@@ -4,7 +4,7 @@
 
 **Update rules**
 
-- Tick a box the moment its *done-when* is met; append `— YYYY-MM-DD HH:MM, note` if useful.
+- Tick a box the moment its *done-when* is met; append `— YYYY-MM-DD, note` if useful.
 - Never delete a task: mark it `[~]` (cut) or `[>]` (moved/replaced) with a one-line reason.
 - Any change to scope, model, config, schedule or statistics → row in **Change log**; if it touches a locked decision, also in `DECISIONS.md`. Major architecture/planning/experiment-design changes get an ADR (`docs/adr/`, ask the owner first).
 - Keep **Status** current.
@@ -19,11 +19,10 @@
 
 | | |
 |---|---|
-| **Today** | Mon 12 Oct 2026 |
-| **Phase** | P0 — Setup |
+| **Phase** | P0 — Setup (benchmarks running). P1 code and P2 acceptance done early |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
-| **Compute** | 2 × 8 H200 (Lightning AI) · studio `rl-env-lab` in `[teamspace]` (CPU now → H200 when GPU scripts land) |
-| **Next gate** | 🚦 G-Mon (end of today) |
+| **Compute** | 2 × 8 H200 (Lightning AI, `[teamspace]`, `bare-metal`) · node 1 `rl-env-lab-n1` on 8× H200 · node 2 `rl-env-lab-n2` created before training |
+| **Next gate** | 🚦 G-Setup |
 | **Blockers** | — |
 
 ---
@@ -36,7 +35,7 @@
 | Compute | Scenario A (3 nodes) or B (1 GPU) | **2 H200 nodes** |
 | Main model | Qwen3-0.6B (LoRA) | **Qwen3.5-2B**; fallbacks in §Fallbacks |
 | Size ladder | 0.6B / 1.7B / 4B | **Qwen3.5 0.8B / 2B / 4B** |
-| Weights updated | LoRA (full allowed for 4B+) | **Full fine-tune, all sizes** (confirm Mon) |
+| Weights updated | LoRA (full allowed for 4B+) | **Full fine-tune, all sizes** |
 | LR sweep | 1e-5 / 3e-5 / 1e-4 (LoRA range) | **1e-6 / 3e-6 / 1e-5** (full-FT range) |
 | Seeds | 1 (B) / 3 (A) | **3 per condition** |
 | Generation backend | vLLM colocated, else HF | **vLLM preferred** (colocated for 1-GPU runs, server for 4B); **HF generate fallback for training and eval** |
@@ -48,13 +47,13 @@
 | Triage classifier | Sat | **Cut** |
 | Multi-turn tasks | Stretch | **Cut** |
 | Ablations | Stretch | **Optional, spare blocks only** |
-| Reporting | Sat–Sun | **Skeleton Tue–Wed, live tables Thu, final review Fri** |
+| Reporting | Sat–Sun | **Skeleton during build, live tables as results land, final review before the deadline** |
 | Python | 3.11 | **3.14** (Linux wheels confirmed for torch 2.13, vLLM 0.31, DeepSpeed 0.19, TRL 1.15) |
 | GPU deps | Always installed | **`gpu` extra, Linux only**; CI and local dev run without it |
 
 ## Inherited unchanged from `INSTRUCTIONS.md`
 
-Environment design (5 entities, 6 tools, 5 families × 3 templates) · T1/T2 train, T3 held out, frozen Monday · one tool call per task in native format · binary reward from simulator state · robust/leaky grader definitions · exploit definition · quality gates G1–G3 and acceptance bar · 2,000 / 250 / 100 data split and broken-variant types · GRPO config (8 gens × 8 prompts, prompt 1,536 / completion 128 tokens, temp 1.0, beta 0, bf16, grad checkpointing, seed list) · step-100 health definition · `uv`, `pytest`, CI · MIT, synthetic data · guardrails (personal accounts, no confidential material, `.env` never committed, timeouts and spend caps).
+Environment design (5 entities, 6 tools, 5 families × 3 templates) · T1/T2 train, T3 held out, frozen before training · one tool call per task in native format · binary reward from simulator state · robust/leaky grader definitions · exploit definition · quality gates G1–G3 and acceptance bar · 2,000 / 250 / 100 data split and broken-variant types · GRPO config (8 gens × 8 prompts, prompt 1,536 / completion 128 tokens, temp 1.0, beta 0, bf16, grad checkpointing, seed list) · step-100 health definition · `uv`, `pytest`, CI · MIT, synthetic data · guardrails (personal accounts, no confidential material, `.env` never committed, timeouts and spend caps).
 
 ---
 
@@ -62,17 +61,17 @@ Environment design (5 entities, 6 tools, 5 families × 3 templates) · T1/T2 tra
 
 Each training run does its own generation (colocated vLLM) unless noted.
 
-| Window | Node 1 | Node 2 |
+| Block | Node 1 | Node 2 |
 |---|---|---|
-| Mon–Wed AM | Toy runs, compat checks, benchmarks, baseline eval | Same (split work across nodes) |
-| Wed 14 → 18 | GPU 0–5: six 2B runs (1 GPU each) · GPU 6–7: eval | GPU 0–5: six 0.8B runs · GPU 6–7: eval overflow |
-| Wed 18 → Thu 02 | GPU 0–3: **4B P2 robust** · GPU 4–5: spare · GPU 6–7: eval | GPU 0–3: 4B P1 robust · GPU 4–7: 4B P1 leaky |
-| Thu 02 → 10 | GPU 0–3: **4B P2 leaky** · GPU 4–5: spare · GPU 6–7: eval | GPU 0–3: 4B P3 robust · GPU 4–7: 4B P3 leaky |
-| Thu 10 → Fri 06 | Reruns · optional ablations · eval | Reruns · optional ablations |
+| Before training | Toy runs, compat checks, benchmarks, baseline eval | Same (split work across nodes) |
+| 1 (~4 h) | GPU 0–5: six 2B runs (1 GPU each) · GPU 6–7: eval | GPU 0–5: six 0.8B runs · GPU 6–7: eval overflow |
+| 2 (~8 h) | GPU 0–3: **4B P2 robust** · GPU 4–5: spare · GPU 6–7: eval | GPU 0–3: 4B P1 robust · GPU 4–7: 4B P1 leaky |
+| 3 (~8 h) | GPU 0–3: **4B P2 leaky** · GPU 4–5: spare · GPU 6–7: eval | GPU 0–3: 4B P3 robust · GPU 4–7: 4B P3 leaky |
+| Spare (until the cutoff) | Reruns · optional ablations · eval | Reruns · optional ablations |
 
-**4B run layout:** 4 GPUs = 1 vLLM server + 3 training (ZeRO-3). Keep this until Monday's benchmark justifies a change. Under HF fallback: 4 GPUs training, in-process generation.
+**4B run layout:** set by `make bench` (DECISIONS #9): 1 vLLM server + 2 training (ZeRO-3), or 4 GPUs colocated. 1 server + 3 training is infeasible (64 completions don't split over 3 ranks). Under HF fallback: 4 GPUs training, in-process generation.
 
-**4B P2** runs robust then leaky in sequence on Node 1. It is still a matched pair: same config, seed, start weights and step count.
+**4B P2** runs robust (block 2) then leaky (block 3) on Node 1. It is still a matched pair: same config, seed, start weights and step count.
 
 ## Run matrix (18 runs)
 
@@ -82,30 +81,30 @@ Each training run does its own generation (colocated vLLM) unless noted.
 | Ladder | 0.8B | robust + leaky | 1, 2, 3 | 1 | ~2 h | 2 | `0.8b-{rob,leak}-s{1,2,3}` |
 | Ladder | 4B | robust + leaky | 1, 2, 3 | 4 | ~8 h | 2 (P1, P3), 1 (P2) | `4b-{rob,leak}-s{1,2,3}` |
 
-⚠ All times are unvalidated estimates; the 4B estimate in particular is benchmarked Monday (§0.4). Parameter count alone doesn't set throughput.
+⚠ All times are unvalidated estimates until the §0.4 benchmark; the 4B estimate in particular. Parameter count alone doesn't set throughput.
 
 **Common budget across sizes (for H5):** same step count, prompts per step, generations per prompt, completion length and LR schedule shape. GPU count per run may differ; the per-step data does not.
 
 ## Timeline
 
 ```
-Mon 12      setup · compat checks · toy GRPO + benchmarks · SPEC · PREREG       🚦 G-Mon
-Tue 13      simulator · graders · tasks · integration · README + report skeleton 🚦 G-Tue
-Wed 14 AM   acceptance · diagnostic baseline · formal base eval                  🚦 G-Wed
-            ── training ─────────────────────────────────────────────────────
-              Wed 14-18     Wed 18-02         Thu 02-10         Thu 10 → Fri 06
-Node 1       [2B ×6]       [4B P2 rob]       [4B P2 leak]      ( reruns / ablations )
-             [ eval ═══════════════ every checkpoint as it lands ════════════ ]
-Node 2       [0.8B ×6]     [4B P1 rob+leak]  [4B P3 rob+leak]  ( reruns / ablations )
-                  ▲                                ▲
-          🚦 G-core ~Wed 18:00         🚦 G-ladder ~Thu 10:00 → ~20 h buffer
-Thu 16      compare.py fills tables, plots, provisional verdicts as results land
-Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 done 🚦 G-Fri
+P0 setup        compat checks · toy GRPO + benchmarks · SPEC · PREREG          🚦 G-Setup
+P1 build        simulator · graders · tasks · integration · README + report    🚦 G-Build
+P2 baseline     acceptance · diagnostic baseline · formal base eval            🚦 G-Baseline
+                ── training ──────────────────────────────────────────────────
+                  block 1 (~4 h)   block 2 (~8 h)      block 3 (~8 h)     spare → cutoff
+Node 1           [2B ×6]          [4B P2 rob]         [4B P2 leak]       ( reruns / ablations )
+                 [ eval ═══════════════ every checkpoint as it lands ══════════════ ]
+Node 2           [0.8B ×6]        [4B P1 rob+leak]    [4B P3 rob+leak]   ( reruns / ablations )
+                      ▲                                      ▲
+              🚦 G-core (end of block 1)        🚦 G-ladder (end of block 3) → ~20 h buffer
+Live            compare.py fills tables, plots, provisional verdicts as results land
+P4 final        Fri 06:00 cutoff · final eval · review · clean-clone · Fri 12:00 deadline 🚦 G-Final
 ```
 
 ---
 
-## P0 — Monday 12 Oct: setup
+## P0 — Setup
 
 ### 0.1 Compute and access (me)
 - [ ] Written confirmation of H200 access (2 nodes, through Fri 16 Oct)
@@ -115,7 +114,7 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [x] Studio auto-sleep disabled (machines stay attached through dips) — 2026-10-12, verified via SDK
 - [ ] Switch studio to H200 (1× for §0.3/§0.4, then ×8) when GPU scripts land
 - [x] Node 1 = studio `rl-env-lab-n1` on `bare-metal` (8× H200 `8x-H200`, [rate]); set up on CPU: gpu extra + causal-conv1d 1.7.0 built (pip CUDA 13.0 nvcc), 1,231 tests pass on node — 2026-10-12. Old `rl-env-lab` studio (public-prod, [rate] for 8× H200) stopped
-- [ ] Node 2 = `rl-env-lab-n2` on `bare-metal`: create + CPU setup before Wed; H200 at training start
+- [ ] Node 2 = `rl-env-lab-n2` on `bare-metal`: create + CPU setup before training; H200 at training start
 - [ ] Both nodes reachable; GPU check prints GPU name, memory, CUDA available on each
 - [ ] Shared storage for checkpoints/eval outputs set up; path: `____`
 - [ ] Storage measured after first checkpoint save (per-checkpoint size × planned count recorded here: `____`)
@@ -131,14 +130,14 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Done when: CI green on `main`
 
 ### 0.3 Qwen3.5 compatibility — full training path (agent, on GPU, pinned stack)
-- [x] Loads as text-only causal LM (no vision tower) for 0.8B / 2B / 4B — 2026-10-12 16:00, compat passes on all 3 sizes
-- [x] Forward + backward pass, bf16, gradient checkpointing on — 2026-10-12 16:00, 2B 15.2k train tok/s, 31 GB peak; 4B 7.6k tok/s, 41 GB
-- [x] Optimized kernels for hybrid attention active (record which: `causal_conv1d` 1.7.0 source build + `fla` 0.5.2 chunk/fused-recurrent gated delta rule); no silent slow fallback — 2026-10-12 16:00
+- [x] Loads as text-only causal LM (no vision tower) for 0.8B / 2B / 4B — 2026-10-12, compat passes on all 3 sizes
+- [x] Forward + backward pass, bf16, gradient checkpointing on — 2026-10-12, 2B 15.2k train tok/s, 31 GB peak; 4B 7.6k tok/s, 41 GB
+- [x] Optimized kernels for hybrid attention active (record which: `causal_conv1d` 1.7.0 source build + `fla` 0.5.2 chunk/fused-recurrent gated delta rule); no silent slow fallback — 2026-10-12
 - [ ] Generation works: vLLM colocated (1 GPU) and vLLM server (4B layout)
-- [x] Weight sync trainer → vLLM works (generations change after an update) — 2026-10-12 16:00, colocated; logprob gap now logged per step (toy collapses at LR ≥ 3e-6 followed 10+ nat gaps)
-- [x] Save → resume restores model, optimizer, scheduler, RNG, trainer state; loss continues smoothly — 2026-10-12 16:00, exact fingerprints after resume, all sizes (after fixing a vacuous test reward)
-- [x] Thinking mode disabled cleanly via chat template — 2026-10-12 16:00, all sizes
-- [x] Native tool-call format identified: **XML** `<tool_call><function=NAME><parameter=ARG>…` from HF chat templates (owner approved 2026-10-12); confirm with real tokenizer on GPU — 2026-10-12 16:00, confirmed with real tokenizers
+- [x] Weight sync trainer → vLLM works (generations change after an update) — 2026-10-12, colocated; logprob gap now logged per step (toy collapses at LR ≥ 3e-6 followed 10+ nat gaps)
+- [x] Save → resume restores model, optimizer, scheduler, RNG, trainer state; loss continues smoothly — 2026-10-12, exact fingerprints after resume, all sizes (after fixing a vacuous test reward)
+- [x] Thinking mode disabled cleanly via chat template — 2026-10-12, all sizes
+- [x] Native tool-call format identified: **XML** `<tool_call><function=NAME><parameter=ARG>…` from HF chat templates (owner approved 2026-10-12); confirm with real tokenizer on GPU — 2026-10-12, confirmed with real tokenizers
 - [ ] Memory and throughput recorded per size (feeds §0.4)
 - [ ] Decision rule:
   - vLLM fails → HF generate for **training and eval**; model family unchanged
@@ -147,13 +146,13 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
   - Log either in Change log + `DECISIONS.md`
 
 ### 0.4 Toy GRPO + benchmarks (agent) — `train/smoke_toy.py`
-- [x] Task: two-number addition, reward = exact answer — 2026-10-12 16:00, 11-digit operands (5 digits too easy: base 0.92)
-- [x] Main model full FT, 100 steps at each LR: `1e-6`, `3e-6`, `1e-5` — 2026-10-12 16:00, 2B
-- [x] Logged per step: reward, dead-group share, entropy, completion length, step time — 2026-10-12 16:00, plus vLLM-vs-trainer logprob gap
-- [x] Weights confirmed changed — 2026-10-12 16:00, 320/320 params at 1e-6
+- [x] Task: two-number addition, reward = exact answer — 2026-10-12, 11-digit operands (5 digits too easy: base 0.92)
+- [x] Main model full FT, 100 steps at each LR: `1e-6`, `3e-6`, `1e-5` — 2026-10-12, 2B
+- [x] Logged per step: reward, dead-group share, entropy, completion length, step time — 2026-10-12, plus vLLM-vs-trainer logprob gap
+- [x] Weights confirmed changed — 2026-10-12, 320/320 params at 1e-6
 - [ ] Step time + peak memory benchmarked at real task lengths for 0.8B (1 GPU), 2B (1 GPU), 4B (4 GPU layout) → update Run matrix
 - [ ] Eval throughput benchmarked (samples/s on 2 GPUs) → confirm eval keeps pace with checkpoint arrival
-- [x] Done when: reward rises for ≥1 LR with no entropy collapse — 2026-10-12 16:00, 1e-6 passes (0.82→0.87); DECISIONS #6 = 1e-6
+- [x] Done when: reward rises for ≥1 LR with no entropy collapse — 2026-10-12, 1e-6 passes (0.82→0.87); DECISIONS #6 = 1e-6
 
 ### 0.5 Spec (agent drafts, I review) — `SPEC.md`
 - [x] Entities and fields
@@ -192,7 +191,7 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [x] **Difficulty adaptation rule (frozen):** see §2.2; decided from train-template diagnostics only; one task distribution for all sizes; held-out templates never adapted
 - [x] **SFT rule:** if SFT warm-up is used, the same recipe is applied to all sizes and both reward members start from the same SFT checkpoint; otherwise H5 is exploratory
 
-### 0.8 End-of-day decisions (me) — `DECISIONS.md`
+### 0.8 Setup decisions (me) — `DECISIONS.md`
 - [ ] Model family + main model
 - [ ] Full FT vs LoRA
 - [ ] Learning rate (frozen)
@@ -200,12 +199,12 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Generation backend for training and eval
 - [ ] 4B GPU layout (keep 1 gen + 3 train unless benchmark says otherwise)
 
-### 🚦 G-Mon
+### 🚦 G-Setup
 - [ ] CI green · compat checks pass (or fallback logged) · toy reward rises · benchmarks recorded · SPEC signed off · PREREG committed · DECISIONS filled
 
 ---
 
-## P1 — Tuesday 13 Oct: environment build
+## P1 — Environment build
 
 Three agents in parallel; I integrate and review.
 
@@ -228,7 +227,7 @@ Three agents in parallel; I integrate and review.
 - [x] Data build: 2,000 train, 250 held-out, 100 broken
 - [x] `prompts.py` in native format
 - [x] Unit tests: seed reproducibility, no T3 in train — 2026-10-12, merged (#7)
-- [x] Real token counts checked with the Qwen3.5 tokenizer — 2026-10-12 14:00, all splits fit: max real 1,463 (train_hard), 1,430 (train), 1,462 (heldout) vs limit 1,536; 0 over. The chars/2.5 estimate overcounts (real = 0.92× estimate on average, ≤ 0.98× worst case), so data needs no rebuild
+- [x] Real token counts checked with the Qwen3.5 tokenizer — 2026-10-12, all splits fit: max real 1,463 (train_hard), 1,430 (train), 1,462 (heldout) vs limit 1,536; 0 over. The chars/2.5 estimate overcounts (real = 0.92× estimate on average, ≤ 0.98× worst case), so data needs no rebuild
 - [ ] Known limit: prompt budget (≤ 1,500 est. tokens, ≈ 1,465 real) leaves little headroom; most *hard* variants fit only 2–3 distractors (not 5–6). Only matters if the too-easy branch fires — then raise hard-variant budget or revise k before using them
 
 ### 1.4 Training and eval plumbing
@@ -252,12 +251,12 @@ Three agents in parallel; I integrate and review.
 - [x] `reports/results.md` skeleton with H1/H2/H5/H3 sections and empty tables
 - [x] `eval/compare.py` stub that runs on fake eval JSONL — 2026-10-12, full tables/verdicts/plots; `make report-fake` passes H1/H2/H5 on fake data
 
-### 🚦 G-Tue
-- [ ] Tests pass · data built · dry runs + resume work for both rewards · coordinator tested · if slipping, run §2 overnight
+### 🚦 G-Build
+- [ ] Tests pass · data built · dry runs + resume work for both rewards · coordinator tested · if slipping, run §2 in parallel
 
 ---
 
-## P2 — Wednesday 14 Oct AM: acceptance and baseline
+## P2 — Acceptance and baseline
 
 ### 2.1 Acceptance — `reports/acceptance.md`
 - [x] G1–G3 on every instance — 2026-10-12, 4,250 valid (train, train_hard, held-out) all pass
@@ -277,12 +276,12 @@ Three agents in parallel; I integrate and review.
 - [ ] 250 held-out × 4 samples, temp 0.7, both graders, for 0.8B, 2B, 4B
 - [ ] Base true success, exploit rate, format failures recorded (H1 and H2 baselines)
 
-### 🚦 G-Wed (by 13:30)
+### 🚦 G-Baseline
 - [ ] Acceptance passed · main model in band (after any adaptation) · formal base eval done
 
 ---
 
-## P3 — Wed 14:00 → Fri 06:00: training
+## P3 — Training (until the Fri 06:00 cutoff)
 
 ### 3.1 Launch
 - [ ] Coordinator launches per GPU allocation; start time `____`
@@ -317,23 +316,23 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 
 ### 3.3 Completion
 
-| Pair | Node / window | Finished (rob / leak) | All ckpts evaluated (rob / leak) |
+| Pair | Node / block | Finished (rob / leak) | All ckpts evaluated (rob / leak) |
 |---|---|---|---|
-| 2B P1 | N1 · Wed 14–18 | [ ] / [ ] | [ ] / [ ] |
-| 2B P2 | N1 · Wed 14–18 | [ ] / [ ] | [ ] / [ ] |
-| 2B P3 | N1 · Wed 14–18 | [ ] / [ ] | [ ] / [ ] |
-| 0.8B P1 | N2 · Wed 14–18 | [ ] / [ ] | [ ] / [ ] |
-| 0.8B P2 | N2 · Wed 14–18 | [ ] / [ ] | [ ] / [ ] |
-| 0.8B P3 | N2 · Wed 14–18 | [ ] / [ ] | [ ] / [ ] |
-| 4B P1 | N2 · Wed 18 → Thu 02 | [ ] / [ ] | [ ] / [ ] |
-| 4B P2 | N1 · rob Wed 18 → Thu 02, leak Thu 02 → 10 | [ ] / [ ] | [ ] / [ ] |
-| 4B P3 | N2 · Thu 02 → 10 | [ ] / [ ] | [ ] / [ ] |
+| 2B P1 | N1 · 1 | [ ] / [ ] | [ ] / [ ] |
+| 2B P2 | N1 · 1 | [ ] / [ ] | [ ] / [ ] |
+| 2B P3 | N1 · 1 | [ ] / [ ] | [ ] / [ ] |
+| 0.8B P1 | N2 · 1 | [ ] / [ ] | [ ] / [ ] |
+| 0.8B P2 | N2 · 1 | [ ] / [ ] | [ ] / [ ] |
+| 0.8B P3 | N2 · 1 | [ ] / [ ] | [ ] / [ ] |
+| 4B P1 | N2 · 2 | [ ] / [ ] | [ ] / [ ] |
+| 4B P2 | N1 · rob 2, leak 3 | [ ] / [ ] | [ ] / [ ] |
+| 4B P3 | N2 · 3 | [ ] / [ ] | [ ] / [ ] |
 
-- [ ] 🚦 G-core (~Wed 18:00): all six main-model runs finished and evaluated
-- [ ] 🚦 G-ladder (~Thu 10:00): all 0.8B and 4B runs finished and evaluated
+- [ ] 🚦 G-core (end of block 1): all six main-model runs finished and evaluated
+- [ ] 🚦 G-ladder (end of block 3): all 0.8B and 4B runs finished and evaluated
 - [ ] Recovery checkpoints pruned only after the run's final artifacts pass integrity check
 
-### 3.4 Live analysis (Thursday, as results land)
+### 3.4 Live analysis (as results land)
 - [ ] `eval/compare.py` fills results tables (size × reward × seed, CIs) from eval JSONL
 - [ ] Plots: training reward vs. true success over steps (per size, per reward)
 - [ ] Plot: exploit rate vs. size (H5)
@@ -342,7 +341,7 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 - [ ] Exploit gallery: 10–20 real leaky-pass / robust-fail samples, grouped by type
 - [ ] Limits section drafted
 
-### 3.5 Spare blocks (Thu 10 → Fri 06, only after G-core)
+### 3.5 Spare blocks (after block 3 until the cutoff, only after G-core)
 - [ ] Priority 1: reruns of any unhealthy/failed run
 - [ ] Optional: SFT vs. GRPO at matched budget (main model)
 - [ ] Optional: LoRA vs. full (main model)
@@ -350,9 +349,9 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 
 ---
 
-## P4 — Friday 16 Oct 06:00 → 12:00: final review and publish
+## P4 — Final review and publish (Fri 06:00 cutoff → 12:00 deadline)
 
-- [ ] 06:00: training stopped; coordinator confirms all eval + transfers done (idle marker); **owner releases machines** once certain they're not needed
+- [ ] Cutoff: training stopped; coordinator confirms all eval + transfers done (idle marker); **owner releases machines** once certain they're not needed
 - [ ] Final verdicts confirmed from complete data (H1, H2, H5; H3 exploratory); sample sizes stated
 - [ ] Results, plots, gallery, limits reviewed
 - [ ] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking
@@ -360,7 +359,7 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 - [ ] No secrets, no confidential material, all data synthetic
 - [ ] Commits dated before deadline; repo made public (my call)
 
-### 🚦 G-Fri (12:00)
+### 🚦 G-Final (Fri 12:00 deadline)
 - [ ] `reports/results.md` final · repo public-ready · field notes done
 
 ---
@@ -392,7 +391,7 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | Run crashes | Resume from latest recovery checkpoint |
 | Eval falls behind | Add spare GPUs (N1 GPU 4–5) to eval; evaluate final + every 100 steps first |
 | No exploit in leaky runs | Report as finding; optionally widen the leak in a spare block |
-| Tuesday slips | Run §2 overnight; each 8 h slip consumes buffer first |
+| Build slips | Run §2 in parallel; any slip consumes the ~20 h buffer first |
 
 ---
 
@@ -428,3 +427,4 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Run logs committed under `logs/` and mirrored to Lightning Experiments by `train/logsync.py` (ADR 0002) | Owner: live tracking + public evidence | [x] #19 |
 | 2026-10-12 | Toy GRPO task 5 → 11 digits: base 2B scored 0.92 at 5 digits (83% groups dead), 0.69 at 11 (38%) | 5-digit sweep could not show reward rising | [ ] |
 | 2026-10-12 | LR = 1e-6 (DECISIONS #6); pair git-commit differences are noted, not excluded | Toy sweep; owner | [x] #6 |
+| 2026-10-12 | Day/time labels removed from the plan; phases, gates (G-Setup, G-Build, G-Baseline, G-Final) and training blocks are sequence-based. Only the Fri 06:00 cutoff and 12:00 deadline stay fixed | Ahead of schedule; labels were stale | [ ] |

@@ -108,14 +108,14 @@ nodes:
     gpus: [0, 1, 2, 3, 4, 5, 6, 7]
     eval_gpus: [6, 7]
     groups:
-      # Wed 14 -> 18: six 2B runs, 1 GPU each
+      # Block 1 (~4 h): six 2B runs, 1 GPU each
       - {name: n1-g0, gpus: [0], queue: [2b-rob-s1]}
       - {name: n1-g1, gpus: [1], queue: [2b-leak-s1]}
       - {name: n1-g2, gpus: [2], queue: [2b-rob-s2]}
       - {name: n1-g3, gpus: [3], queue: [2b-leak-s2]}
       - {name: n1-g4, gpus: [4], queue: [2b-rob-s3]}
       - {name: n1-g5, gpus: [5], queue: [2b-leak-s3]}
-      # Wed 18 -> Thu 10: 4B P2, robust then leaky (matched pair, sequential).
+      # Blocks 2-3 (~16 h): 4B P2, robust then leaky (matched pair, sequential).
       # GPU 4-5 are then spare and join eval via lend_idle_gpus.
       - name: n1-4b
         gpus: [0, 1, 2, 3]
@@ -125,14 +125,14 @@ nodes:
     gpus: [0, 1, 2, 3, 4, 5, 6, 7]
     eval_gpus: [6, 7]  # eval overflow during 0.8B; taken back when the 4B leaky queue starts
     groups:
-      # Wed 14 -> 18: six 0.8B runs, 1 GPU each
+      # Block 1 (~4 h): six 0.8B runs, 1 GPU each
       - {name: n2-g0, gpus: [0], queue: [0.8b-rob-s1]}
       - {name: n2-g1, gpus: [1], queue: [0.8b-leak-s1]}
       - {name: n2-g2, gpus: [2], queue: [0.8b-rob-s2]}
       - {name: n2-g3, gpus: [3], queue: [0.8b-leak-s2]}
       - {name: n2-g4, gpus: [4], queue: [0.8b-rob-s3]}
       - {name: n2-g5, gpus: [5], queue: [0.8b-leak-s3]}
-      # Wed 18 -> Thu 10: 4B P1 then P3, robust on GPU 0-3, leaky on GPU 4-7
+      # Blocks 2-3 (~16 h): 4B P1 then P3, robust on GPU 0-3, leaky on GPU 4-7
       - name: n2-4b-rob
         gpus: [0, 1, 2, 3]
         after: [n2-g0, n2-g1, n2-g2, n2-g3]

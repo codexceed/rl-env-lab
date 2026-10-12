@@ -222,9 +222,9 @@ create studio on CPU ─► make setup-gpu (builds causal-conv1d, no GPU needed)
 
 ```
              GPU 0   GPU 1   GPU 2   GPU 3   GPU 4   GPU 5   GPU 6   GPU 7
-Wed 14–18  N1 [2b ×6 runs, one GPU each ......................] [  eval  ]
+Block 1    N1 [2b ×6 runs, one GPU each ......................] [  eval  ]
            N2 [0.8b ×6 runs, one GPU each ....................] [  eval  ]
-Wed 18 →   N1 [ 4B P2 (rob, then leak) ......] [ spare→eval ] [  eval  ]
+Blocks 2-3 N1 [ 4B P2 (rob, then leak) ......] [ spare→eval ] [  eval  ]
            N2 [ 4B P1/P3 robust ............] [ 4B P1/P3 leaky ...........]
 4B run:       1 vLLM server + 2 ZeRO-3 trainers, or 4 colocated (decided by make bench)
 ```
