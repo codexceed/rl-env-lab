@@ -19,16 +19,15 @@ make setup-gpu  ──▶  make compat (×3 sizes)  ──▶  make sweep (toy L
 ```bash
 git clone <repo> && cd rl-env-lab
 nvcc --version            # must be CUDA 13.x (torch 2.13 is built for cu130); set CUDA_HOME if needed
-make setup-gpu            # uv sync --group dev --extra gpu, then builds causal-conv1d (~10-20 min)
+make setup-gpu            # gpu extra + causal-conv1d build (~15 min on 16 CPUs; no GPU needed)
 ```
 
-`make setup-gpu` does this:
+`make setup-gpu` runs `scripts/setup_gpu.sh`. It works on a CPU machine, since compiling needs no GPU, so run it before switching a studio to H200s:
 
-```bash
-uv sync --group dev --extra gpu
-uv pip install setuptools wheel ninja packaging
-CAUSAL_CONV1D_FORCE_BUILD=TRUE MAX_JOBS=16 uv pip install --no-build-isolation --no-deps 'causal-conv1d==1.7.0'
-```
+1. `uv sync --group dev --extra gpu --inexact`
+2. Install a pip CUDA compiler (`nvidia-cuda-nvcc`) whose version **exactly matches torch's CUDA** (13.0)
+3. Build `causal-conv1d==1.7.0` for `TORCH_CUDA_ARCH_LIST=9.0` (H100/H200). This takes about 12 minutes on 16 CPUs.
+4. Import check, then the test suite
 
 - **Why the source build:** `causal-conv1d` ships no PyPI wheels, and its GitHub release wheels don't cover torch 2.13 on Python 3.14. `flash-linear-attention` is pure Python/Triton and already comes with the `gpu` extra.
 - **Rerun the build after any `uv sync`:** `uv sync` removes packages that aren't in the lock. `uv run` doesn't remove them, so `make` targets are safe.

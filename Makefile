@@ -3,7 +3,8 @@
 # Local dev runs anywhere; GPU targets run on the Lightning studio (Linux, `make setup-gpu` first).
 # Variables can be overridden, e.g.: make train RUN=2b-leak-s2   make toy MODEL=Qwen/Qwen3.5-0.8B LR=3e-6
 
-UV := uv run
+# Lightning studios point uv at a shared env root; unset it so the repo .venv is used everywhere
+UV := env -u UV_LIGHTNING_VIRTUALENV_ROOT uv run
 PRECOMMIT := uvx --with pre-commit-uv pre-commit
 
 MODEL ?= Qwen/Qwen3.5-2B
@@ -34,11 +35,8 @@ help:  ## List the targets
 setup: hooks  ## First-time local setup: dev env + pre-commit hooks
 	uv sync --group dev
 
-setup-gpu:  ## GPU node setup: dev + gpu extra, then build causal-conv1d (no PyPI wheels; needs CUDA 13 nvcc)
-	uv sync --group dev --extra gpu
-	uv pip install setuptools wheel ninja packaging
-	CAUSAL_CONV1D_FORCE_BUILD=TRUE MAX_JOBS=$${MAX_JOBS:-16} \
-		uv pip install --no-build-isolation --no-deps 'causal-conv1d==1.7.0'
+setup-gpu:  ## GPU node setup (runs on CPU too): gpu extra + causal-conv1d built with a pip CUDA nvcc
+	bash scripts/setup_gpu.sh
 
 hooks:  ## Install the pre-commit hooks
 	$(PRECOMMIT) install
