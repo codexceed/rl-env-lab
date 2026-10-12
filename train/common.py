@@ -651,3 +651,26 @@ def step_metrics_callback(
 
 def print_json(title: str, data: Any) -> None:
     print(f"\n=== {title} ===\n{json.dumps(data, indent=2, default=str)}", flush=True)
+
+
+def grpo_trainer_class(hf_generate: bool):
+    """`GRPOTrainer`, or for the HF-generate fallback a subclass that samples under bf16 autocast.
+
+    TRL 1.15 calls `model.generate` outside autocast, so with fp32 master weights the fallback would
+    sample in fp32. `_generate_single_turn` is private TRL API (verified in 1.15.0).
+    """
+    from trl import GRPOTrainer
+
+    if not hf_generate:
+        return GRPOTrainer
+
+    class AutocastGenerateGRPOTrainer(GRPOTrainer):
+        def _generate_single_turn(self, *args: Any, **kwargs: Any):
+            with torch.autocast(self.accelerator.device.type, dtype=torch.bfloat16):
+                return super()._generate_single_turn(*args, **kwargs)
+
+    return AutocastGenerateGRPOTrainer
+
+
+def world_size() -> int:
+    return int(os.environ.get("WORLD_SIZE", "1"))

@@ -139,6 +139,15 @@ def addition_reward(completions: list[Any], answer: list[Any], **kwargs: Any) ->
     return addition_rewards(completions, answer, strict=True)
 
 
+def hash_reward(completion_ids: Sequence[Sequence[int]], **kwargs: Any) -> list[float]:
+    """Deterministic reward in [0, 1] that varies within a group whatever the model writes.
+
+    For mechanics tests and benchmarks: it keeps GRPO advantages (and so gradients) non-zero
+    without depending on the model solving anything.
+    """
+    return [(sum(ids) % 17) / 16 for ids in completion_ids]
+
+
 # --------------------------------------------------------------------------------------------
 # Group statistics
 # --------------------------------------------------------------------------------------------

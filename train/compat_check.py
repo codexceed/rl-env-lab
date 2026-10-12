@@ -55,6 +55,7 @@ import torch
 from train import common
 from train.toy_utils import (
     extract_answer,
+    hash_reward,
     make_addition_dataset,
     model_slug,
 )
@@ -393,12 +394,6 @@ def check_tool_call(model, tokenizer) -> dict[str, Any]:
     }
 
 
-def token_hash_reward(completion_ids: list[list[int]], **kwargs: Any) -> list[float]:
-    """Deterministic reward that varies within a group, so advantages and gradients are non-zero
-    whatever the model writes. Only the checkpoint mechanics are under test here."""
-    return [(sum(ids) % 17) / 16 for ids in completion_ids]
-
-
 def check_save_resume(export_dir: Path, tokenizer, workdir: Path, keep: bool) -> dict[str, Any]:
     from datasets import Dataset
     from transformers import TrainerCallback
@@ -450,7 +445,7 @@ def check_save_resume(export_dir: Path, tokenizer, workdir: Path, keep: bool) ->
         model = common.load_policy(export_dir, "float32")
         return GRPOTrainer(
             model=model,
-            reward_funcs=token_hash_reward,
+            reward_funcs=hash_reward,
             args=args,
             train_dataset=dataset,
             processing_class=tokenizer,

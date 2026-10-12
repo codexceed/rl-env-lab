@@ -111,6 +111,14 @@ def test_addition_rewards_length_mismatch():
         tu.addition_rewards(["1"], ["1", "2"])
 
 
+def test_hash_reward_is_deterministic_bounded_and_varied():
+    ids = [[1, 2, 3], [4, 5], [16], [17], []]
+    rewards = tu.hash_reward(completion_ids=ids, prompts=None)
+    assert rewards == tu.hash_reward(ids)
+    assert rewards == [6 / 16, 9 / 16, 1.0, 0.0, 0.0]
+    assert all(0.0 <= r <= 1.0 for r in rewards)
+
+
 # --- dead groups ------------------------------------------------------------------------------
 
 
