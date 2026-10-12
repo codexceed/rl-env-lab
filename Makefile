@@ -17,6 +17,7 @@ NODE ?= node1
 DATA ?= data
 MACHINE ?= H200
 CMD ?= nvidia-smi
+LOGSYNC_ARGS ?=
 
 # run id <size>-<rob|leak>-s<seed>  ->  size, reward, seed
 SIZE = $(word 1,$(subst -, ,$(RUN)))
@@ -25,7 +26,7 @@ SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-gpu hooks check fmt test lock data acceptance compat toy sweep gpu-checks bench \
-	train eval eval-base diagnostic plan coordinator watcher report report-fake studio-status studio-switch studio-run
+	train eval eval-base diagnostic plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
 
 help:  ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -103,6 +104,9 @@ coordinator:  ## Launch NODE's runs + eval watcher per configs/allocation.yaml (
 
 watcher:  ## Eval watcher alone for NODE
 	$(UV) python eval/watcher.py --config configs/allocation.yaml --node $(NODE)
+
+logsync:  ## Mirror run logs to logs/ (git, 30 min) and Lightning experiments (60 s); LOGSYNC_ARGS=--once
+	$(UV) python train/logsync.py --node $(NODE) $(LOGSYNC_ARGS)
 
 # --- results -------------------------------------------------------------------------------------
 
