@@ -136,7 +136,7 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Weight sync trainer → vLLM works (generations change after an update)
 - [ ] Save → resume restores model, optimizer, scheduler, RNG, trainer state; loss continues smoothly
 - [ ] Thinking mode disabled cleanly via chat template
-- [ ] Native tool-call format identified: `____` (feeds SPEC prompt format and `parse.py`)
+- [~] Native tool-call format identified: **XML** `<tool_call><function=NAME><parameter=ARG>…` from HF chat templates (owner approved 2026-10-12); confirm with real tokenizer on GPU
 - [ ] Memory and throughput recorded per size (feeds §0.4)
 - [ ] Decision rule:
   - vLLM fails → HF generate for **training and eval**; model family unchanged
@@ -154,15 +154,15 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Done when: reward rises for ≥1 LR with no entropy collapse
 
 ### 0.5 Spec (agent drafts, I review) — `SPEC.md`
-- [ ] Entities and fields
-- [ ] 6 tools: arguments, state effects, error cases, ledger postings
-- [ ] Ledger balance rule
-- [ ] 15 templates with oracle rules
-- [ ] **Pre-specified harder variant per train template** (e.g. more distractors, multi-line arithmetic), used only by the too-easy branch
-- [ ] Robust and leaky grader definitions
-- [ ] Quality gates G1–G3; 4 broken-variant types
-- [ ] Prompt format using the tool-call format from §0.3
-- [ ] Done when: I sign off, no open TODOs
+- [x] Entities and fields
+- [x] 6 tools: arguments, state effects, error cases, ledger postings
+- [x] Ledger balance rule
+- [x] 15 templates with oracle rules
+- [x] **Pre-specified harder variant per train template** (e.g. more distractors, multi-line arithmetic), used only by the too-easy branch
+- [x] Robust and leaky grader definitions
+- [x] Quality gates G1–G3; 4 broken-variant types
+- [x] Prompt format using the tool-call format from §0.3
+- [ ] Done when: I sign off, no open TODOs — drafted 2026-10-12, in review: PR #12
 
 ### 0.6 Metrics (agent) — `eval/metrics.py`
 - [x] True success, exploit rate, format-failure rate per sample
@@ -412,4 +412,5 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | No automatic node release; machines stay attached through dips; owner releases | Owner request | [x] #13 |
 | 2026-10-12 | PREREG signed off with default interpretations; diagnostic baseline at temp 1.0, robust grader decides band | Owner | [ ] |
 | 2026-10-12 | Recovery checkpoints: rolling keep-last-2 during training (not only after the run), gated on verified resume | ~25–30 GB per 2B full-state ckpt; post-run-only pruning would need TBs | [ ] |
+| 2026-10-12 | Tool calls in Qwen3.5 native XML format (INSTRUCTIONS assumed JSON); parser also accepts JSON; `enable_thinking=False` always | Native chat template; owner approved | [ ] |
 | 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
