@@ -32,6 +32,7 @@ by `DeferredWrites`, `PinnedPool`, `Snapshotter`, `any_rank_busy` and the Traine
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import functools
 import json
@@ -58,6 +59,7 @@ EVENTS_FILE = "recovery_events.jsonl"
 DONE_TIMEOUT_S = 3600.0  # main rank: wait this long for every rank's done file
 JOIN_TIMEOUT_S = 3 * 3600.0  # end of training: wait this long for the in-flight write
 CRASH_JOIN_TIMEOUT_S = 600.0  # training raised: give the in-flight write a chance to finish
+_print_flush = functools.partial(print, flush=True)
 
 
 def done_path(tmp: Path, rank: int) -> Path:
@@ -124,7 +126,7 @@ class AsyncRecovery:
         done_timeout: float = DONE_TIMEOUT_S,
         poll: float = 1.0,
         clock: Callable[[], float] = time.perf_counter,
-        log: Callable[[str], None] = functools.partial(print, flush=True),
+        log: Callable[[str], None] = _print_flush,
     ) -> None:
         if world_size < 1 or not 0 <= rank < world_size:
             raise ValueError(f"bad rank {rank} for world size {world_size}")
@@ -158,6 +160,11 @@ class AsyncRecovery:
 
     def save(self, step: int, snapshot: Callable[[Path], list[DeferredWrite]]) -> bool:
         """Snapshot and start the background write of recovery checkpoint ``step``, or skip it.
+
+        Args:
+            step: The global step being checkpointed.
+            snapshot: Runs the stock checkpoint code into the staging dir it is given and returns the
+                deferred writes.
 
         Returns:
             True if a write was started, False if the checkpoint was skipped on every rank.
@@ -212,10 +219,8 @@ class AsyncRecovery:
         except Exception as exc:
             self.failed.append(step)
             reason = f"rank {self.rank} write failed: {type(exc).__name__}: {exc}"
-            try:
+            with contextlib.suppress(OSError):
                 atomic_write_json(failed_path(tmp, self.rank), {"rank": self.rank, "step": step, "reason": reason})
-            except OSError:
-                pass
             self._fail(step, reason, snapshot_s, tmp)
             return
         self.log(f"[recovery] rank {self.rank} step {step}: snapshot {snapshot_s:.1f}s, write {write_s:.1f}s")

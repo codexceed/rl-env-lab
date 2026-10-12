@@ -431,3 +431,5 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | Steps 300 → 1,000 (all sizes); backend vLLM colocated; 4B on 4 colocated GPUs; run timeouts and block lengths cut to match the benchmark (ADR 0003) | Benchmark: runs 5–20× faster than estimated | [x] #7–#9 |
 | 2026-10-12 | Step-100 health rule not applied to block 1 (all runs: reward rising, dead groups 91–99%); runs continue (PREREG #13) | Owner: dead groups are task saturation, not instability | [ ] |
 | 2026-10-12 | Exploratory follow-up proposed: same-type eval + thinking-on v2 (ADR 0005, Proposed) | Held-out failures mix hacking with missing arithmetic | [x] #20 |
+| 2026-10-12 | Recovery checkpoints asynchronous (snapshot to CPU, background write, skip a save while one is in flight); 4B recovery every 100 steps (eval stays 50). Block 1 runs keep the old code | Synchronous saves paused training ~10 min per 50 steps; 4B saves are 55 GB | [ ] |
+| 2026-10-12 | ADR 0005 accepted (PR #16) | Owner merged | [x] #20 |

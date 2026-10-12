@@ -259,7 +259,8 @@ def test_process_crash_mid_write_is_ignored_then_removed(tmp_path):
     good = recovery_dir(tmp_path, 50)
     good.mkdir(parents=True)
     (good / COMPLETE).write_text("{}")
-    assert latest_recovery_checkpoint(tmp_path).number == 50  # the coordinator resumes from 50
+    latest = latest_recovery_checkpoint(tmp_path)
+    assert latest is not None and latest.number == 50  # the coordinator resumes from 50
     assert remove_incomplete_recovery(tmp_path) == [recovery_tmp_dir(tmp_path, 100)]
     assert list_recovery_tmp_dirs(tmp_path) == [] and complete_steps(tmp_path) == [50]
 
