@@ -143,9 +143,12 @@ def hash_reward(completion_ids: Sequence[Sequence[int]], **kwargs: Any) -> list[
     """Deterministic reward in [0, 1] that varies within a group whatever the model writes.
 
     For mechanics tests and benchmarks: it keeps GRPO advantages (and so gradients) non-zero
-    without depending on the model solving anything.
+    without depending on the model solving anything. The batch position is mixed in because a
+    confident base model often samples the same completion for every member of a group, which
+    would make a purely content-based reward constant per group (zero advantage, zero gradient).
+    TRL lays each group out contiguously, and up to 17 consecutive positions differ mod 17.
     """
-    return [(sum(ids) % 17) / 16 for ids in completion_ids]
+    return [((sum(ids) + i) % 17) / 16 for i, ids in enumerate(completion_ids)]
 
 
 # --------------------------------------------------------------------------------------------

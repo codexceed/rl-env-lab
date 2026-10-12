@@ -117,8 +117,15 @@ def test_hash_reward_is_deterministic_bounded_and_varied():
     ids = [[1, 2, 3], [4, 5], [16], [17], []]
     rewards = tu.hash_reward(completion_ids=ids, prompts=None)
     assert rewards == tu.hash_reward(ids)
-    assert rewards == [6 / 16, 9 / 16, 1.0, 0.0, 0.0]
+    assert rewards == [6 / 16, 10 / 16, 1 / 16, 3 / 16, 4 / 16]
     assert all(0.0 <= r <= 1.0 for r in rewards)
+
+
+def test_hash_reward_varies_within_a_group_of_identical_completions():
+    group = [[11, 22, 33]] * 8  # a confident model samples the same answer 8 times
+    rewards = tu.hash_reward(group)
+    assert len(set(rewards)) == len(group)
+    assert tu.dead_group_share(rewards, group_size=8) == 0.0
 
 
 # --- dead groups ------------------------------------------------------------------------------
