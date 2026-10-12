@@ -67,5 +67,11 @@ eval:
     samples: 8
     temperature: 1.0
     max_tokens: 256
+  sametype:    # ADR 0005 item 2: unseen train-template instances; exploratory, never used in verdicts
+    split: sametype
+    samples: 4
+    temperature: 0.7
+    max_tokens: 256
+  think_max_tokens: 512      # ADR 0005 item 3: answer cap for `--thinking on` (1,536 prompt + 512 = 2,048 context)
   vllm_gpu_memory_utilization: 0.85
   sample_seed: 0

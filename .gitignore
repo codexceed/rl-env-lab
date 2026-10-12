@@ -1,6 +1,7 @@
 # Data and run artifacts (keep manifest + split IDs)
 data/*
 !data/manifest.json
+!data/manifest.exploratory.json
 !data/splits/
 # anchored to the root: logs/runs/ and logs/evals/ are tracked (train/logsync.py)
 /runs/

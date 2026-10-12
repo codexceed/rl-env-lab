@@ -19,6 +19,7 @@ from typing import Any
 from envlab.tasks.instance import TaskInstance, read_jsonl
 from envlab.verify.gates import run_gates
 
+# Frozen §9 splits only. ADR 0005 exploratory splits (`sametype`) are not part of §7 acceptance.
 VALID_SPLITS: tuple[str, ...] = ("train", "train_hard", "heldout")
 BROKEN_SPLIT = "broken"
 MIN_VALID_PASS_RATE = 0.99
