@@ -42,7 +42,7 @@ def test_budget_matches_progression():
     assert b["bf16"] is True and b["gradient_checkpointing"] is True
     assert b["param_dtype"] == "float32"
     assert b["enable_thinking"] is False
-    assert b["learning_rate"] == pytest.approx(3e-6)
+    assert b["learning_rate"] == pytest.approx(1e-6)  # DECISIONS #6
     assert b["max_steps"] == 300
     c = cfg["checkpoints"]
     assert (c["eval_every"], c["recovery_every"], c["keep_last"]) == (50, 50, 2)
