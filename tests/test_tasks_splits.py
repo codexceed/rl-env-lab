@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import dataclasses
 import json
 from collections import Counter
+from hashlib import sha256
+from pathlib import Path
 
 import pytest
 
@@ -15,10 +18,13 @@ from envlab.sim.entities import CaseStatus, InvoiceStatus, PaymentStatus
 from envlab.sim.ledger import check_invariants
 from envlab.sim.state_hash import state_hash
 from envlab.sim.tools import apply_tool
+from envlab.tasks import generate as gen
 from envlab.tasks.broken import BROKEN_TYPES, SOURCES, generate_broken, perturbed_call
-from envlab.tasks.build import build_dataset
-from envlab.tasks.generate import HELDOUT_TEMPLATES, TRAIN_TEMPLATES, generate_split, template_counts
-from envlab.tasks.instance import TaskInstance, read_jsonl
+from envlab.tasks.build import EXPLORATORY_MANIFEST, SPLIT_ORDER, build_dataset
+from envlab.tasks.generate import HELDOUT_TEMPLATES, TRAIN_TEMPLATES, content_key, generate_split, template_counts
+from envlab.tasks.instance import TaskInstance, dumps_line, read_jsonl
+
+REPO_DATA = Path(__file__).resolve().parents[1] / "data"
 
 
 @pytest.fixture(scope="module")
@@ -141,9 +147,12 @@ def test_build_is_byte_identical(tmp_path):
     assert [str(n) for n in names] == [
         "broken.jsonl",
         "heldout.jsonl",
+        "manifest.exploratory.json",
         "manifest.json",
+        "sametype.jsonl",
         "splits/broken.txt",
         "splits/heldout.txt",
+        "splits/sametype.txt",
         "splits/train.txt",
         "splits/train_hard.txt",
         "train.jsonl",
@@ -161,3 +170,86 @@ def test_build_is_byte_identical(tmp_path):
     assert {sum(c.values()) for c in manifest["counts"].values()} == {2000, 250, 100}
     ids = (tmp_path / "a" / "splits" / "heldout.txt").read_text().splitlines()
     assert ids == [i.id for i in read_jsonl(tmp_path / "a" / "heldout.jsonl")]
+
+
+# ---------------------------------------------------------------- frozen files (live runs read them)
+
+
+@pytest.fixture(scope="module")
+def built(tmp_path_factory) -> Path:
+    out = tmp_path_factory.mktemp("data")
+    build_dataset(out)
+    return out
+
+
+def test_frozen_files_match_the_committed_manifest(built):
+    """GRPO runs read train.jsonl / heldout.jsonl and hash manifest.json into their identity:
+    adding a split must leave every frozen byte unchanged."""
+    committed = json.loads((REPO_DATA / "manifest.json").read_text())
+    assert (built / "manifest.json").read_bytes() == (REPO_DATA / "manifest.json").read_bytes()
+    assert set(committed["files"]) == {f"{s}.jsonl" for s in SPLIT_ORDER} | {f"splits/{s}.txt" for s in SPLIT_ORDER}
+    for name, sha in committed["files"].items():
+        assert sha256((built / name).read_bytes()).hexdigest() == sha, name
+    for split in SPLIT_ORDER:
+        assert (built / "splits" / f"{split}.txt").read_bytes() == (REPO_DATA / "splits" / f"{split}.txt").read_bytes()
+
+
+def test_exploratory_manifest_matches_the_committed_one(built):
+    assert (built / EXPLORATORY_MANIFEST).read_bytes() == (REPO_DATA / EXPLORATORY_MANIFEST).read_bytes()
+    assert (built / "splits" / "sametype.txt").read_bytes() == (REPO_DATA / "splits" / "sametype.txt").read_bytes()
+    m = json.loads((built / EXPLORATORY_MANIFEST).read_text())
+    assert m["seeds"] == {"sametype": 5005}
+    assert m["counts"] == {"sametype": template_counts(250, TRAIN_TEMPLATES)}
+    frozen = json.loads((REPO_DATA / "manifest.json").read_text())["files"]
+    assert m["disjoint_from"]["sametype"] == {k: frozen[k] for k in ("train.jsonl", "train_hard.jsonl")}
+
+
+# ---------------------------------------------------------------- sametype (ADR 0005, exploratory)
+
+
+@pytest.fixture(scope="module")
+def sametype() -> list[TaskInstance]:
+    return generate_split("sametype")
+
+
+def test_sametype_counts_ids_and_fields(sametype):
+    assert len(sametype) == 250
+    assert Counter(i.template for i in sametype) == template_counts(250, TRAIN_TEMPLATES)
+    assert sametype[0].id == "F1T1-sametype-00000"
+    assert sametype[-1].id == "F5T2-sametype-00021"
+    assert all(i.split == "sametype" and i.variant == "base" for i in sametype)
+    assert len({i.id for i in sametype}) == 250
+
+
+def test_sametype_is_deterministic(sametype):
+    assert [dumps_line(i) for i in generate_split("sametype")] == [dumps_line(i) for i in sametype]
+
+
+def test_sametype_is_disjoint_by_content(sametype, splits):
+    keys = [content_key(i) for i in sametype]
+    assert len(set(keys)) == len(keys)
+    for name in ("train", "train_hard"):
+        assert not set(keys) & {content_key(i) for i in splits[name]}, name
+    # Seeds alone would not prove it: the key is about what the model sees.
+    assert not {i.seed for i in sametype} & {i.seed for i in splits["train"]}
+
+
+def test_content_key_ignores_record_order_and_sees_the_request(sametype):
+    inst = sametype[0]
+    s = inst.initial_state
+    shuffled = dataclasses.replace(s, customers=s.customers[::-1], invoices=s.invoices[::-1])
+    assert content_key(dataclasses.replace(inst, initial_state=shuffled, id="x", seed=1)) == content_key(inst)
+    assert content_key(dataclasses.replace(inst, request=inst.request + " ")) != content_key(inst)
+
+
+def test_colliding_draw_is_redrawn_deterministically(monkeypatch):
+    first = gen.generate("F1T1", gen.exploratory_seed("sametype", "F1T1", 0, 0))
+    monkeypatch.setitem(gen.EXPLORATORY_SPLITS, "probe", (5005, ("F1T1",), 2, "base", ("src",)))
+    real = gen.generate_split
+    monkeypatch.setattr(gen, "generate_split", lambda s: [first] if s == "src" else real(s))
+    out = gen.generate_split("probe")
+    assert [i.id for i in out] == ["F1T1-probe-00000", "F1T1-probe-00001"]
+    assert out[0].seed == gen.exploratory_seed("probe", "F1T1", 0, 1)  # first draw collided
+    assert out[1].seed == gen.exploratory_seed("probe", "F1T1", 1, 0)
+    assert content_key(out[0]) != content_key(first)
+    assert [dumps_line(i) for i in gen.generate_split("probe")] == [dumps_line(i) for i in out]

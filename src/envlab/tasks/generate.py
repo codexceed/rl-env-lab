@@ -8,6 +8,7 @@ before the sim workstream lands.
 from __future__ import annotations
 
 import dataclasses
+import json
 import random
 from collections.abc import Callable
 from hashlib import sha256
@@ -57,6 +58,17 @@ SPLITS: dict[str, tuple[int, tuple[str, ...], int, str]] = {
 BROKEN_SEED = 3003
 MAX_ATTEMPTS = 1000
 SPLIT_SEEDS: dict[str, int] = {**{s: v[0] for s, v in SPLITS.items()}, "broken": BROKEN_SEED}
+
+# ADR 0005 item 2: exploratory splits, never used in verdicts. They live outside SPLITS and
+# SPLIT_SEEDS so ``data/manifest.json`` (whose sha256 is part of every run's identity,
+# train/run_manifest.py) stays byte-identical; build.py writes them to their own manifest.
+# split -> (base seed, templates, total instances, variant, splits it must be disjoint from)
+EXPLORATORY_SPLITS: dict[str, tuple[int, tuple[str, ...], int, str, tuple[str, ...]]] = {
+    "sametype": (5005, TRAIN_TEMPLATES, 250, "base", ("train", "train_hard")),
+}
+MAX_REDRAWS = 100
+# Record groups the prompt shows (SPEC §10); the ledger is derived from them and never shown.
+_SHOWN_GROUPS = ("customers", "invoices", "payments", "cases")
 
 
 def derive_seed(base: int, *parts: str | int) -> int:
@@ -123,12 +135,60 @@ def instance_id(template: str, split: str, index: int) -> str:
     return f"{template}-{split}-{index:05d}"
 
 
+def content_key(instance: TaskInstance) -> str:
+    """Identity of what the model is shown: the request plus the shown records.
+
+    sha256 over the request text and, per record group (customers, invoices, payments, cases),
+    the sorted canonical JSON of its records, so record order does not matter. Template, variant,
+    seed and id are left out: two instances with the same key are the same task to the model.
+    """
+    state = instance.initial_state.to_dict()
+    payload = {
+        "request": instance.request,
+        **{g: sorted(json.dumps(r, sort_keys=True, separators=(",", ":")) for r in state[g]) for g in _SHOWN_GROUPS},
+    }
+    return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
+
+
+def exploratory_seed(split: str, template: str, index: int, attempt: int) -> int:
+    """Seed of draw ``attempt`` of an exploratory instance: the §9 seed first, then redraw seeds."""
+    base = EXPLORATORY_SPLITS[split][0]
+    if attempt == 0:
+        return derive_seed(base, template, index)
+    return derive_seed(base, template, index, "redraw", attempt)
+
+
+def _generate_exploratory(split: str) -> list[TaskInstance]:
+    """Unseen instances of an exploratory split, disjoint by `content_key` from its source splits.
+
+    A draw whose key is already in a source split (or earlier in this split) is skipped for the
+    next redraw seed, so the same code always gives the same bytes.
+    """
+    _, templates, total, variant, disjoint = EXPLORATORY_SPLITS[split]
+    seen = {content_key(inst) for name in disjoint for inst in generate_split(name)}
+    out = []
+    for template, count in template_counts(total, templates).items():
+        for index in range(count):
+            for attempt in range(MAX_REDRAWS):
+                inst = generate(template, exploratory_seed(split, template, index, attempt), variant=variant)
+                key = content_key(inst)
+                if key not in seen:
+                    break
+            else:
+                raise RuntimeError(f"{split} {template}/{index}: {MAX_REDRAWS} draws all collide with {disjoint}")
+            seen.add(key)
+            out.append(dataclasses.replace(inst, id=instance_id(template, split, index), split=split))
+    return out
+
+
 def generate_split(split: str) -> list[TaskInstance]:
-    """All instances of a §9 split, ordered by template then index."""
+    """All instances of a §9 split (or an ADR 0005 exploratory split), ordered by template then index."""
     if split == "broken":
         from envlab.tasks.broken import generate_broken
 
         return generate_broken()
+    if split in EXPLORATORY_SPLITS:
+        return _generate_exploratory(split)
     if split not in SPLITS:
         raise ValueError(f"unknown split {split!r}")
     base, templates, total, variant = SPLITS[split]

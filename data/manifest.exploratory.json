@@ -1,0 +1,37 @@
+{
+  "adr": "0005",
+  "content_key": "sha256 of the request text plus the shown records (customers, invoices, payments, cases), each group order-insensitive (envlab.tasks.generate.content_key)",
+  "counts": {
+    "sametype": {
+      "F1T1": 23,
+      "F1T2": 23,
+      "F1T5": 23,
+      "F2T1": 23,
+      "F2T2": 23,
+      "F3T1": 23,
+      "F3T2": 23,
+      "F4T1": 23,
+      "F4T2": 22,
+      "F5T1": 22,
+      "F5T2": 22
+    }
+  },
+  "disjoint_from": {
+    "sametype": {
+      "train.jsonl": "5a872ac04fe71be9bd48397d9a0c03d1575fbff8c61fd48146a9d9de6d038ce3",
+      "train_hard.jsonl": "aef2c0883314cbf928e2a011e82685105c17f6c2d6cd7e07e96d5e4eec10a4e1"
+    }
+  },
+  "files": {
+    "sametype.jsonl": "6fadeb53bc4eb153311c51f2a38256f20f91c032b679dc9f7387aee83650ccf0",
+    "splits/sametype.txt": "979539e253bdf30fc3e82017be44fe2712c77827bf9e6cfcf6953638fcc85e9f"
+  },
+  "label": "EXPLORATORY: never used in verdicts",
+  "redrawn": {
+    "sametype": []
+  },
+  "seeds": {
+    "sametype": 5005
+  },
+  "spec_version": "1.0"
+}

@@ -278,6 +278,7 @@ Free-text args in wrong calls copy the oracle's. **Acceptance:** every broken va
 - **Instance id:** `f"{template}-{split}-{index:05d}"` (e.g. `F1T1-train-00007`, `F1T3-heldout-00012`); broken: `f"{template}-broken-{kind}-{index:03d}"`.
 - **Files:** one `dumps_line` per line (Appendix A). `data/splits/{split}.txt` lists ids, one per line.
 - **`data/manifest.json`:** `{"spec_version", "seeds": {split: int}, "counts": {split: {template: int}}, "files": {name: sha256}, "heldout_templates": ["F1T3","F2T3","F3T3","F4T3","F5T3"], "broken_labels": {id: kind}}`, written with `sort_keys=True, indent=2`.
+- **Exploratory `sametype` split (ADR 0005, never in verdicts):** 250 unseen base instances of `TRAIN_TEMPLATES` (split evenly), base seed 5005, ids `{template}-sametype-{index:05d}`, `split: "sametype"`. Disjoint from `train` and `train_hard` by `content_key` (request + shown records, order-insensitive); a colliding draw moves to the next redraw seed `derive_seed(5005, template, index, "redraw", k)`. Recorded in `data/manifest.exploratory.json`, **not** in `data/manifest.json`, whose bytes stay frozen (its sha256 is part of each run's identity).
 - The build asserts for every non-broken instance: `check_invariants(initial_state) == []`, oracle call ok, `check_invariants(oracle_final_state) == []`, prompt budget (§10). Full gates run in `envlab.verify.acceptance`.
 
 ## 10. Prompt format (Qwen3.5 native)
@@ -424,7 +425,7 @@ def generate_broken() -> list[TaskInstance]            # 100, §8
 def build_dataset(out_dir: Path) -> dict               # writes §9 files; returns manifest
 ```
 
-`TaskInstance` fields: `id`, `family` (`"F1"`…), `template` (`"F1T1"`…), `variant` (`base`|`hard`|`broken`), `split` (`train`|`train_hard`|`heldout`|`broken`), `seed`, `request` (prompt payload text; the record snapshot is derived from `initial_state`), `initial_state`, `oracle_call`, `oracle_final_state`, `params` (§4), `broken_type`, `meta` (`{"n_distractors": int, "target_ids": [str], "spec_version": "1.0"}`).
+`TaskInstance` fields: `id`, `family` (`"F1"`…), `template` (`"F1T1"`…), `variant` (`base`|`hard`|`broken`), `split` (`train`|`train_hard`|`heldout`|`broken`, or the exploratory `sametype`, §9), `seed`, `request` (prompt payload text; the record snapshot is derived from `initial_state`), `initial_state`, `oracle_call`, `oracle_final_state`, `params` (§4), `broken_type`, `meta` (`{"n_distractors": int, "target_ids": [str], "spec_version": "1.0"}`).
 
 ### 11.7 `envlab.verify` (verify)
 
