@@ -25,7 +25,8 @@ gpu = [
 [dependency-groups]
 dev = [
     "pytest>=8.0",
-    "ruff>=0.6",
+    # same version as the ruff pre-commit hook
+    "ruff==0.16.9",
 ]
 
 [build-system]
@@ -40,8 +41,57 @@ testpaths = ["tests"]
 pythonpath = [".", "src"]
 
 [tool.ruff]
-line-length = 100
+line-length = 120
 target-version = "py314"
+src = ["src", "train", "eval", "tests"]
+extend-exclude = ["runs", "data", "evals"]
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "B", "UP"]
+select = [
+    "E", "W",  # pycodestyle
+    "F",       # pyflakes
+    "I",       # import order
+    "B",       # bugbear
+    "UP",      # pyupgrade
+    "SIM",     # simplify
+    "C4",      # comprehensions
+    "RUF",     # ruff's own
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["envlab", "train", "eval"]
+
+[tool.pyright]
+include = ["src", "train", "eval", "tests"]
+exclude = ["**/__pycache__", "runs", "data", "evals"]
+pythonVersion = "3.14"
+typeCheckingMode = "standard"
+extraPaths = ["src", "."]
+# the GPU stack (torch, transformers, trl, vllm) is a Linux-only extra and is not installed for
+# checks; its imports are lazy, so an unresolved import is reported but does not fail the check
+reportMissingImports = "warning"
+
+[tool.pydoclint]
+style = "google"
+# types live in the signatures, not repeated in docstrings
+arg-type-hints-in-docstring = false
+check-return-types = false
+check-yield-types = false
+# a one-line summary is enough for small helpers; sections are checked wherever they are written
+skip-checking-short-docstrings = true
+
+[tool.importlinter]
+root_packages = ["envlab"]
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "The simulator is the bottom layer: it never imports tasks, graders or prompts"
+type = "forbidden"
+source_modules = ["envlab.sim"]
+forbidden_modules = ["envlab.tasks", "envlab.verify", "envlab.prompts"]
+
+[[tool.importlinter.contracts]]
+name = "The environment package runs without the GPU stack"
+type = "forbidden"
+source_modules = ["envlab"]
+forbidden_modules = ["torch", "transformers", "trl", "vllm", "deepspeed", "accelerate"]

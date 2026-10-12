@@ -41,14 +41,29 @@ data/ runs/  gitignored (except data/manifest.json, data/splits/)
 
 ## Commands
 
+`make` lists every target. The common ones:
+
 ```bash
-uv sync --group dev              # local dev (macOS/Linux), Python 3.14
-uv sync --group dev --extra gpu  # GPU nodes only (torch, transformers, trl, vllm, deepspeed)
-uv run ruff check . && uv run ruff format --check .
-uv run pytest -q
+make setup        # local dev env (Python 3.14) + pre-commit hooks
+make setup-gpu    # GPU nodes only: + torch, transformers, trl, vllm, deepspeed, causal-conv1d
+make check        # ruff check, ruff format, pyright, pydoclint, import-linter (exactly what CI runs)
+make fmt          # auto-fix lint and format
+make test         # unit tests
+make train RUN=2b-leak-s2 · make eval RUN=2b-leak-s2 STEP=final · make coordinator NODE=node1
+make studio-status · make studio-run CMD="make test"   # drive the Lightning studio from a laptop
 ```
 
-CI runs ruff and pytest on every PR. **The CI environment has no GPU and no gpu extra installed.** Code imported by tests must not import torch, transformers or vllm at module top level. Import them lazily inside functions, or put the import in `train/` / `eval/` entry points that tests do not import.
+CI runs one required check per lint tool plus the tests. **The CI environment has no GPU and no gpu extra installed.** Code imported by tests must not import torch, transformers or vllm at module top level. Import them lazily inside functions, or put the import in `train/` / `eval/` entry points that tests do not import. Import-linter enforces this for `envlab`.
+
+## Lint standards (shared with the evals repo)
+
+- **Ruff:** line length 120. Rules E, W, F, I, B, UP, SIM, C4, RUF. Use ASCII `x` and `-` in code strings and docstrings, not `×` or `−`; markdown docs may use either.
+- **Pyright:** standard mode. Narrow `Optional`s before use.
+- **Pydoclint:** Google style. Types live in signatures, not in docstrings. A one-line docstring is fine for small helpers. Once you write `Args:`, `Returns:` or `Raises:`, they must match the code.
+- **Import-linter contracts** in `pyproject.toml`:
+  - `envlab.sim` never imports tasks, verify or prompts.
+  - `envlab` never imports the GPU stack.
+- **Versions:** hook versions are pinned in `.pre-commit-config.yaml`. The dev `ruff` pin matches the hook.
 
 ## Working rules
 
@@ -57,12 +72,15 @@ CI runs ruff and pytest on every PR. **The CI environment has no GPU and no gpu 
 - Don't edit another workstream's module. Code against its interface (from SPEC) and leave a note.
 
 **Git**
-- Branch: `<type>/<issue-id>-<description>`, e.g. `feat/3-simulator-core`.
+- **Commit directly to `main`** by default. Parallel workers use their own worktree branch locally; the integrator merges it into `main` and pushes. No PR.
+- **PR only for fundamental changes:** serious architecture or planning changes (e.g. model family, hypotheses or stats rules, run matrix, simulator/grader contract). **Ask the owner before opening one.**
+- Branch names, when used: `<type>/<issue-id>-<description>`, e.g. `feat/5-simulator-core`. Reference the issue in commits (`(#5)`) or close it with `Closes #5` in the merge commit.
 - Commits: Conventional Commits, `<type>(<scope>): <subject>`. Scopes: `sim`, `tasks`, `verify`, `train`, `eval`, `spec`, `prereg`, `plan`, `ci`, `repo`.
 - **No AI or assistant attribution anywhere**: no `Co-Authored-By` trailers for agents, no "generated with" footers, in commits, PRs or comments.
 - Commit as the repo-local git user. Never override author or committer.
+- Keep `main` green: run `make check && make test` before every push.
 
-**PRs**
+**PRs (when the owner approves one)**
 - Sections, in order: **Description**, **Motivation**, **Changes**, **Testing**.
 - Use plain language and reference the PROGRESSION section (e.g. "§1.1").
 - Merge only when CI is green.
