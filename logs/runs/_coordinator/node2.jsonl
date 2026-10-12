@@ -77,3 +77,13 @@
 {"ts": 1791824361.246, "iso": "2026-10-12T16:59:21+00:00", "node": "node2", "event": "run_end", "run_id": "0.8b-leak-s2", "status": "finished", "exit_code": 0, "reason": null}
 {"ts": 1791824361.246, "iso": "2026-10-12T16:59:21+00:00", "node": "node2", "event": "eval_lease", "gen": 8, "gpus": [0, 1, 2, 3, 4, 5, 6, 7], "drain": false}
 {"ts": 1791824361.263, "iso": "2026-10-12T16:59:21+00:00", "node": "node2", "event": "gate_blocked", "count": 2, "blockers": ["0.8b-leak-s2: 1 eval(s) pending", "0.8b-leak-s2: not transferred"]}
+{"ts": 1791827169.974, "iso": "2026-10-12T17:46:09+00:00", "node": "node2", "event": "coordinator_start", "pid": 1004888, "dry_run": false, "shutdown_opt_in": false, "deadline": "2026-10-16T06:00:00+00:00"}
+{"ts": 1791827169.975, "iso": "2026-10-12T17:46:09+00:00", "node": "node2", "event": "watcher_stale_kill", "pid": 382728}
+{"ts": 1791827181.596, "iso": "2026-10-12T17:46:21+00:00", "node": "node2", "event": "eval_lease", "gen": 9, "gpus": [], "drain": false}
+{"ts": 1791827181.598, "iso": "2026-10-12T17:46:21+00:00", "node": "node2", "event": "watcher_start", "pid": 1005277, "restarts": 0}
+{"ts": 1791827181.605, "iso": "2026-10-12T17:46:21+00:00", "node": "node2", "event": "prune", "run_id": "0.8b-leak-s2", "pruned": [], "kept": ["checkpoint-950", "checkpoint-1000"], "refused": null}
+{"ts": 1791827181.605, "iso": "2026-10-12T17:46:21+00:00", "node": "node2", "event": "transferred", "run_id": "0.8b-leak-s2", "noop": true, "eval_steps_done": [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]}
+{"ts": 1791827181.621, "iso": "2026-10-12T17:46:21+00:00", "node": "node2", "event": "gate_blocked", "count": 6, "blockers": ["4b-rob-s1: pending", "4b-rob-s3: pending", "4b-rob-s2: pending", "4b-leak-s1: pending", "4b-leak-s3: pending", "4b-leak-s2: pending"]}
+{"ts": 1791827196.624, "iso": "2026-10-12T17:46:36+00:00", "node": "node2", "event": "launch", "run_id": "4b-rob-s1", "gpus": [0, 1, 2, 3], "attempt": 1, "pid": 1005712, "resume_from": null}
+{"ts": 1791827196.625, "iso": "2026-10-12T17:46:36+00:00", "node": "node2", "event": "launch", "run_id": "4b-leak-s1", "gpus": [4, 5, 6, 7], "attempt": 1, "pid": 1005714, "resume_from": null}
+{"ts": 1791827196.644, "iso": "2026-10-12T17:46:36+00:00", "node": "node2", "event": "gate_blocked", "count": 6, "blockers": ["4b-rob-s1: running", "4b-rob-s3: pending", "4b-rob-s2: pending", "4b-leak-s1: running", "4b-leak-s3: pending", "4b-leak-s2: pending"]}
