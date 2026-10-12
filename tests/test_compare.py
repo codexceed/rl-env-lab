@@ -558,3 +558,28 @@ def test_fake_data_is_deterministic(tmp_path):
         assert (a / rel).read_bytes() == (b / rel).read_bytes()
     marker = json.loads((a / "runs/0.8b-leak-s2/eval/step-00300/COMPLETE").read_text())
     assert marker == {"step": 300, "final": True}
+
+
+# ── ADR 0005 v2 runs stay out of the verdicts ────────────────────────────────
+
+
+def test_v2_runs_never_reach_a_verdict(tmp_path):
+    runs = ["2b-rob-s1", "2b-rob-s2", "2b-leak-s1", "2b-leak-s2"]
+    write_fake_tree(tmp_path, run_ids=runs, base_sizes=("2b",), **FAKE)
+    before = _analyze(tmp_path)
+    for rid in ("2b-rob-s1", "2b-leak-s1"):  # v2 copies that would move every verdict if read
+        v2 = f"v2-{rid}"
+        rob = rid.startswith("2b-rob")
+        shutil.copytree(tmp_path / "runs" / rid, tmp_path / "runs" / v2)
+        shutil.copytree(tmp_path / "evals" / rid, tmp_path / "evals" / v2)
+        _rewrite_evals(
+            tmp_path,
+            f"{v2}/step-*.jsonl",
+            lambda rows, v2=v2, rob=rob: [{**r, "run_id": v2, "robust_pass": rob, "leaky_pass": True} for r in rows],
+        )
+    assert compare.parse_run_id("v2-2b-rob-s1") is None and compare.parse_run_id("v2-2b-leak-s3") is None
+    after = _analyze(tmp_path)
+    assert {k: _v(h) for k, h in _by_h(after).items()} == {k: _v(h) for k, h in _by_h(before).items()}
+    data = load_dataset(tmp_path / "evals", tmp_path / "runs", _protocol(tmp_path))
+    assert not any(rid.startswith("v2-") for rid, _ in data.runs)
+    assert any("not in the run matrix, ignored: v2-2b-leak-s1, v2-2b-rob-s1" in n for n in data.notes)

@@ -4,9 +4,10 @@
     uv run python eval/sametype_batch.py --gpus 6 --runs '2b-*' --dry-run
 
 **Jobs.** Every ``runs/<id>/eval/step-NNNNN/`` with ``COMPLETE`` (the trainer writes it last), plus
-``base-<size>`` (step 0) for each size among those runs. By default only run-matrix ids
-(``<size>-<rob|leak>-s<seed>...``) are taken; ``--runs`` (fnmatch globs, comma-separated) selects
-others, e.g. ``--runs 'dry-*'``. A job whose output already exists is skipped, so the driver can be
+``base-<size>`` (step 0) for each size among those runs. By default only run-matrix ids, v2 included
+(``[v2-]<size>-<rob|leak>-s<seed>...``), are taken; ``--runs`` (fnmatch globs, comma-separated)
+selects others, e.g. ``--runs 'dry-*'``. A v2 checkpoint is evaluated with its own variant settings
+(`eval/heldout.py` reads them from the run dir). A job whose output already exists is skipped, so the driver can be
 re-run at any time to pick up new checkpoints.
 
 **Metadata** (size, reward, seed) comes from ``runs/<id>/run_manifest.json`` (`train/run_manifest.py`),
@@ -55,7 +56,7 @@ HELDOUT = REPO_ROOT / "eval" / "heldout.py"
 DEFAULT_TIMEOUT_S = 1800.0
 KILL_GRACE_S = 30.0
 POLL_S = 5.0
-RUN_ID_RE = re.compile(r"^(?P<size>\d+(?:\.\d+)?b)-(?P<reward>rob|leak)-s(?P<seed>\d+)")
+RUN_ID_RE = re.compile(r"^(?:v\d+-)?(?P<size>\d+(?:\.\d+)?b)-(?P<reward>rob|leak)-s(?P<seed>\d+)")
 REWARD_ALIASES = {"rob": "robust", "leak": "leaky"}
 
 

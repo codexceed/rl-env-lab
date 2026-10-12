@@ -18,6 +18,7 @@ from eval.heldout import (
     default_output,
     diagnostic_summary,
     generate_texts,
+    generation_settings,
     go_no_go,
     graded_text,
     make_records,
@@ -27,6 +28,7 @@ from eval.heldout import (
     read_baseline,
     render_prompts,
     resolve_target,
+    run_variant,
     sametype_output_path,
     select_instances,
     summary_markdown,
@@ -35,7 +37,7 @@ from eval.heldout import (
 )
 from eval.metrics import EvalRecord, load_records
 from train.checkpoints import COMPLETE, atomic_write_json, eval_step_dir, eval_traces_path
-from train.grpo import THINK_OFF_SUFFIX, load_config
+from train.grpo import DEFAULT_CONFIG, THINK_OFF_SUFFIX, load_config
 
 # SPEC §12, verbatim keys.
 SCHEMA_KEYS = {
@@ -413,7 +415,7 @@ def test_gallery_cli(heldout, tmp_path, capsys):
 
 def test_sametype_mode_parses_and_writes_to_its_own_dir():
     args = parse_args(["--size", "2b", "--checkpoint", "base", "--mode", "sametype"])
-    assert (args.mode, args.thinking, args.max_tokens) == ("sametype", "off", None)
+    assert (args.mode, args.thinking, args.max_tokens) == ("sametype", None, None)
     base = Target("base-2b", "2b", "base", None, 0, None)
     run = Target("2b-rob-s1", "2b", "robust", 1, 50, Path("x"))
     root = Path("evals")
@@ -604,3 +606,46 @@ def test_read_baseline(tmp_path):
     good.write_text(json.dumps(_summary({"F1T1": 0.0})))
     baseline = read_baseline(good)
     assert baseline is not None and baseline["templates"]["F1T1"]["true_success"] == 0.0
+
+
+# ---------------------------------------------------------------- variant runs (ADR 0005 v2)
+
+
+def _v2_argv(ckpt: Path, *extra: str) -> list[str]:
+    argv = ["--run-id", "v2-2b-rob-s1", "--size", "2b", "--reward", "robust", "--seed", "1"]
+    return [*argv, "--checkpoint", str(ckpt), "--step", "50", *extra]
+
+
+def test_variant_comes_from_the_run_dir(tmp_path):
+    run = tmp_path / "v2-2b-rob-s1"
+    step = eval_step(run, 50)
+    target = resolve_target(parse_args(_v2_argv(step)))
+    assert run_variant(target) is None  # nothing recorded yet: v1
+    atomic_write_json(step / COMPLETE, {"step": 50, "final": False, "variant": "v2-think"})
+    assert run_variant(target) == "v2-think"
+    atomic_write_json(run / "train_config.json", {"variant": "v2-think"})
+    assert run_variant(target) == "v2-think"
+    atomic_write_json(run / "run_manifest.json", {"variant": "v2-think"})
+    assert run_variant(target) == "v2-think"
+    assert run_variant(Target("base-2b", "2b", "base", None, 0, None)) is None
+
+
+def test_variant_run_is_evaluated_as_trained(tmp_path):
+    step = eval_step(tmp_path / "v2-2b-rob-s1", 50)
+    cfg = load_config(DEFAULT_CONFIG, "2b", "v2-think")
+    for mode in ("formal", "sametype"):  # the watcher's generic command (formal) needs no new flag
+        args = parse_args([*_v2_argv(step), "--mode", mode])
+        assert generation_settings(args, cfg, "v2-think") == (True, 512)
+        assert default_output(resolve_target(args), mode, Path("evals"), args.thinking or "off").parent.name in (
+            "v2-2b-rob-s1",
+            "sametype",
+        )
+    with pytest.raises(EvalError, match="drop --thinking"):
+        generation_settings(parse_args([*_v2_argv(step), "--mode", "sametype", "--thinking", "off"]), cfg, "v2-think")
+    args = parse_args([*_v2_argv(step), "--mode", "sametype", "--thinking", "on", "--max-tokens", "300"])
+    assert generation_settings(args, cfg, "v2-think") == (True, 300)
+    # v1 runs and the base model keep the CLI behaviour
+    v1 = load_config(DEFAULT_CONFIG, "2b")
+    assert generation_settings(parse_args(_v2_argv(step)), v1, None) == (False, 256)
+    base = parse_args(["--size", "2b", "--checkpoint", "base", "--mode", "diagnostic", "--thinking", "on"])
+    assert generation_settings(base, v1, None) == (True, 512)
