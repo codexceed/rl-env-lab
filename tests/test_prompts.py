@@ -88,6 +88,16 @@ def test_render_prompt_disables_thinking():
     }
 
 
+def test_render_prompt_thinking_on_only_when_asked():
+    tok = _FakeTokenizer()
+    inst = hand_built_instance()
+    prompts.render_prompt(tok, inst, thinking=False)
+    prompts.render_prompt(tok, inst, thinking=True)
+    (_, off), (_, on) = tok.calls
+    assert off["enable_thinking"] is False
+    assert on == {**off, "enable_thinking": True}
+
+
 def test_render_call_native_form():
     call = ToolCall(
         "apply_credit", {"reason": "Credit overcharge versus contract rate", "amount": 1250, "invoice_id": "INV-48213"}

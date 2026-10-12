@@ -11,21 +11,31 @@ from tests.verify.verify_builders import BUILDERS
 
 from eval import gallery
 from eval.heldout import (
+    DEFAULT_THINK_MAX_TOKENS,
     EvalError,
     Target,
+    answer_cap,
     default_output,
     diagnostic_summary,
     generate_texts,
+    go_no_go,
+    graded_text,
     make_records,
     make_records_and_traces,
     parse_args,
     rates,
+    read_baseline,
+    render_prompts,
     resolve_target,
+    sametype_output_path,
     select_instances,
+    summary_markdown,
+    think_prefix,
     write_jsonl_atomic,
 )
 from eval.metrics import EvalRecord, load_records
 from train.checkpoints import COMPLETE, atomic_write_json, eval_step_dir, eval_traces_path
+from train.grpo import THINK_OFF_SUFFIX, load_config
 
 # SPEC §12, verbatim keys.
 SCHEMA_KEYS = {
@@ -396,3 +406,201 @@ def test_gallery_cli(heldout, tmp_path, capsys):
     assert gallery.main(["--run-id", "2b-leak-s1", "--evals", str(tmp_path), "--n", "2"]) == 0
     assert "step 50" in capsys.readouterr().out
     assert gallery.main(["--run-id", "nope", "--evals", str(tmp_path)]) == 2
+
+
+# ---------------------------------------------------------------- sametype mode (ADR 0005 item 2)
+
+
+def test_sametype_mode_parses_and_writes_to_its_own_dir():
+    args = parse_args(["--size", "2b", "--checkpoint", "base", "--mode", "sametype"])
+    assert (args.mode, args.thinking, args.max_tokens) == ("sametype", "off", None)
+    base = Target("base-2b", "2b", "base", None, 0, None)
+    run = Target("2b-rob-s1", "2b", "robust", 1, 50, Path("x"))
+    root = Path("evals")
+    assert default_output(base, "sametype", root) == Path("evals/base-2b/sametype/step-00000.jsonl")
+    assert default_output(run, "sametype", root) == Path("evals/2b-rob-s1/sametype/step-00050.jsonl")
+    assert default_output(run, "sametype", root, "on") == Path("evals/2b-rob-s1/sametype-think/step-00050.jsonl")
+    assert sametype_output_path(root, "2b-rob-s1", 50) == default_output(run, "sametype", root)
+    assert eval_traces_path(default_output(run, "sametype", root)).name == "step-00050.traces.jsonl"
+    # the formal path is untouched
+    assert default_output(run, "formal", root) == Path("evals/2b-rob-s1/step-00050.jsonl")
+
+
+def test_sametype_uses_sametype_instances_only(heldout):
+    pool = [_copy(BUILDERS[t](), i, split="sametype") for t in ("F1T1", "F2T2") for i in range(3)]
+    assert select_instances(pool, "sametype", EVAL_CFG) == pool  # every instance, in order
+    with pytest.raises(EvalError, match="sametype instances only"):
+        select_instances([*pool, BUILDERS["F1T1"]()], "sametype", EVAL_CFG)  # a train instance
+    with pytest.raises(EvalError, match="sametype instances only"):
+        select_instances(heldout, "sametype", EVAL_CFG)
+
+
+def test_sametype_config_mirrors_formal():
+    cfg = load_config()["eval"]
+    assert cfg["sametype"] == {**cfg["formal"], "split": "sametype"}
+    assert answer_cap(cfg["sametype"], cfg, "off", None) == 256
+    assert answer_cap(cfg["diagnostic"], cfg, "on", None) == 512
+    assert answer_cap(cfg["diagnostic"], cfg, "on", 300) == 300
+
+
+def test_sametype_records_keep_the_spec_schema():
+    insts = [_copy(BUILDERS["F1T1"](), 0, split="sametype")]
+    rows, traces = make_records_and_traces(Target("2b-rob-s1", "2b", "robust", 1, 50, Path("x")), insts, [["x"]])
+    assert set(rows[0]) == SCHEMA_KEYS and "graded_text" not in traces[0]
+
+
+def test_compare_never_reads_sametype_or_diagnostic_files(tmp_path):
+    from eval import compare
+
+    def row(run_id, inst):
+        return dataclasses.asdict(EvalRecord(run_id, "2b", "robust", 1, 50, inst, "F1", "F1T1", 0, True, True, True))
+
+    evals = tmp_path / "evals"
+    write_jsonl_atomic(evals / "2b-rob-s1" / "step-00050.jsonl", [row("2b-rob-s1", "F1T3-heldout-00000")])
+    write_jsonl_atomic(evals / "2b-rob-s1" / "sametype" / "step-00050.jsonl", [row("2b-rob-s1", "F1T1-sametype-0")])
+    write_jsonl_atomic(evals / "2b-rob-s1" / "sametype-think" / "step-00050.jsonl", [row("2b-rob-s1", "s")])
+    write_jsonl_atomic(evals / "diagnostic" / "base-2b_step-00000.jsonl", [row("base-2b", "d")])
+    write_jsonl_atomic(evals / "diagnostic" / "base-2b_think_step-00000.jsonl", [row("base-2b", "t")])
+    records = compare._load_records(evals, [])
+    assert [r.instance_id for r in records] == ["F1T3-heldout-00000"]
+
+
+# ---------------------------------------------------------------- thinking (ADR 0005 item 3)
+
+
+def test_thinking_flags():
+    args = parse_args(["--size", "2b", "--checkpoint", "base", "--mode", "diagnostic", "--thinking", "on"])
+    assert (args.thinking, args.max_tokens) == ("on", None)
+    assert parse_args(["--size", "2b", "--checkpoint", "base", "--mode", "sametype", "--max-tokens", "64"]).max_tokens
+    for extra in (["--thinking", "on"], ["--max-tokens", "512"]):  # the formal eval stays as pre-registered
+        with pytest.raises(SystemExit):
+            parse_args(["--size", "2b", "--checkpoint", "base", *extra])
+    with pytest.raises(SystemExit):
+        parse_args(["--size", "2b", "--checkpoint", "base", "--mode", "diagnostic", "--max-tokens", "0"])
+    with pytest.raises(EvalError):
+        default_output(Target("base-2b", "2b", "base", None, 0, None), "formal", Path("evals"), "on")
+
+
+def test_thinking_diagnostic_has_its_own_path():
+    t = Target("base-2b", "2b", "base", None, 0, None)
+    off = default_output(t, "diagnostic", Path("evals"))
+    on = default_output(t, "diagnostic", Path("evals"), "on")
+    assert off == Path("evals/diagnostic/base-2b_step-00000.jsonl")
+    assert on == Path("evals/diagnostic/base-2b_think_step-00000.jsonl")
+    assert on.with_suffix(".summary.json") != off.with_suffix(".summary.json")
+
+
+class FakeTokenizer:
+    """Qwen3.5-like generation prompts; one token per character."""
+
+    def __init__(self, honour_thinking: bool = True, pad: int = 0):
+        self.honour_thinking = honour_thinking
+        self.pad = pad
+        self.kwargs: list[dict] = []
+
+    def apply_chat_template(self, messages, **kwargs):
+        self.kwargs.append(kwargs)
+        head = "x" * self.pad + messages[1]["content"][:10] + "<|im_start|>assistant\n"
+        if kwargs["enable_thinking"] and self.honour_thinking:
+            return head + "<think>\n"
+        return head + THINK_OFF_SUFFIX
+
+    def __call__(self, text, add_special_tokens=False):
+        return {"input_ids": list(range(len(text)))}
+
+
+def test_thinking_off_prompts_are_unchanged(heldout):
+    from envlab.prompts import render_prompt
+
+    tok = FakeTokenizer()
+    ids = render_prompts(tok, heldout, 10_000)
+    assert all(kw["enable_thinking"] is False for kw in tok.kwargs)
+    assert ids == [list(range(len(render_prompt(FakeTokenizer(), i)))) for i in heldout]
+    assert ids == render_prompts(FakeTokenizer(), heldout, 10_000, thinking=False, max_tokens=256, max_model_len=2048)
+
+
+def test_thinking_on_prompts(heldout):
+    tok = FakeTokenizer()
+    render_prompts(tok, heldout, 10_000, thinking=True)
+    assert all(kw["enable_thinking"] is True for kw in tok.kwargs)
+    with pytest.raises(EvalError, match="thinking-off generation prompt"):
+        render_prompts(FakeTokenizer(honour_thinking=False), heldout, 10_000, thinking=True)
+
+
+def test_prompt_plus_answer_must_fit_the_context(heldout):
+    lengths = [len(ids) for ids in render_prompts(FakeTokenizer(pad=1490), heldout, 1536, thinking=True)]
+    assert all(1490 < k <= 1536 for k in lengths)
+    fits = 2048 - max(lengths)
+    render_prompts(FakeTokenizer(pad=1490), heldout, 1536, thinking=True, max_tokens=fits, max_model_len=2048)
+    with pytest.raises(EvalError, match="2048-token context"):
+        render_prompts(FakeTokenizer(pad=1490), heldout, 1536, thinking=True, max_tokens=fits + 1, max_model_len=2048)
+    # the ADR 0005 budget: a full 1,536-token prompt plus the 512 cap is exactly the 2,048 context
+    assert load_config()["layout"]["vllm_max_model_length"] == 1536 + DEFAULT_THINK_MAX_TOKENS
+
+
+def test_think_prefix():
+    assert think_prefix("<|im_start|>assistant\n<think>\n") == "<think>\n"
+    assert think_prefix("<|im_start|>assistant\n" + THINK_OFF_SUFFIX) == ""
+    assert think_prefix("<|im_start|>assistant\n") == ""
+
+
+def test_closed_think_block_parses_and_unclosed_is_a_format_failure(heldout):
+    from envlab.calls import ParseFailure
+    from envlab.parse import parse_tool_call
+
+    inst = heldout[0]
+    call = native(inst.oracle_call)
+    # the parser on its own
+    assert parse_tool_call("<think>\nsum the lines first\n</think>\n\n" + call) == inst.oracle_call
+    assert isinstance(parse_tool_call("<think>\nsum the lines first, then"), ParseFailure)  # cut off at the cap
+    # the thinking-on eval: the prompt opened <think>, so completions start inside it
+    target = Target("base-2b", "2b", "base", None, 0, None)
+    samples = [
+        [
+            "sum the lines first\n</think>\n\n" + call,  # closed: graded on the call
+            "sum the lines first, then",  # cut off inside the think block
+            "draft: " + call + " hmm, check again",  # a call inside a think block that never closes
+        ]
+    ]
+    rows, traces = make_records_and_traces(target, [inst], samples, "<think>\n")
+    assert [r["parse_ok"] for r in rows] == [True, False, False]
+    assert rows[0]["robust_pass"] and rows[0]["leaky_pass"]
+    assert [t["parse_failure"] for t in traces[1:]] == [{"reason": "no_tool_call", "detail": ""}] * 2
+    assert traces[0]["completion"] == samples[0][0] and traces[0]["graded_text"] == "<think>\n" + samples[0][0]
+    assert graded_text("a</think>b", "") == "a</think>b"  # template without an open think tag
+
+
+def _summary(rates_by_template):
+    return diagnostic_summary(band_rows(rates_by_template))
+
+
+ELEVEN = ("F1T1", "F1T2", "F1T5", "F2T1", "F2T2", "F3T1", "F3T2", "F4T1", "F4T2", "F5T1", "F5T2")
+
+
+def test_go_no_go():
+    off = _summary(dict.fromkeys(ELEVEN, 0.5) | {"F1T5": 0.0, "F4T1": 0.04, "F4T2": 0.95, "F5T2": 0.05})
+    on = _summary(dict.fromkeys(ELEVEN, 0.5) | {"F1T5": 0.12, "F4T1": 0.30, "F4T2": 0.95, "F5T2": 0.0})
+    g = go_no_go(on, off)
+    assert g["verdict"] == "go" and g["low_types_rise"] and g["band_ok"]
+    assert g["low_types"] == {"F1T5": {"off": 0.0, "on": 0.12}, "F4T1": {"off": 0.04, "on": 0.30}}  # 5% is not low
+
+    flat = _summary(dict.fromkeys(ELEVEN, 0.5) | {"F1T5": 0.0, "F4T1": 0.30})
+    assert go_no_go(flat, off)["verdict"] == "no-go"  # F1T5 stayed at 0
+    narrow = _summary(dict.fromkeys(ELEVEN, 0.95) | {"F1T5": 0.5, "F4T1": 0.5})
+    g = go_no_go(narrow, off)
+    assert g["low_types_rise"] and not g["band_ok"] and g["verdict"] == "no-go"
+
+    g = go_no_go(on, None)
+    assert g["verdict"] == "no baseline" and g["low_types"] is None and g["in_band"] == on["in_band"]
+    assert "go/no-go" in summary_markdown({**on, "go_no_go": go_no_go(on, off)})
+
+
+def test_read_baseline(tmp_path):
+    assert read_baseline(tmp_path / "missing.summary.json") is None
+    bad = tmp_path / "bad.summary.json"
+    bad.write_text("{")
+    assert read_baseline(bad) is None
+    good = tmp_path / "base-2b_step-00000.summary.json"
+    good.write_text(json.dumps(_summary({"F1T1": 0.0})))
+    baseline = read_baseline(good)
+    assert baseline is not None and baseline["templates"]["F1T1"]["true_success"] == 0.0

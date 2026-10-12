@@ -31,6 +31,11 @@ This is the contract between the trainer (`train/grpo.py`), the eval script (`ev
   step-<NNNNN>.failed          watcher      retries exhausted (blocks the gate; needs a human)
   step-<NNNNN>.claim           watcher      lock, so two watchers never evaluate the same step
   logs/                        watcher      eval logs
+  sametype/step-<NNNNN>.jsonl  sametype_batch  EXPLORATORY (ADR 0005): same-type eval records (+ .traces.jsonl, logs/);
+                                               a subdirectory, so metrics, compare and logsync never read it
+
+<evals>/diagnostic/
+  <run>_step-<NNNNN>.jsonl     eval script  diagnostic baseline (+ .summary.json); `_think_` in the name = thinking on
 ```
 
 **Rules**

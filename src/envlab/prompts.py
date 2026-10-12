@@ -69,13 +69,17 @@ def build_messages(instance: TaskInstance) -> list[dict[str, str]]:
     ]
 
 
-def render_prompt(tokenizer: Any, instance: TaskInstance) -> str:
-    """Full prompt text via the model's own chat template. Thinking is always off (§10)."""
+def render_prompt(tokenizer: Any, instance: TaskInstance, *, thinking: bool = False) -> str:
+    """Full prompt text via the model's own chat template.
+
+    Thinking is off (§10) unless ``thinking`` is set; that is only for the exploratory
+    thinking-on diagnostic (ADR 0005), never for training or the formal eval.
+    """
     return tokenizer.apply_chat_template(
         build_messages(instance),
         tools=TOOLS,
         add_generation_prompt=True,
-        enable_thinking=False,
+        enable_thinking=thinking,
         tokenize=False,
     )
 
