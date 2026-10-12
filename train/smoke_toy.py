@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--prompts-per-step", type=int, default=8)
     p.add_argument("--num-generations", type=int, default=8)
     p.add_argument("--max-completion-length", type=int, default=32)
-    p.add_argument("--digits", type=int, default=5, help="operand size; lower it if reward starts near 1")
+    p.add_argument("--digits", type=int, default=11, help="operand size; base 2B accuracy ~0.69 at 11 (0.92 at 5)")
     p.add_argument("--lr-scheduler", default="constant")
     p.add_argument("--param-dtype", choices=["float32", "bfloat16"], default="float32")
     p.add_argument("--seed", type=int, default=42)
