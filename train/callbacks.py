@@ -60,6 +60,10 @@ METRIC_KEYS: dict[str, str] = {
     "grad_norm": "grad_norm",
     "learning_rate": "learning_rate",
     "step_time": "trl_step_time_s",
+    # Sampler (vLLM) vs trainer disagreement on the sampled tokens. Spikes preceded every toy collapse.
+    "sampling/sampling_logp_difference/mean": "sampler_logp_diff_mean",
+    "sampling/sampling_logp_difference/max": "sampler_logp_diff_max",
+    "sampling/importance_sampling_ratio/min": "is_ratio_min",
 }
 
 
