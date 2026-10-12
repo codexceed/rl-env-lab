@@ -3,13 +3,8 @@
   "steps": [
     {
       "eval": "failed",
-      "final": false,
-      "step": 10
-    },
-    {
-      "eval": "failed",
       "final": true,
-      "step": 12
+      "step": 10
     }
   ]
 }
