@@ -22,7 +22,7 @@
 | **Today** | Mon 12 Oct 2026 |
 | **Phase** | P0 — Setup |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
-| **Compute** | 2 × 8 H200 (Lightning AI) |
+| **Compute** | 2 × 8 H200 (Lightning AI) · studio `rl-env-lab` in `[teamspace]` (CPU now → H200 when GPU scripts land) |
 | **Next gate** | 🚦 G-Mon (end of today) |
 | **Blockers** | — |
 
@@ -43,7 +43,7 @@
 | Difficulty fallback | Too-hard branch only | **Too-hard and too-easy branches**, rule frozen in PREREG |
 | Statistics | Per-run bootstrap CI | **Seed-pair + instance paired bootstrap**, rules in §0.7 |
 | Checkpoints | Every 50 steps | **Eval weights every 50 + rolling full recovery checkpoint** |
-| Node shutdown | Each job stops its instance | **Coordinator shuts nodes down** after all training, eval and transfers |
+| Node shutdown | Each job stops its instance | **No auto-release.** Coordinator stops *runs* at cutoff and reports "idle, safe to release"; machines stay attached through debugging/plan/code dips; **owner releases** only when certain they're no longer needed |
 | Hypotheses | H1–H5 | **H1, H2, H5 tested; H3 exploratory; H4 cut** |
 | Triage classifier | Sat | **Cut** |
 | Multi-turn tasks | Stretch | **Cut** |
@@ -110,6 +110,10 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 ### 0.1 Compute and access (me)
 - [ ] Written confirmation of H200 access (2 nodes, through Fri 16 Oct)
 - [ ] Written confirmation: personal grant, no Lightning IP claim
+- [x] Lightning studio `rl-env-lab` created in `[teamspace]`, started on CPU — 2026-10-12
+- [ ] Owner: `gh auth login` (codexceed) on the studio; clone repo; `uv sync --group dev`
+- [ ] Studio auto-sleep disabled (machines stay attached through dips)
+- [ ] Switch studio to H200 (1× for §0.3/§0.4, then ×8) when GPU scripts land
 - [ ] Both nodes reachable; GPU check prints GPU name, memory, CUDA available on each
 - [ ] Shared storage for checkpoints/eval outputs set up; path: `____`
 - [ ] Storage measured after first checkpoint save (per-checkpoint size × planned count recorded here: `____`)
@@ -231,7 +235,8 @@ Three agents in parallel; I integrate and review.
 - [ ] **Coordinator** (`train/coordinator.py` or job script):
   - launches runs per GPU allocation
   - per-run timeout (run ends, node stays up)
-  - shuts a node down only when all its training, eval and output transfers are done, or at a hard node deadline
+  - never releases a machine by default: when all training, eval and transfers are done it writes an idle marker ("safe to release"); at the hard deadline it stops runs only
+  - actual shutdown only with explicit opt-in flag + configured command (owner's call)
 - [ ] 10-step dry run of `train/grpo.py` with each reward on 2B; resume tested
 - [ ] CI green
 
@@ -340,7 +345,7 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 
 ## P4 — Friday 16 Oct 06:00 → 12:00: final review and publish
 
-- [ ] 06:00: training stopped; coordinator confirms all eval + transfers done, then shuts nodes down
+- [ ] 06:00: training stopped; coordinator confirms all eval + transfers done (idle marker); **owner releases machines** once certain they're not needed
 - [ ] Final verdicts confirmed from complete data (H1, H2, H5; H3 exploratory); sample sizes stated
 - [ ] Results, plots, gallery, limits reviewed
 - [ ] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking
@@ -402,3 +407,5 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Reporting moved earlier: skeleton Tue, live tables + provisional verdicts Thu | Friday overload | [ ] |
 | 2026-10-12 | Python 3.11 → 3.14; GPU stack moved to Linux-only `gpu` extra | Owner request; wheels verified | [ ] |
 | 2026-10-12 | Kernel failure → source build, then Python 3.12, before switching model family | `causal-conv1d` has no PyPI wheels | [ ] |
+| 2026-10-12 | Compute on Lightning studio `rl-env-lab` (`[teamspace]`); repo cloned there | Owner request | [ ] |
+| 2026-10-12 | No automatic node release; machines stay attached through dips; owner releases | Owner request | [x] #13 |
