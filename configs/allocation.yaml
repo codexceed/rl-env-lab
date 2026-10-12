@@ -109,6 +109,19 @@ runs:
   v2-2b-leak-s1: {size: 2b, reward: leaky, seed: 1, timeout_s: 36000, train_command: *v2cmd}
   v2-2b-leak-s2: {size: 2b, reward: leaky, seed: 2, timeout_s: 36000, train_command: *v2cmd}
   v2-2b-leak-s3: {size: 2b, reward: leaky, seed: 3, timeout_s: 36000, train_command: *v2cmd}
+  # v2 extended to 4B and 0.8B (ADR 0005 "extend if the effect holds"; owner 2026-10-12)
+  v2-4b-rob-s1: {size: 4b, reward: robust, seed: 1, timeout_s: 36000, train_command: *v2cmd}
+  v2-4b-rob-s2: {size: 4b, reward: robust, seed: 2, timeout_s: 36000, train_command: *v2cmd}
+  v2-4b-rob-s3: {size: 4b, reward: robust, seed: 3, timeout_s: 36000, train_command: *v2cmd}
+  v2-4b-leak-s1: {size: 4b, reward: leaky, seed: 1, timeout_s: 36000, train_command: *v2cmd}
+  v2-4b-leak-s2: {size: 4b, reward: leaky, seed: 2, timeout_s: 36000, train_command: *v2cmd}
+  v2-4b-leak-s3: {size: 4b, reward: leaky, seed: 3, timeout_s: 36000, train_command: *v2cmd}
+  v2-0.8b-rob-s1: {size: 0.8b, reward: robust, seed: 1, timeout_s: 21600, train_command: *v2cmd}
+  v2-0.8b-rob-s2: {size: 0.8b, reward: robust, seed: 2, timeout_s: 21600, train_command: *v2cmd}
+  v2-0.8b-rob-s3: {size: 0.8b, reward: robust, seed: 3, timeout_s: 21600, train_command: *v2cmd}
+  v2-0.8b-leak-s1: {size: 0.8b, reward: leaky, seed: 1, timeout_s: 21600, train_command: *v2cmd}
+  v2-0.8b-leak-s2: {size: 0.8b, reward: leaky, seed: 2, timeout_s: 21600, train_command: *v2cmd}
+  v2-0.8b-leak-s3: {size: 0.8b, reward: leaky, seed: 3, timeout_s: 21600, train_command: *v2cmd}
 
 # Groups: a queue runs in order on the group's GPUs. A group starts only after every group in
 # `after` is drained, and a run starts only when all its GPUs are free (no training, no eval).
@@ -132,9 +145,19 @@ nodes:
       - {name: n1-v2-g3, gpus: [3], after: [n1-g0, n1-g1, n1-g2, n1-g3, n1-g4, n1-g5], queue: [v2-2b-leak-s2]}
       - {name: n1-v2-g4, gpus: [4], after: [n1-g0, n1-g1, n1-g2, n1-g3, n1-g4, n1-g5], queue: [v2-2b-rob-s3]}
       - {name: n1-v2-g5, gpus: [5], after: [n1-g0, n1-g1, n1-g2, n1-g3, n1-g4, n1-g5], queue: [v2-2b-leak-s3]}
+      # Block 3: v2 4B (seeds 1 and 3; seed 2 on node2), robust and leaky side by side. No eval GPU while
+      # they train: their evals run on all 8 GPUs afterwards.
+      - name: n1-v2-4b-rob
+        gpus: [0, 1, 2, 3]
+        after: [n1-v2-g0, n1-v2-g1, n1-v2-g2, n1-v2-g3, n1-v2-g4, n1-v2-g5]
+        queue: [v2-4b-rob-s1, v2-4b-rob-s3]
+      - name: n1-v2-4b-leak
+        gpus: [4, 5, 6, 7]
+        after: [n1-v2-g0, n1-v2-g1, n1-v2-g2, n1-v2-g3, n1-v2-g4, n1-v2-g5]
+        queue: [v2-4b-leak-s1, v2-4b-leak-s3]
   node2:
     gpus: [0, 1, 2, 3, 4, 5, 6, 7]
-    eval_gpus: [6, 7]  # eval overflow during 0.8B; taken back when the 4B leaky queue starts
+    eval_gpus: [6, 7]  # eval overflow during 0.8B; taken back by the 4B leaky queue and by v2 0.8B on GPU 6
     groups:
       # Block 1 (~2 h): six 0.8B runs, 1 GPU each
       - {name: n2-g0, gpus: [0], queue: [0.8b-rob-s1]}
@@ -152,3 +175,12 @@ nodes:
         gpus: [4, 5, 6, 7]
         after: [n2-g4, n2-g5]
         queue: [4b-leak-s1, 4b-leak-s3, 4b-leak-s2]
+      # Block 5: v2 (exploratory) after all 4B v1 runs and their evals: the seed-2 4B pair in sequence on GPU 0-3,
+      # v2 0.8B robust then leaky per seed on GPU 4, 5, 6; GPU 7 stays free for evals.
+      - name: n2-v2-4b
+        gpus: [0, 1, 2, 3]
+        after: [n2-4b-rob, n2-4b-leak]
+        queue: [v2-4b-rob-s2, v2-4b-leak-s2]
+      - {name: n2-v2-08-s1, gpus: [4], after: [n2-4b-rob, n2-4b-leak], queue: [v2-0.8b-rob-s1, v2-0.8b-leak-s1]}
+      - {name: n2-v2-08-s2, gpus: [5], after: [n2-4b-rob, n2-4b-leak], queue: [v2-0.8b-rob-s2, v2-0.8b-leak-s2]}
+      - {name: n2-v2-08-s3, gpus: [6], after: [n2-4b-rob, n2-4b-leak], queue: [v2-0.8b-rob-s3, v2-0.8b-leak-s3]}

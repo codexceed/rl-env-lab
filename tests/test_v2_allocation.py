@@ -15,7 +15,7 @@ REPO = Path(__file__).resolve().parents[1]
 def test_v2_runs_build_a_valid_node1_plan():
     cfg = load_config(REPO / "configs" / "allocation.yaml")
     plan = build_plan(resolve_paths(cfg, REPO), "node1")
-    v2 = {rid: spec for rid, spec in plan.runs.items() if rid.startswith("v2-")}
+    v2 = {rid: spec for rid, spec in plan.runs.items() if rid.startswith("v2-2b-")}
     assert sorted(v2) == sorted(f"v2-2b-{r}-s{s}" for r in ("rob", "leak") for s in (1, 2, 3))
     for rid, spec in v2.items():
         assert spec.timeout_s == 36000 and spec.size == "2b"
@@ -26,6 +26,24 @@ def test_v2_runs_build_a_valid_node1_plan():
         assert (args.run_id, args.variant, args.gpus) == (rid, "v2-think", list(spec.gpus))
         assert (args.reward, args.seed) == (spec.reward, spec.seed)
     groups = {g.name: g for g in plan.groups}
-    assert {g.gpus for name, g in groups.items() if name.startswith("n1-v2-")} == {(i,) for i in range(6)}
-    assert all(set(groups[n].after) == {f"n1-g{i}" for i in range(6)} for n in groups if n.startswith("n1-v2-"))
-    assert not any(rid.startswith("v2-") for rid in build_plan(resolve_paths(cfg, REPO), "node2").runs)
+    v2_2b = [n for n in groups if n.startswith("n1-v2-g")]
+    assert {groups[n].gpus for n in v2_2b} == {(i,) for i in range(6)}
+    assert all(set(groups[n].after) == {f"n1-g{i}" for i in range(6)} for n in v2_2b)
+    assert not any(rid.startswith("v2-2b-") for rid in build_plan(resolve_paths(cfg, REPO), "node2").runs)
+
+
+def test_v2_extension_to_4b_and_08b():
+    cfg = load_config(REPO / "configs" / "allocation.yaml")
+    n1, n2 = (build_plan(resolve_paths(cfg, REPO), node) for node in ("node1", "node2"))
+    runs = {**n1.runs, **n2.runs}
+    v2 = {rid for rid in runs if rid.startswith(("v2-4b-", "v2-0.8b-"))}
+    assert v2 == {f"v2-{size}-{r}-s{s}" for size in ("4b", "0.8b") for r in ("rob", "leak") for s in (1, 2, 3)}
+    for rid in v2:
+        argv = shlex.split(train_command(n1 if rid in n1.runs else n2, runs[rid]))
+        assert argv[argv.index("--variant") + 1] == "v2-think"
+        assert len(runs[rid].gpus) == (4 if rid.startswith("v2-4b-") else 1)
+    g1, g2 = {g.name: g for g in n1.groups}, {g.name: g for g in n2.groups}
+    assert set(g1["n1-v2-4b-rob"].after) == {f"n1-v2-g{i}" for i in range(6)}  # after the whole v2 2B block
+    assert set(g2["n2-v2-4b"].after) == {"n2-4b-rob", "n2-4b-leak"}  # after every 4B v1 run (and its evals)
+    assert g2["n2-v2-4b"].queue == ("v2-4b-rob-s2", "v2-4b-leak-s2")
+    assert 7 not in {gpu for name, g in g2.items() if name.startswith("n2-v2-") for gpu in g.gpus}  # GPU 7 evals

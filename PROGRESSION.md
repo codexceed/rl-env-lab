@@ -436,3 +436,4 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | v2 moved up: n1 runs the v2 2B round (ADR 0005) right after its 2B block; n1's 4B pair (P2) moved to the end of n2's 4B queues. On a no-go the pair returns to n1 | v2 results ~3 h sooner; 4B still ends well before the cutoff | [ ] |
 | 2026-10-12 | Async recovery verified on GPU (dry run: 2B + 4B resume match; save pause 9–16 s vs ~3.5 min); 4B runs started on n2 | Gate for 4B | [x] |
 | 2026-10-12 | v2 go with answer cap 1,024 (512 failed the gate); v2 2B ×6 added to node1 after its 2B block (ADR 0006) | Thinking-on base check | [x] #22 |
+| 2026-10-12 | v2 extended to 4B and 0.8B (ADR 0005 "extend if the effect holds": v2 2B robust held-out true ~0.8 vs v1 ~0.4). n1: v2 4B seeds 1, 3 after v2 2B; n2: v2 4B seed 2 + v2 0.8B ×6 after the 4B v1 runs and their evals. ~10 h, both nodes | Owner chose the full v2 ladder | [ ] #20 |
