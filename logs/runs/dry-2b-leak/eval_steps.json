@@ -2,12 +2,12 @@
   "run_id": "dry-2b-leak",
   "steps": [
     {
-      "eval": "pending",
+      "eval": "failed",
       "final": false,
       "step": 5
     },
     {
-      "eval": "running",
+      "eval": "failed",
       "final": true,
       "step": 10
     }

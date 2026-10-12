@@ -1,4 +1,20 @@
 {
   "run_id": "2b-leak-s3",
-  "steps": []
+  "steps": [
+    {
+      "eval": "done",
+      "final": false,
+      "step": 50
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 100
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 150
+    }
+  ]
 }

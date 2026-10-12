@@ -2,7 +2,7 @@
   "run_id": "dry-2b-rob-resume",
   "steps": [
     {
-      "eval": "pending",
+      "eval": "failed",
       "final": true,
       "step": 10
     }

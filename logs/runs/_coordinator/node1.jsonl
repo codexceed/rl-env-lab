@@ -9,3 +9,14 @@
 {"ts": 1791818445.725, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "launch", "run_id": "2b-rob-s3", "gpus": [4], "attempt": 1, "pid": 476852, "resume_from": null}
 {"ts": 1791818445.729, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "launch", "run_id": "2b-leak-s3", "gpus": [5], "attempt": 1, "pid": 476855, "resume_from": null}
 {"ts": 1791818445.729, "iso": "2026-10-12T15:20:45+00:00", "node": "node1", "event": "gate_blocked", "count": 8, "blockers": ["2b-rob-s1: running", "2b-leak-s1: running", "2b-rob-s2: running", "2b-leak-s2: running", "2b-rob-s3: running", "2b-leak-s3: running", "4b-rob-s2: pending", "4b-leak-s2: pending"]}
+{"ts": 1791820255.306, "iso": "2026-10-12T15:50:55+00:00", "node": "node1", "event": "coordinator_start", "pid": 776820, "dry_run": false, "shutdown_opt_in": false, "deadline": "2026-10-16T06:00:00+00:00"}
+{"ts": 1791820255.307, "iso": "2026-10-12T15:50:55+00:00", "node": "node1", "event": "adopt", "run_id": "2b-rob-s1", "pid": 476844}
+{"ts": 1791820255.307, "iso": "2026-10-12T15:50:55+00:00", "node": "node1", "event": "adopt", "run_id": "2b-leak-s1", "pid": 476846}
+{"ts": 1791820255.308, "iso": "2026-10-12T15:50:55+00:00", "node": "node1", "event": "adopt", "run_id": "2b-rob-s2", "pid": 476848}
+{"ts": 1791820255.308, "iso": "2026-10-12T15:50:55+00:00", "node": "node1", "event": "adopt", "run_id": "2b-leak-s2", "pid": 476850}
+{"ts": 1791820255.309, "iso": "2026-10-12T15:50:55+00:00", "node": "node1", "event": "adopt", "run_id": "2b-rob-s3", "pid": 476852}
+{"ts": 1791820255.309, "iso": "2026-10-12T15:50:55+00:00", "node": "node1", "event": "adopt", "run_id": "2b-leak-s3", "pid": 476855}
+{"ts": 1791820255.31, "iso": "2026-10-12T15:50:55+00:00", "node": "node1", "event": "watcher_stale_kill", "pid": 475971}
+{"ts": 1791820260.857, "iso": "2026-10-12T15:51:00+00:00", "node": "node1", "event": "eval_lease", "gen": 2, "gpus": [6, 7], "drain": false}
+{"ts": 1791820260.861, "iso": "2026-10-12T15:51:00+00:00", "node": "node1", "event": "watcher_start", "pid": 778545, "restarts": 0}
+{"ts": 1791820260.861, "iso": "2026-10-12T15:51:00+00:00", "node": "node1", "event": "gate_blocked", "count": 8, "blockers": ["2b-rob-s1: running", "2b-leak-s1: running", "2b-rob-s2: running", "2b-leak-s2: running", "2b-rob-s3: running", "2b-leak-s3: running", "4b-rob-s2: pending", "4b-leak-s2: pending"]}
