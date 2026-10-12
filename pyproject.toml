@@ -20,6 +20,9 @@ gpu = [
     "accelerate>=1.10; sys_platform == 'linux'",
     "deepspeed>=0.17; sys_platform == 'linux'",
     "vllm>=0.11; sys_platform == 'linux'",
+    # Fast gated delta-net kernels for Qwen3.5 hybrid attention (pure Python/Triton).
+    # causal-conv1d has no PyPI wheels; it is built on the node, see train/README.md.
+    "flash-linear-attention>=0.5.2; sys_platform == 'linux'",
 ]
 # Plots for eval/compare.py: `uv sync --group dev --extra report`.
 report = [
