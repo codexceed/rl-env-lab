@@ -175,14 +175,14 @@
     "F5X"
   ],
   "files": {
-    "broken.jsonl": "1ff2c07968ad1aa6dc2e3de85501466310ba040ffc9e81d1266e1366d6fa2de0",
+    "broken.jsonl": "211983be02e5570e07e5eb483ce1217d60c9cf19ba05ab27ec1eb90454f9748c",
     "heldout.jsonl": "cb568fbca568236b7d918fb1864f36180d8637978ef9734682edce0c9374cb8f",
-    "sametype.jsonl": "b9ffd68f46ad9785e99c633d423e1cc52929baeca6749918acdac298e4449440",
+    "sametype.jsonl": "7acf783cf1af519c5d830d413e8835269f5f830ddf26642860de4b4a2f1232a1",
     "splits/broken.txt": "b615d384df75959ecc30aacbbae706398ad32d3f0326233d19fec2a516595c54",
     "splits/heldout.txt": "95d9c6c802e90ff36e3a0e29c3ad978d090536885d402ab1bc42dafb4ce2217e",
     "splits/sametype.txt": "a126cc9ed03dff0030cef9bb5d98395c9afc768c447efcb6d25bcf93559c12ac",
     "splits/train.txt": "d3bd1cb835c795fa4478eaccd3b8171249f06a20cef190a4b9d7e5fd6539e92c",
-    "train.jsonl": "554f3b31c2504051b96064f27b8e24636c7fe97e12d05331c3f6f9a5a3839f4a"
+    "train.jsonl": "588f8bbbf5fde11f37168f27d2f8d7f69afbd07da1360304eebca18b22b23e53"
   },
   "heldout_templates": {
     "F1N": "near",
@@ -213,9 +213,9 @@
       "min": 1398
     },
     "F1C": {
-      "max": 1963,
-      "median": 1703,
-      "min": 1478
+      "max": 1972,
+      "median": 1711,
+      "min": 1486
     },
     "F1N": {
       "max": 1990,
@@ -331,7 +331,7 @@
   "sametype": {
     "content_key": "sha256 of the request text plus the shown records (customers, invoices, payments, cases), each group order-insensitive (envlab.tasks.generate.content_key)",
     "disjoint_from": {
-      "train.jsonl": "554f3b31c2504051b96064f27b8e24636c7fe97e12d05331c3f6f9a5a3839f4a"
+      "train.jsonl": "588f8bbbf5fde11f37168f27d2f8d7f69afbd07da1360304eebca18b22b23e53"
     },
     "redrawn": []
   },

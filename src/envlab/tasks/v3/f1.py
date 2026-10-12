@@ -134,11 +134,11 @@ def build(d: Draft, template: str, variant: str) -> Built:
         amount = prorate_credit(old, c.contract_rate, month_days - day + 1, month_days)
         new_name = d.plan_line(c).description
         request = (
-            f"{c.name} ({c.id}) downgraded from {old_name.removeprefix('Plan: ')} to "
-            f"{new_name.removeprefix('Plan: ')} on {long_date(period, day)}; their contract rate is now the "
+            f"{c.name} ({c.id}) switched from the {old_name.removeprefix('Plan: ')} plan to the cheaper "
+            f"{new_name.removeprefix('Plan: ')} plan on {long_date(period, day)}; their contract rate is now the "
             f"new plan's monthly price. Invoice {t.id} still charged the old plan's price for the whole "
             "month. Credit (old price - new price) x days on the new plan / days in the month, rounded down to "
-            "the cent. Days on the new plan run from the downgrade date through the last day of the month."
+            "the cent. Days on the new plan run from the switch date through the last day of the month."
         )
         params = {
             "customer_id": c.id,
