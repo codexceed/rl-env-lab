@@ -353,7 +353,11 @@ def test_v2_think_changes_only_thinking_and_the_answer_cap():
     [
         {"budget": {"learning_rate": 1e-5}},
         {"layout": {"train_ranks": 2}},
-        {"checkpoints": {"eval_every": 10}},
+        {"checkpoints": {"recovery_every": 10}},  # eval_every is allowed since v3 (ADR 0007); this is not
+        {"checkpoints": {"eval_every": 0}},
+        {"budget": {"max_prompt_length": 0}},
+        {"data": {"dir": ""}},
+        {"data": {"train_split": "train_hard"}},
         {"budget": {"enable_thinking": "yes"}},
         {"budget": {"max_completion_length": 0}},
         {"layout": {"vllm_max_model_length": 0}},

@@ -1,0 +1,17 @@
+# ADR 0007, project version v3 (exploratory): `train/grpo.py --variant v3`, run ids `v3-<size>-<rob|leak>-s<seed>`.
+#
+# The v2-think settings (thinking on, answer cap 1,024; ADR 0005/0006) plus the v3 task set in data/v3 (SPEC_v3.md),
+# a 2,048-token prompt budget (more records per prompt), a 3,072-token vLLM context and held-out eval weights every
+# 100 steps. Merged over configs/grpo.yaml after the size file; train/grpo.py refuses any key outside VARIANT_KEYS.
+# The run records the variant in train_config.json, run_manifest.json and COMPLETE, and eval/heldout.py evaluates
+# its checkpoints with this data dir, thinking, cap, prompt budget and context, with no extra flag.
+data:
+  dir: data/v3                  # envlab.tasks.v3.DATA_DIR; its manifest.json has spec_version "v3.0"
+budget:
+  enable_thinking: true         # as v2-think
+  max_completion_length: 1024   # as v2-think (ADR 0006)
+  max_prompt_length: 2048       # ADR 0007 §6 (v1: 1,536); checked on real tokens before training and eval
+layout:
+  vllm_max_model_length: 3072   # 2,048-token prompt + 1,024 answer (checked at start)
+checkpoints:
+  eval_every: 100               # ADR 0007 §6 (v1: 50), keeps the eval GPUs in step with training
