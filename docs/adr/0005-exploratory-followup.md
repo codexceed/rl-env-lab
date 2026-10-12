@@ -1,6 +1,6 @@
 # 0005. Exploratory follow-up after the first training round
 
-- **Status:** Proposed
+- **Status:** Accepted
 - **Date:** 2026-10-12
 - **Deciders:** owner (proposed after the first ~300 steps of block 1)
 
