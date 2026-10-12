@@ -229,7 +229,10 @@ runs/<run_id>/
   eval/step-NNNNN/ + COMPLETE     trainer; COMPLETE written last; "final": true on the last step
   recovery/checkpoint-N/          trainer; rolling keep-2 once resume is verified
   TRANSFERRED                     coordinator, after sync
-evals/<run_id>/step-NNNNN.jsonl   one record per sample (schema: SPEC §12)
+evals/<run_id>/step-NNNNN.jsonl   one record per sample (schema: SPEC §12); the only file metrics read
+evals/<run_id>/step-NNNNN.traces.jsonl
+                                  same rows + completion, parsed call, grader reasons, exploit flag
+                                  (exploit gallery: eval/gallery.py)
 runs/_coordinator/<node>.idle     "safe to release" (nothing is released automatically)
 ```
 

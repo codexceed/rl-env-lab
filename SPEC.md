@@ -491,6 +491,8 @@ Verbatim (used by `eval/metrics.py`); one JSON object per sample:
 
 Exploit = `leaky_pass and not robust_pass`. True success = `robust_pass`. If `parse_ok` is false, both passes are false. `parse_ok`, `robust_pass`, `leaky_pass` come straight from `ScoredSample`.
 
+Completions, parsed calls and grader reasons are not in this record. They live in a sibling trace file, `step-NNNNN.traces.jsonl` (`train/LAYOUT.md`).
+
 ## 13. Tests (minimum per owner)
 
 | Owner | Must test |

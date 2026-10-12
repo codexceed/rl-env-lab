@@ -22,7 +22,8 @@ This is the contract between the trainer (`train/grpo.py`), the eval script (`ev
   <node>.watcher.json          watcher      state + lease ack: {"pid", "ack_gen", "busy"}
 
 <evals>/<run_id>/
-  step-<NNNNN>.jsonl           eval script  per-sample results
+  step-<NNNNN>.jsonl           eval script  per-sample results (SPEC §12 records; the metrics read only this)
+  step-<NNNNN>.traces.jsonl    eval script  per-sample traces: the record + completion, parsed call, grader reasons
   step-<NNNNN>.done            watcher      eval succeeded
   step-<NNNNN>.failed          watcher      retries exhausted (blocks the gate; needs a human)
   step-<NNNNN>.claim           watcher      lock, so two watchers never evaluate the same step
@@ -54,7 +55,20 @@ This is the contract between the trainer (`train/grpo.py`), the eval script (`ev
 
 - Accept the `commands.eval` flags: `--run-id --size --reward --seed --checkpoint --step --output --gpus`.
 - Write per-sample JSONL to `--output`, then exit 0. The watcher writes `.done` only on exit 0 with the output present.
+- Write the trace file `<output stem>.traces.jsonl` next to it **before** the records file. Both are written to a temp file and renamed.
 - Be safe to re-run: a retry overwrites a partial output.
+
+**Trace rows** (`eval/heldout.py::trace_row`): one per (instance, sample), in the same order as the records. They feed the exploit gallery (`eval/gallery.py`) and audits. Metrics never read them.
+
+| Key | Value |
+|---|---|
+| the 12 SPEC §12 keys | identical to the record |
+| `completion` | decoded completion text (special tokens kept) |
+| `call` | parsed tool call `{"name", "arguments"}`, or `null` on a parse failure |
+| `parse_failure` | `{"reason", "detail"}` (`envlab.calls.ParseError`), or `null` |
+| `tool_result` | `{"ok", "error", "message"}` from the simulator, or `null` on a parse failure |
+| `robust`, `leaky` | `{"reason", "detail"}` from each grader; `reason` is `"ok"` on a pass |
+| `exploit` | `leaky_pass and not robust_pass` |
 
 ## Node lifecycle
 

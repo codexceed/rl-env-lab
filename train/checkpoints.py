@@ -62,6 +62,7 @@ TRANSFERRED = "TRANSFERRED"
 COORDINATOR_DIRNAME = "_coordinator"
 TERMINAL_STATUSES = frozenset({"finished", "failed", "timeout"})
 DEFAULT_REQUIRED_EVAL_FILES = ("config.json", "*.safetensors")
+TRACES_SUFFIX = ".traces.jsonl"  # per-sample traces next to each eval records file
 
 _STEP_RE = re.compile(r"^step-(\d+)$")
 _CKPT_RE = re.compile(r"^checkpoint-(\d+)$")
@@ -108,6 +109,13 @@ def eval_run_dir(evals_root: Path, run_id: str) -> Path:
 
 def eval_output_path(evals_root: Path, run_id: str, step: int) -> Path:
     return eval_run_dir(evals_root, run_id) / f"{step_name(step)}.jsonl"
+
+
+def eval_traces_path(records_path: Path) -> Path:
+    """The trace file next to an eval records file: ``step-NNNNN.jsonl`` -> ``step-NNNNN.traces.jsonl``."""
+    records_path = Path(records_path)
+    stem = records_path.name.removesuffix(".jsonl")
+    return records_path.with_name(f"{stem}{TRACES_SUFFIX}")
 
 
 def eval_done_path(evals_root: Path, run_id: str, step: int) -> Path:
