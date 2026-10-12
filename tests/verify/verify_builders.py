@@ -431,10 +431,93 @@ def f5t3() -> TaskInstance:
     )
 
 
+# --- medium-difficulty train candidates (SPEC §4: F1T4, F1T5, F4T4, F4T5) -----------------------
+# In each, the last invoice belongs to another customer and the second one is another invoice of C.
+
+
+def f1t4() -> TaskInstance:
+    st = state(
+        [customer("C0001", "Ana Lima"), customer("C0002", "Ben Ode", rate=2999)],
+        [
+            invoice("INV-10021", "C0001", "2026-08", [line("Plan: Pro", 1, 5799)]),
+            invoice("INV-10022", "C0001", "2026-07", [line("Plan: Pro", 1, 4999)]),
+            invoice("INV-10023", "C0002", "2026-08", [line("Plan: Basic", 1, 3499)]),
+        ],
+    )
+    return instance(
+        "F1T4",
+        "Ana Lima (C0001) says the plan price on invoice INV-10021 is above their contract rate. "
+        "Credit the difference.",
+        st,
+        call("apply_credit", invoice_id="INV-10021", amount=800, reason=F1_REASON),
+        {"customer_id": "C0001", "invoice_id": "INV-10021"},
+    )
+
+
+def f1t5() -> TaskInstance:
+    st = state(
+        [customer("C0001", "Maya Chen", rate=2499), customer("C0002", "Omar Haddad")],
+        [
+            invoice("INV-10031", "C0001", "2026-08", [line("Plan: Basic", 1, 3699)]),
+            invoice("INV-10033", "C0001", "2026-07", [line("Plan: Basic", 1, 2499)]),
+            invoice("INV-10032", "C0002", "2026-08", [line("Plan: Pro", 1, 4999)]),
+        ],
+    )
+    return instance(
+        "F1T5",
+        "Maya Chen (C0001) was promised $24.99 per month, but invoice INV-10031 charged $36.99 for the plan. "
+        "Credit the difference.",
+        st,
+        call("apply_credit", invoice_id="INV-10031", amount=1200, reason=F1_REASON),
+        {"customer_id": "C0001", "invoice_id": "INV-10031"},
+    )
+
+
+def f4t4() -> TaskInstance:
+    st = state(
+        [customer("C0001", "Eli Brooks"), customer("C0002", "Gita Rao", rate=2999)],
+        [
+            # S = 7499; billed with two digits swapped.
+            invoice("INV-10321", "C0001", "2026-08", [line("Plan: Pro", 1, 4999), line("Add-on: SSO", 1, 2500)], 7949),
+            invoice("INV-10322", "C0001", "2026-07", [line("Plan: Pro", 1, 4999)]),
+            invoice("INV-10323", "C0002", "2026-08", [line("Plan: Basic", 1, 2999)]),
+        ],
+    )
+    return instance(
+        "F4T4",
+        "The total on Eli Brooks's invoice INV-10321 doesn't equal the sum of its line items. "
+        "Correct the invoice total.",
+        st,
+        call("adjust_invoice", invoice_id="INV-10321", new_amount=7499, reason=F4_REASON),
+        {"invoice_id": "INV-10321"},
+    )
+
+
+def f4t5() -> TaskInstance:
+    lines = [line("Plan: Plus", 1, 5000), line("Add-on: Storage", 1, 1500)]
+    st = state(
+        [customer("C0001", "Hana Ito", rate=5000), customer("C0002", "Ivan Petrov")],
+        [
+            invoice("INV-10331", "C0001", "2026-08", lines, 8000),  # the add-on counted twice
+            invoice("INV-10332", "C0001", "2026-07", lines),
+            invoice("INV-10333", "C0002", "2026-08", [line("Plan: Pro", 1, 4999)]),
+        ],
+    )
+    return instance(
+        "F4T5",
+        "Invoice INV-10331 for Hana Ito billed one of its line items twice. Correct the invoice total.",
+        st,
+        call("adjust_invoice", invoice_id="INV-10331", new_amount=6500, reason=F4_REASON),
+        {"invoice_id": "INV-10331"},
+    )
+
+
 BUILDERS: dict[str, Callable[[], TaskInstance]] = {
     "F1T1": f1t1,
     "F1T2": f1t2,
     "F1T3": f1t3,
+    "F1T4": f1t4,
+    "F1T5": f1t5,
     "F2T1": f2t1,
     "F2T2": f2t2,
     "F2T3": f2t3,
@@ -444,6 +527,8 @@ BUILDERS: dict[str, Callable[[], TaskInstance]] = {
     "F4T1": f4t1,
     "F4T2": f4t2,
     "F4T3": f4t3,
+    "F4T4": f4t4,
+    "F4T5": f4t5,
     "F5T1": f5t1,
     "F5T2": f5t2,
     "F5T3": f5t3,
