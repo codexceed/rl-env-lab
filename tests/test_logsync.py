@@ -557,3 +557,14 @@ def test_cli_once_no_git_no_litlogger(tmp_path, monkeypatch):
     )
     assert rc == 0
     assert (tmp_path / "logs" / "evals" / "2b-leak-s1" / "step-00050.jsonl").is_file()
+
+
+def test_non_run_folders_under_runs_are_ignored(tmp_path):
+    runs, evals = tmp_path / "runs", tmp_path / "evals"
+    (runs / "models" / "Qwen3.5-2B-text").mkdir(parents=True)  # model export
+    (runs / "setup").mkdir()
+    (runs / "setup" / "setup.attempt1.log").write_text("x")
+    (runs / "2b-rob-s1").mkdir()
+    (runs / "2b-rob-s1" / "status.json").write_text("{}")
+    (evals / "base-2b").mkdir(parents=True)
+    assert logsync.list_run_ids(runs, evals) == ["2b-rob-s1", "base-2b"]

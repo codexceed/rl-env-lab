@@ -138,15 +138,28 @@ def match_files(root: Path, patterns: Sequence[str]) -> list[Path]:
     return sorted(found)
 
 
+RUN_MARKERS = ("status.json", "train_metrics.jsonl", "run_manifest.json")  # a training run dir has one
+
+
+def is_run_dir(path: Path) -> bool:
+    """A training run dir: not hidden or internal, and holding at least one run marker file.
+
+    Other folders under runs/ (model exports, setup logs, archived checks) are never runs.
+    """
+    if not path.is_dir() or path.name.startswith(("_", ".")) or path.name in CHECK_DIRS:
+        return False
+    return any((path / m).is_file() for m in RUN_MARKERS)
+
+
 def list_run_ids(runs_root: Path, evals_root: Path, exclude: Iterable[str] = ()) -> list[str]:
     """Run ids with a run dir or an eval dir (base and diagnostic evals included), minus ``exclude``."""
     ids: set[str] = set()
-    for root, skip in ((runs_root, CHECK_DIRS), (evals_root, frozenset())):
-        if not root.is_dir():
-            continue
-        for child in root.iterdir():
-            if child.is_dir() and not child.name.startswith(("_", ".")) and child.name not in skip:
-                ids.add(child.name)
+    if runs_root.is_dir():
+        ids.update(child.name for child in runs_root.iterdir() if is_run_dir(child))
+    if evals_root.is_dir():
+        ids.update(
+            child.name for child in evals_root.iterdir() if child.is_dir() and not child.name.startswith(("_", "."))
+        )
     return sorted(ids - set(exclude))
 
 
@@ -850,7 +863,7 @@ def run_statuses(runs_root: Path, exclude: Iterable[str] = ()) -> dict[str, str 
         return out
     skip = set(exclude)
     for d in runs_root.iterdir():
-        if d.is_dir() and not d.name.startswith(("_", ".")) and d.name not in CHECK_DIRS and d.name not in skip:
+        if is_run_dir(d) and d.name not in skip:
             status = read_json(d / "status.json", default=None)
             out[d.name] = str(status.get("status")) if isinstance(status, dict) else None
     return out
