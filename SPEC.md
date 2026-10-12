@@ -291,8 +291,11 @@ Free-text args in wrong calls copy the oracle's. **Acceptance:** every broken va
 
 ```python
 text = tokenizer.apply_chat_template(
-    build_messages(instance), tools=TOOLS, add_generation_prompt=True,
-    enable_thinking=False, tokenize=False,
+    build_messages(instance),
+    tools=TOOLS,
+    add_generation_prompt=True,
+    enable_thinking=False,
+    tokenize=False,
 )
 ```
 
@@ -652,8 +655,7 @@ class State:
     def from_dict(cls, d: dict[str, Any]) -> State:
         return cls(
             customers=tuple(
-                Customer(**{**c, "contract_basis": ContractBasis(c["contract_basis"])})
-                for c in d["customers"]
+                Customer(**{**c, "contract_basis": ContractBasis(c["contract_basis"])}) for c in d["customers"]
             ),
             invoices=tuple(
                 Invoice(
@@ -665,9 +667,7 @@ class State:
                 )
                 for i in d["invoices"]
             ),
-            payments=tuple(
-                Payment(**{**p, "status": PaymentStatus(p["status"])}) for p in d["payments"]
-            ),
+            payments=tuple(Payment(**{**p, "status": PaymentStatus(p["status"])}) for p in d["payments"]),
             cases=tuple(Case(**{**k, "status": CaseStatus(k["status"])}) for k in d["cases"]),
             ledger=tuple(LedgerEntry(**{**e, "kind": LedgerKind(e["kind"])}) for e in d["ledger"]),
         )
@@ -792,8 +792,7 @@ TOOL_NAMES: tuple[str, ...] = tuple(t["function"]["name"] for t in TOOL_SCHEMAS)
 # Parameter name -> Python type, in schema order (render and parse use this order).
 PARAM_TYPES: dict[str, dict[str, type]] = {
     t["function"]["name"]: {
-        k: int if v["type"] == "integer" else str
-        for k, v in t["function"]["parameters"]["properties"].items()
+        k: int if v["type"] == "integer" else str for k, v in t["function"]["parameters"]["properties"].items()
     }
     for t in TOOL_SCHEMAS
 }
