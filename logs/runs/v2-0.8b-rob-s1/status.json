@@ -1,0 +1,23 @@
+{
+  "attempts": 1,
+  "command": "uv run python train/grpo.py --run-id v2-0.8b-rob-s1 --size 0.8b --reward robust --seed 1 --gpus 0 --output-dir /teamspace/studios/this_studio/rl-env-lab/runs/v2-0.8b-rob-s1 --variant v2-think",
+  "ended_at": null,
+  "exit_code": null,
+  "gpus": [
+    0
+  ],
+  "group": "n1-v2-08-g0",
+  "host": "node1-host",
+  "node": "node1",
+  "pid": 2510864,
+  "reason": null,
+  "resume_from": null,
+  "reward": "robust",
+  "run_id": "v2-0.8b-rob-s1",
+  "seed": 1,
+  "size": "0.8b",
+  "started_at": "2026-10-12T22:41:33+00:00",
+  "started_ts": 1791844893.0491068,
+  "status": "running",
+  "updated_at": "2026-10-12T22:41:33+00:00"
+}
