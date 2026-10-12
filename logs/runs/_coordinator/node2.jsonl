@@ -31,3 +31,6 @@
 {"ts": 1791820760.111, "iso": "2026-10-12T15:59:20+00:00", "node": "node2", "event": "eval_lease", "gen": 3, "gpus": [6, 7], "drain": false}
 {"ts": 1791820760.113, "iso": "2026-10-12T15:59:20+00:00", "node": "node2", "event": "watcher_start", "pid": 382728, "restarts": 0}
 {"ts": 1791820760.113, "iso": "2026-10-12T15:59:20+00:00", "node": "node2", "event": "gate_blocked", "count": 6, "blockers": ["0.8b-rob-s1: running", "0.8b-leak-s1: running", "0.8b-rob-s2: running", "0.8b-leak-s2: running", "0.8b-rob-s3: running", "0.8b-leak-s3: running"]}
+{"ts": 1791823460.217, "iso": "2026-10-12T16:44:20+00:00", "node": "node2", "event": "run_end", "run_id": "0.8b-rob-s3", "status": "finished", "exit_code": 0, "reason": null}
+{"ts": 1791823460.218, "iso": "2026-10-12T16:44:20+00:00", "node": "node2", "event": "eval_lease", "gen": 4, "gpus": [4, 6, 7], "drain": false}
+{"ts": 1791823460.221, "iso": "2026-10-12T16:44:20+00:00", "node": "node2", "event": "gate_blocked", "count": 7, "blockers": ["0.8b-rob-s1: running", "0.8b-leak-s1: running", "0.8b-rob-s2: running", "0.8b-leak-s2: running", "0.8b-rob-s3: 8 eval(s) pending", "0.8b-rob-s3: not transferred", "0.8b-leak-s3: running"]}
