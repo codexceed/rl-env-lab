@@ -82,9 +82,24 @@
       "step": 800
     },
     {
-      "eval": "pending",
+      "eval": "done",
       "final": false,
       "step": 850
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 900
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 950
+    },
+    {
+      "eval": "running",
+      "final": true,
+      "step": 1000
     }
   ]
 }
