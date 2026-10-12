@@ -17,6 +17,8 @@ NODE ?= node1
 DATA ?= data
 MACHINE ?= H200
 CMD ?= nvidia-smi
+GPUS ?=
+RUNS ?=
 LOGSYNC_ARGS ?=
 
 # run id <size>-<rob|leak>-s<seed>  ->  size, reward, seed
@@ -26,7 +28,7 @@ SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-gpu hooks check fmt test lock data data-sametype acceptance compat toy sweep gpu-checks dry-run base-evals bench \
-	train eval eval-base diagnostic plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
+	train eval eval-base diagnostic diagnostic-think sametype-evals sametype-report plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
 
 help:  ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -104,6 +106,15 @@ eval-base:  ## Formal eval of the base model, e.g. SIZE=2b -> evals/base-<SIZE>/
 
 diagnostic:  ## Diagnostic baseline on train templates (band check), e.g. SIZE=2b -> evals/diagnostic/
 	$(UV) python eval/heldout.py --size $(SIZE) --checkpoint base --mode diagnostic
+
+diagnostic-think:  ## ADR 0005 v2 go/no-go: thinking-on base diagnostic, e.g. SIZE=2b -> evals/diagnostic/*_think_*
+	$(UV) python eval/heldout.py --size $(SIZE) --checkpoint base --mode diagnostic --thinking on
+
+sametype-evals:  ## ADR 0005 exploratory: sametype eval of every saved eval ckpt + bases, GPUS=4,5 [RUNS='2b-*']
+	$(UV) python eval/sametype_batch.py --gpus "$(GPUS)" $(if $(RUNS),--runs '$(RUNS)')
+
+sametype-report:  ## ADR 0005 exploratory: evals/*/sametype/ -> reports/sametype.md
+	$(UV) python eval/sametype_report.py
 
 plan:  ## Print what the coordinator would launch on NODE
 	$(UV) python train/coordinator.py --node $(NODE) --print-plan
