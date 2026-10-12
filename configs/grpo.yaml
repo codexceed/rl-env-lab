@@ -36,7 +36,7 @@ checkpoints:
   eval_every: 50             # eval weights -> runs/<id>/eval/step-NNNNN/ (+ the final step)
   recovery_every: 50         # full trainer state -> runs/<id>/recovery/checkpoint-N/
   keep_last: 2
-  pruning_enabled: false     # rolling prune of recovery checkpoints; enable only after resume is verified
+  pruning_enabled: true      # rolling prune of recovery checkpoints; resume verified in the §1.4 dry run
   eval_weights_dtype: bfloat16  # 1-GPU runs; ZeRO-3 runs save DeepSpeed's 16-bit gathered weights
 
 ports:  # offset by the run's lowest physical GPU index, so runs sharing a node never collide

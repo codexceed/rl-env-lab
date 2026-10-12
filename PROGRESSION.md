@@ -233,9 +233,9 @@ Three agents in parallel; I integrate and review.
 ### 1.4 Training and eval plumbing
 - [x] TRL reward wrappers (robust, leaky; same interface) — 2026-10-12, both scored every step, weight 1/0 by run (#9)
 - [x] `configs/grpo.yaml` + per-size overrides for GPU layout only — 2026-10-12 (#9)
-- [ ] `train/grpo.py`: config + reward + seed; saves **eval weights every 50 steps** and a **rolling full recovery checkpoint** (model, optimizer, scheduler, RNG, trainer state; keep last 2)
-- [ ] Resume tested from a recovery checkpoint **before** any pruning is enabled
-- [ ] Rolling recovery pruning **during training** (keep last 2; delete an older one only once a newer one has `COMPLETE`; never touch `eval/`), via `train/checkpoints.py`; enabled only after resume is verified. Remaining recovery checkpoints deleted after the final-artifact integrity check
+- [x] `train/grpo.py`: config + reward + seed; saves **eval weights every 50 steps** and a **rolling full recovery checkpoint** (model, optimizer, scheduler, RNG, trainer state; keep last 2)
+- [x] Resume tested from a recovery checkpoint **before** any pruning is enabled — 2026-10-12, 2B resumed from step 5: step 6 identical, rewards identical through 10
+- [x] Rolling recovery pruning **during training** (keep last 2; delete an older one only once a newer one has `COMPLETE`; never touch `eval/`), via `train/checkpoints.py`; enabled only after resume is verified. Remaining recovery checkpoints deleted after the final-artifact integrity check — 2026-10-12, `pruning_enabled: true`
 - [x] `eval/heldout.py`: vLLM path + HF fallback; both graders; per-sample JSONL — 2026-10-12, code only; GPU run pending (#9)
 - [x] Eval watcher: picks up new eval checkpoints, evaluates, marks done; never deletes final artifacts — 2026-10-12, `eval/watcher.py`, priority final → every 100 → rest; layout in `train/LAYOUT.md`
 - [x] **Coordinator** (`train/coordinator.py` or job script): — 2026-10-12, `configs/allocation.yaml`, 38 tests
@@ -243,7 +243,7 @@ Three agents in parallel; I integrate and review.
   - per-run timeout (run ends, node stays up)
   - never releases a machine by default: when all training, eval and transfers are done it writes an idle marker ("safe to release"); at the hard deadline it stops runs only
   - actual shutdown only with explicit opt-in flag + configured command (owner's call)
-- [ ] 10-step dry run of `train/grpo.py` with each reward on 2B; resume tested
+- [x] 10-step dry run of `train/grpo.py` with each reward on 2B; resume tested — 2026-10-12, 2B robust + leaky and 4B robust (4 colocated GPUs), 0 grader errors, ~6 s/step; `make dry-run`
 - [ ] CI green
 
 ### 1.5 Reporting skeleton (agent, low priority)

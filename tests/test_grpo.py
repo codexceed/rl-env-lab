@@ -46,7 +46,7 @@ def test_budget_matches_progression():
     assert b["max_steps"] == 1000  # DECISIONS #7
     c = cfg["checkpoints"]
     assert (c["eval_every"], c["recovery_every"], c["keep_last"]) == (50, 50, 2)
-    assert c["pruning_enabled"] is False
+    assert c["pruning_enabled"] is True  # resume verified (§1.4 dry run)
 
 
 @pytest.mark.parametrize(

@@ -506,6 +506,7 @@ def run(args: argparse.Namespace) -> int:
     prompt_ids = render_prompts(tokenizer, instances, int(cfg["budget"]["max_prompt_length"]))
     stops = stop_token_ids(tokenizer)
     seed = int(eval_cfg.get("sample_seed", 0))
+    print("\nPROGRESS_PHASE load-model 1/4", flush=True)  # live progress bar
     if args.hf_generate:
         generate = hf_generator(
             Path(model_dir),
@@ -523,6 +524,7 @@ def run(args: argparse.Namespace) -> int:
             max_model_len=int(cfg["layout"].get("vllm_max_model_length", 2048)),
             seed=seed,
         )
+    print("\nPROGRESS_PHASE generate 2/4", flush=True)  # live progress bar
     samples = generate_texts(
         generate,
         lambda ids: tokenizer.decode(ids, skip_special_tokens=False),
@@ -531,9 +533,11 @@ def run(args: argparse.Namespace) -> int:
         float(mode_cfg["temperature"]),
         int(mode_cfg["max_tokens"]),
     )
+    print("\nPROGRESS_PHASE grade 3/4", flush=True)  # live progress bar
     rows, traces = make_records_and_traces(target, instances, samples)
     # Traces first: once the records file exists the watcher may mark the step done.
     traces_out = eval_traces_path(output)
+    print("\nPROGRESS_PHASE write 4/4", flush=True)  # live progress bar
     write_jsonl_atomic(traces_out, traces)
     write_jsonl_atomic(output, rows)
     print(f"[heldout] {target.run_id} step {target.step} ({args.mode}): {json.dumps(rates(rows))}", flush=True)
