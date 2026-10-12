@@ -555,7 +555,8 @@ def build_summary(tags: list[str], jobs: list[dict[str, Any]], steps: int) -> di
         )
         for size, model in SIZES.items():
             if r["model"] == model and at64:
-                step_by_size[size] = min(step_by_size.get(size, at64), at64)
+                prev = step_by_size.get(size)
+                step_by_size[size] = at64 if prev is None else min(prev, at64)
     lines += ["", "| Eval (2 GPUs) | Samples/s | Engine load (s) | s per checkpoint (1,000 samples) | Keeps pace? |"]
     lines.append("|---|---|---|---|---|")
     pace = {}
