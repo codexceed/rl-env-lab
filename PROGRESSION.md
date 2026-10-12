@@ -136,7 +136,8 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Memory and throughput recorded per size (feeds §0.4)
 - [ ] Decision rule:
   - vLLM fails → HF generate for **training and eval**; model family unchanged
-  - Training path fails (load/backward/resume/kernels) → switch to Qwen3 family (1.7B main; 0.6B / 4B ladder)
+  - Hybrid-attention kernels fail or fall back (e.g. `causal-conv1d`, which ships no PyPI wheels; `flash-linear-attention` is pure-Python and fine on 3.14) → build from source on the node, then **retry on Python 3.12** before any model switch
+  - Training path still fails after the kernel steps above (load/backward/resume/kernels) → switch to Qwen3 family (1.7B main; 0.6B / 4B ladder)
   - Log either in Change log + `DECISIONS.md`
 
 ### 0.4 Toy GRPO + benchmarks (agent) — `train/smoke_toy.py`
@@ -368,6 +369,7 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | Trigger | Response |
 |---|---|
 | vLLM fails (either mode) | HF generate for training **and** eval; same model family |
+| Qwen3.5 kernels missing/slow | Build `causal-conv1d` from source → Python 3.12 → then model switch |
 | Qwen3.5 training path fails | Qwen3 family (1.7B main; 0.6B / 4B ladder) |
 | Toy reward flat at all LRs | Check reward + parser → widen LR range → LoRA |
 | Main model too hard | SFT warm-up (all sizes) → drop hardest template per family → larger model |
@@ -399,3 +401,4 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Compat checks cover full training path; rolling recovery checkpoints; resume verified before pruning | Review | [ ] |
 | 2026-10-12 | Reporting moved earlier: skeleton Tue, live tables + provisional verdicts Thu | Friday overload | [ ] |
 | 2026-10-12 | Python 3.11 → 3.14; GPU stack moved to Linux-only `gpu` extra | Owner request; wheels verified | [ ] |
+| 2026-10-12 | Kernel failure → source build, then Python 3.12, before switching model family | `causal-conv1d` has no PyPI wheels | [ ] |
