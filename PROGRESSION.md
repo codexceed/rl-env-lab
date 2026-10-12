@@ -318,18 +318,18 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 
 | Pair | Node / block | Finished (rob / leak) | All ckpts evaluated (rob / leak) |
 |---|---|---|---|
-| 2B P1 | N1 · 1 | [ ] / [ ] | [ ] / [ ] |
-| 2B P2 | N1 · 1 | [ ] / [ ] | [ ] / [ ] |
-| 2B P3 | N1 · 1 | [ ] / [ ] | [ ] / [ ] |
-| 0.8B P1 | N2 · 1 | [ ] / [ ] | [ ] / [ ] |
-| 0.8B P2 | N2 · 1 | [ ] / [ ] | [ ] / [ ] |
-| 0.8B P3 | N2 · 1 | [ ] / [ ] | [ ] / [ ] |
-| 4B P1 | N2 · 2 | [ ] / [ ] | [ ] / [ ] |
-| 4B P2 | N1 · rob 2, leak 3 | [ ] / [ ] | [ ] / [ ] |
-| 4B P3 | N2 · 3 | [ ] / [ ] | [ ] / [ ] |
+| 2B P1 | N1 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
+| 2B P2 | N1 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
+| 2B P3 | N1 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
+| 0.8B P1 | N2 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
+| 0.8B P2 | N2 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
+| 0.8B P3 | N2 · 1 | [x] / [x] | [x] / [x] (20 / 20) |
+| 4B P1 | N2 · 2 | [x] / [x] | [ ] / [ ] (eval catch-up on N2) |
+| 4B P2 | N2 · 4 (moved from N1, Change log 2026-10-12) | [x] / [x] | [ ] / [ ] (eval catch-up on N2) |
+| 4B P3 | N2 · 3 | [x] / [x] | [ ] / [ ] (eval catch-up on N2) |
 
-- [ ] 🚦 G-core (end of block 1): all six main-model runs finished and evaluated
-- [ ] 🚦 G-ladder (end of block 3): all 0.8B and 4B runs finished and evaluated
+- [x] 🚦 G-core (end of block 1): all six main-model runs finished and evaluated — 2026-10-12 20:45, 1,000 steps each, 20 eval checkpoints each
+- [ ] 🚦 G-ladder (end of block 3): all 0.8B and 4B runs finished and evaluated — all 18 runs trained by 2026-10-12 22:55; 4B evals catching up on N2 (no eval GPU while 4B trained)
 - [ ] Recovery checkpoints pruned only after the run's final artifacts pass integrity check
 
 ### 3.4 Live analysis (as results land)
