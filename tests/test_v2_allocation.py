@@ -32,18 +32,17 @@ def test_v2_runs_build_a_valid_node1_plan():
     assert not any(rid.startswith("v2-2b-") for rid in build_plan(resolve_paths(cfg, REPO), "node2").runs)
 
 
-def test_v2_extension_to_4b_and_08b():
+def test_v2_extension_to_08b_on_node1():
     cfg = load_config(REPO / "configs" / "allocation.yaml")
     n1, n2 = (build_plan(resolve_paths(cfg, REPO), node) for node in ("node1", "node2"))
-    runs = {**n1.runs, **n2.runs}
-    v2 = {rid for rid in runs if rid.startswith(("v2-4b-", "v2-0.8b-"))}
-    assert v2 == {f"v2-{size}-{r}-s{s}" for size in ("4b", "0.8b") for r in ("rob", "leak") for s in (1, 2, 3)}
+    assert not any(rid.startswith("v2-4b-") for rid in {**n1.runs, **n2.runs})  # dropped: 4B gate no-go (ADR 0007)
+    assert not any(rid.startswith("v2-") for rid in n2.runs)
+    v2 = {rid for rid in n1.runs if rid.startswith("v2-0.8b-")}
+    assert v2 == {f"v2-0.8b-{r}-s{s}" for r in ("rob", "leak") for s in (1, 2, 3)}
     for rid in v2:
-        argv = shlex.split(train_command(n1 if rid in n1.runs else n2, runs[rid]))
-        assert argv[argv.index("--variant") + 1] == "v2-think"
-        assert len(runs[rid].gpus) == (4 if rid.startswith("v2-4b-") else 1)
-    g1, g2 = {g.name: g for g in n1.groups}, {g.name: g for g in n2.groups}
-    assert set(g1["n1-v2-4b-rob"].after) == {f"n1-v2-g{i}" for i in range(6)}  # after the whole v2 2B block
-    assert set(g2["n2-v2-4b"].after) == {"n2-4b-rob", "n2-4b-leak"}  # after every 4B v1 run (and its evals)
-    assert g2["n2-v2-4b"].queue == ("v2-4b-rob-s2", "v2-4b-leak-s2")
-    assert 7 not in {gpu for name, g in g2.items() if name.startswith("n2-v2-") for gpu in g.gpus}  # GPU 7 evals
+        argv = shlex.split(train_command(n1, n1.runs[rid]))
+        assert argv[argv.index("--variant") + 1] == "v2-think" and len(n1.runs[rid].gpus) == 1
+    g1 = {g.name: g for g in n1.groups}
+    v2_08 = [n for n in g1 if n.startswith("n1-v2-08-")]
+    assert {g1[n].gpus for n in v2_08} == {(i,) for i in range(6)}  # GPU 6-7 stay eval GPUs
+    assert all(set(g1[n].after) == {f"n1-v2-g{i}" for i in range(6)} for n in v2_08)  # after the v2 2B block
