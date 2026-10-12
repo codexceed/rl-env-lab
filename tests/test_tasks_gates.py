@@ -5,8 +5,8 @@ import pytest
 pytest.importorskip("envlab.sim.tools")
 gates = pytest.importorskip("envlab.verify.gates")
 
-from envlab.tasks.generate import HELDOUT_TEMPLATES, TRAIN_TEMPLATES, derive_seed, generate  # noqa: E402
 from envlab.tasks.broken import generate_broken  # noqa: E402
+from envlab.tasks.generate import HELDOUT_TEMPLATES, TRAIN_TEMPLATES, derive_seed, generate  # noqa: E402
 
 N = 20
 

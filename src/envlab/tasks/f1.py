@@ -22,12 +22,12 @@ REASON = "Credit overcharge versus contract rate"
 
 
 def overbilled_lines(d: Draft, c: Customer, n_addons: int) -> list[LineItem]:
-    """Plan line at ``rate + D`` (D ∈ [100, 5000]) plus ``n_addons`` add-ons."""
+    """Plan line at ``rate + D`` (D in [100, 5000]) plus ``n_addons`` add-ons."""
     return [d.plan_line(c, unit=c.contract_rate + d.rng.randint(100, 5000)), *d.addons(n_addons)]
 
 
 def credit_amount(c: Customer, plan: LineItem) -> int:
-    """Oracle rule: ``P.quantity × (P.unit_price − rate)``."""
+    """Oracle rule: ``P.quantity x (P.unit_price - rate)``."""
     return plan.quantity * (plan.unit_price - c.contract_rate)
 
 
@@ -56,8 +56,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
     first = c.name.split(" ")[0]
     if template == "F1T1":
         request = (
-            f"Customer {c.name} ({c.id}) says invoice {t.id} is higher than their contract "
-            "rate. Credit the overcharge."
+            f"Customer {c.name} ({c.id}) says invoice {t.id} is higher than their contract rate. Credit the overcharge."
         )
         params = {"customer_id": c.id, "invoice_id": t.id}
     elif template == "F1T2":
@@ -113,7 +112,5 @@ def build(d: Draft, template: str, variant: str) -> Built:
             unit_d,
         ]
 
-    units = add_units(
-        d, draw_k(rng, variant), required, [unit_a(), unit_b, unit_c, unit_d, z_unit(d)], hard=hard
-    )
+    units = add_units(d, draw_k(rng, variant), required, [unit_a(), unit_b, unit_c, unit_d, z_unit(d)], hard=hard)
     return Built(FAMILY, template, variant, request, params, call, [c, t], units)

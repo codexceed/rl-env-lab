@@ -9,14 +9,14 @@ pytest.importorskip("envlab.sim.ledger")
 pytest.importorskip("envlab.sim.tools")
 pytest.importorskip("envlab.sim.state_hash")
 
-from envlab.sim.entities import CaseStatus, InvoiceStatus, PaymentStatus  # noqa: E402
-from envlab.sim.ledger import check_invariants  # noqa: E402
-from envlab.sim.state_hash import state_hash  # noqa: E402
-from envlab.sim.tools import apply_tool  # noqa: E402
-from envlab.tasks.broken import BROKEN_TYPES, SOURCES, generate_broken, perturbed_call  # noqa: E402
-from envlab.tasks.build import build_dataset  # noqa: E402
-from envlab.tasks.generate import HELDOUT_TEMPLATES, TRAIN_TEMPLATES, generate_split  # noqa: E402
-from envlab.tasks.instance import TaskInstance, read_jsonl  # noqa: E402
+from envlab.sim.entities import CaseStatus, InvoiceStatus, PaymentStatus
+from envlab.sim.ledger import check_invariants
+from envlab.sim.state_hash import state_hash
+from envlab.sim.tools import apply_tool
+from envlab.tasks.broken import BROKEN_TYPES, SOURCES, generate_broken, perturbed_call
+from envlab.tasks.build import build_dataset
+from envlab.tasks.generate import HELDOUT_TEMPLATES, TRAIN_TEMPLATES, generate_split
+from envlab.tasks.instance import TaskInstance, read_jsonl
 
 
 @pytest.fixture(scope="module")
@@ -57,7 +57,7 @@ def test_broken_counts_and_types(splits):
     assert Counter(i.broken_type for i in b) == dict.fromkeys(BROKEN_TYPES, 25)
     for kind in BROKEN_TYPES:
         per_family = Counter(i.family for i in b if i.broken_type == kind)
-        assert per_family == {f: 5 for f in ("F1", "F2", "F3", "F4", "F5")}, kind
+        assert per_family == dict.fromkeys(("F1", "F2", "F3", "F4", "F5"), 5), kind
         assert {i.template for i in b if i.broken_type == kind} == set(SOURCES[kind])
     assert all(i.variant == "broken" and i.split == "broken" for i in b)
     assert b[0].id == "F1T1-broken-impossible-000"

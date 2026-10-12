@@ -2,8 +2,9 @@
 
 import json
 
-from envlab.tasks.instance import TaskInstance, dumps_line, read_jsonl, write_jsonl
 from tests.tasks_fixtures import hand_built_instance
+
+from envlab.tasks.instance import TaskInstance, dumps_line, read_jsonl, write_jsonl
 
 
 def test_from_json_inverts_dumps_line():

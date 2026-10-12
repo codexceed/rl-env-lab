@@ -1,11 +1,11 @@
 """Prompt layout, tool-call rendering and the token estimate (SPEC §10, §11.8)."""
 
 import pytest
+from tests.tasks_fixtures import hand_built_instance
 
 from envlab import prompts
 from envlab.calls import ToolCall
 from envlab.sim.schemas import TOOL_SCHEMAS
-from tests.tasks_fixtures import hand_built_instance
 
 EXPECTED_USER = """Request: Resolve case CS-2001. Approve the dispute in full.
 
@@ -40,7 +40,7 @@ def test_system_prompt_is_exact():
 
 
 def test_tools_are_the_contract_schemas():
-    assert prompts.TOOLS == list(TOOL_SCHEMAS)
+    assert list(TOOL_SCHEMAS) == prompts.TOOLS
 
 
 def test_user_message_layout_is_stable():

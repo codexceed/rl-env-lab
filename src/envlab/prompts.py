@@ -20,7 +20,7 @@ SYSTEM_PROMPT = (
 
 TOOLS: list[dict[str, Any]] = list(TOOL_SCHEMAS)
 
-# §10 budget: real prompt ≤ PROMPT_TOKEN_LIMIT; the generator keeps the estimate ≤
+# §10 budget: real prompt <= PROMPT_TOKEN_LIMIT; the generator keeps the estimate <=
 # ESTIMATE_BUDGET. The estimate is 850 + ceil(len(user_message) / 2.5).
 PROMPT_TOKEN_LIMIT = 1536
 ESTIMATE_BUDGET = 1500
@@ -34,11 +34,7 @@ def _compact(d: dict[str, Any]) -> dict[str, Any]:
     """Drop ``note == ""``, ``resolution is None`` and ``credit_balance == 0`` (§10)."""
     out = {}
     for k, v in d.items():
-        if (
-            (k == "note" and v == "")
-            or (k == "resolution" and v is None)
-            or (k == "credit_balance" and v == 0)
-        ):
+        if (k == "note" and v == "") or (k == "resolution" and v is None) or (k == "credit_balance" and v == 0):
             continue
         out[k] = v
     return out

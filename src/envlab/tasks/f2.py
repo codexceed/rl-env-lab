@@ -24,7 +24,7 @@ REASON = "Refund duplicate payment"
 
 
 def split_installment(d: Draft, total: int) -> int:
-    """First installment ``a`` ∈ [30%, 70%] of ``total`` with ``a ≠ total − a``."""
+    """First installment ``a`` in [30%, 70%] of ``total`` with ``a != total - a``."""
     lo, hi = -(-3 * total // 10), 7 * total // 10
     while True:
         a = d.rng.randint(lo, hi)
@@ -35,7 +35,7 @@ def split_installment(d: Draft, total: int) -> int:
 def duplicate_invoice(d: Draft, c: Customer, period: str, lines: list[LineItem], *, hard=False):
     """An invoice charged twice: P1, then P2 = P1 + m minutes, both succeeded (3 records).
 
-    Base: m ∈ [1, 1440]. Hard: m ∈ [1, 15] on the same day (``pay_time`` keeps hour ≤ 20).
+    Base: m in [1, 1440]. Hard: m in [1, 15] on the same day (``pay_time`` keeps hour <= 20).
     """
     billed = line_sum(lines)
     inv = d.invoice(c, period, lines, paid=2 * billed)
@@ -51,7 +51,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
     rng = d.rng
     c = d.customer()
     period = rng.choice(PERIODS)
-    lines = [d.plan_line(c), *d.addons(rng.randint(0, 1))]  # T billed B, 1–2 lines
+    lines = [d.plan_line(c), *d.addons(rng.randint(0, 1))]  # T billed B, 1-2 lines
     billed = line_sum(lines)
 
     if template == "F2T3":
@@ -68,16 +68,10 @@ def build(d: Draft, template: str, variant: str) -> Built:
     call = ToolCall("refund_payment", {"payment_id": dup.id, "reason": REASON})
 
     if template == "F2T1":
-        request = (
-            f"{c.name} ({c.id}) was charged twice for invoice {t.id}. "
-            "Refund the duplicate charge."
-        )
+        request = f"{c.name} ({c.id}) was charged twice for invoice {t.id}. Refund the duplicate charge."
         params = {"customer_id": c.id, "invoice_id": t.id}
     elif template == "F2T2":
-        request = (
-            f"{c.name} says they were double-charged on one of their invoices. "
-            "Refund the extra payment."
-        )
+        request = f"{c.name} says they were double-charged on one of their invoices. Refund the extra payment."
         params = {"customer_name": c.name}
     else:
         request = (
@@ -115,9 +109,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
         inv = d.invoice(c, p, ls, paid=amt)
         t1 = d.pay_time(p)
         first = d.payment(inv, amt, t1)
-        again = d.payment(
-            inv, amt, t1 + timedelta(minutes=rng.randint(1, 1440)), PaymentStatus.REFUNDED
-        )
+        again = d.payment(inv, amt, t1 + timedelta(minutes=rng.randint(1, 1440)), PaymentStatus.REFUNDED)
         return [inv, first, _with_note(again, REFUND_NOTE)]
 
     def make_e(_max: int) -> list[Record] | None:

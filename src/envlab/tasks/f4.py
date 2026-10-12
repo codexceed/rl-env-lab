@@ -35,7 +35,7 @@ def inject_error(rng: random.Random, lines: list[LineItem]) -> int:
     """A wrong billed total for ``lines`` (SPEC §4 F4 "Error injection").
 
     Reading: pick one of the four error *kinds* uniformly among those with at least one
-    candidate giving billed > 0 and ≠ S, then one candidate of that kind uniformly. Digit
+    candidate giving billed > 0 and != S, then one candidate of that kind uniformly. Digit
     swaps that would create a leading zero are not counted as candidates.
     """
     s = line_sum(lines)
@@ -59,7 +59,7 @@ def inject_error(rng: random.Random, lines: list[LineItem]) -> int:
 def mis_summed_lines(d: Draft, c: Customer, template: str, variant: str) -> list[LineItem]:
     """T's line items: the plan (qty 1, flat C) then add-ons with the template's qty range.
 
-    "qty 1–12" etc. is read as applying to the add-on lines; the plan line keeps the
+    "qty 1-12" etc. is read as applying to the add-on lines; the plan line keeps the
     generator convention (flat customer, qty 1, priced at contract_rate).
     """
     (lo, hi), qty = _SHAPES[(template, variant)]
@@ -67,7 +67,7 @@ def mis_summed_lines(d: Draft, c: Customer, template: str, variant: str) -> list
 
 
 def discounted_lines(d: Draft, c: Customer) -> list[LineItem]:
-    """F4T3: 3–4 positive lines (qty 1–12) then a discount of 5–20% of the positive subtotal."""
+    """F4T3: 3-4 positive lines (qty 1-12) then a discount of 5-20% of the positive subtotal."""
     pos = mis_summed_lines(d, c, "F4T3", "base")
     pct = d.rng.randint(5, 20)
     disc = max(1, line_sum(pos) * pct // 100)
@@ -94,21 +94,14 @@ def build(d: Draft, template: str, variant: str) -> Built:
     call = ToolCall("adjust_invoice", {"invoice_id": t.id, "new_amount": s, "reason": REASON})
 
     if template == "F4T1":
-        request = (
-            f"Invoice {t.id} for {c.name} doesn't match its line items. "
-            "Correct the invoice total."
-        )
+        request = f"Invoice {t.id} for {c.name} doesn't match its line items. Correct the invoice total."
         params = {"invoice_id": t.id}
     elif template == "F4T2":
-        request = (
-            f"One of {c.name}'s open invoices has a total that doesn't match its line items. "
-            "Correct it."
-        )
+        request = f"One of {c.name}'s open invoices has a total that doesn't match its line items. Correct it."
         params = {"customer_name": c.name}
     else:
         request = (
-            f"Invoice {t.id} ({c.name}) has the wrong total. Recompute it from the line items, "
-            "including discounts."
+            f"Invoice {t.id} ({c.name}) has the wrong total. Recompute it from the line items, including discounts."
         )
         params = {"invoice_id": t.id}
 
@@ -128,9 +121,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
         if p is None:
             return None
         _, qty = _SHAPES[(template, variant)]
-        same = [lines[0]] + [
-            LineItem(li.description, rng.randint(*qty), li.unit_price) for li in lines[1:]
-        ]
+        same = [lines[0]] + [LineItem(li.description, rng.randint(*qty), li.unit_price) for li in lines[1:]]
         return [d.invoice(c, p, same)]
 
     unit_a = UnitSpec("a", 1, make_a)
@@ -144,7 +135,5 @@ def build(d: Draft, template: str, variant: str) -> Built:
     elif template == "F4T1" and hard:
         required = [unit_c]
 
-    units = add_units(
-        d, draw_k(rng, variant), required, [unit_a, unit_b, unit_c, z_unit(d)], hard=hard
-    )
+    units = add_units(d, draw_k(rng, variant), required, [unit_a, unit_b, unit_c, z_unit(d)], hard=hard)
     return Built(FAMILY, template, variant, request, params, call, [c, t], units)

@@ -6,14 +6,14 @@ pytest.importorskip("envlab.sim.ledger")
 pytest.importorskip("envlab.sim.tools")
 pytest.importorskip("envlab.sim.state_hash")
 
-from envlab.prompts import ESTIMATE_BUDGET, estimate_prompt_tokens  # noqa: E402
-from envlab.sim.entities import CaseStatus, InvoiceStatus, PaymentStatus, State  # noqa: E402
-from envlab.sim.ledger import check_invariants  # noqa: E402
-from envlab.sim.state_hash import state_hash  # noqa: E402
-from envlab.sim.tools import apply_tool  # noqa: E402
-from envlab.tasks.common import line_sum  # noqa: E402
-from envlab.tasks.generate import HELDOUT_TEMPLATES, TEMPLATES, TRAIN_TEMPLATES, derive_seed, generate  # noqa: E402
-from envlab.tasks.instance import TaskInstance, dumps_line  # noqa: E402
+from envlab.prompts import ESTIMATE_BUDGET, estimate_prompt_tokens
+from envlab.sim.entities import CaseStatus, InvoiceStatus, PaymentStatus, State
+from envlab.sim.ledger import check_invariants
+from envlab.sim.state_hash import state_hash
+from envlab.sim.tools import apply_tool
+from envlab.tasks.common import line_sum
+from envlab.tasks.generate import HELDOUT_TEMPLATES, TEMPLATES, TRAIN_TEMPLATES, derive_seed, generate
+from envlab.tasks.instance import TaskInstance, dumps_line
 
 N_SEEDS = 25
 CASES = [(t, "base") for t in TEMPLATES] + [(t, "hard") for t in TRAIN_TEMPLATES]
@@ -92,7 +92,7 @@ def test_oracle_succeeds_and_invariants_hold(batch):
 
 
 def test_distractor_counts(batch):
-    template, variant, insts = batch
+    _, variant, insts = batch
     lo, hi = (2, 6) if variant == "hard" else (2, 4)
     for inst in insts:
         n = inst.meta["n_distractors"]
@@ -148,7 +148,9 @@ def _required_present(inst: TaskInstance) -> bool:
                 if o.id != c.id
                 and o.contract_rate == c.contract_rate
                 and any(
-                    i.customer_id == o.id and i.status is InvoiceStatus.OPEN and i.line_items[0].unit_price > o.contract_rate
+                    i.customer_id == o.id
+                    and i.status is InvoiceStatus.OPEN
+                    and i.line_items[0].unit_price > o.contract_rate
                     for i in s.invoices
                 )
             ]
@@ -184,9 +186,7 @@ def _required_present(inst: TaskInstance) -> bool:
             return d_ok and a_ok
         case "F3T1" | "F3T2", True:
             assert t is not None
-            d_ok = any(
-                k.customer_id == c.id and k.invoice_id != t.id and k.status is CaseStatus.OPEN for k in s.cases
-            )
+            d_ok = any(k.customer_id == c.id and k.invoice_id != t.id and k.status is CaseStatus.OPEN for k in s.cases)
             e_ok = any(k.invoice_id == t.id and k.status is CaseStatus.RESOLVED for k in s.cases)
             return d_ok and (e_ok or inst.template == "F3T2")
         case "F4T1" | "F4T2", True:
@@ -204,7 +204,9 @@ def _required_present(inst: TaskInstance) -> bool:
             return any(o.status is InvoiceStatus.OPEN and o.amount_billed == line_sum(o.line_items) for o in others)
         case "F5T1", True:
             local, dom = c.email.split("@")
-            a_ok = any(o.id != c.id and o.email.split("@") [0] == local and not o.email.endswith(dom) for o in s.customers)
+            a_ok = any(
+                o.id != c.id and o.email.split("@")[0] == local and not o.email.endswith(dom) for o in s.customers
+            )
             return a_ok and bool(same_first)
         case "F5T2", _:
             c_ok = any(o.id != c.id and o.name == c.name and o.email != c.email for o in s.customers)

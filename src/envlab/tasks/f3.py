@@ -30,7 +30,7 @@ def adjustment(params: dict, case: Case, invoice: Invoice) -> int:
 
 
 def disputed_invoice_lines(d: Draft, c: Customer) -> tuple[list[LineItem], LineItem]:
-    """T with 2–4 lines: the plan, the disputed add-on L (qty 1–3), then 0–2 more add-ons."""
+    """T with 2-4 lines: the plan, the disputed add-on L (qty 1-3), then 0-2 more add-ons."""
     disputed = d.addons(1, qty=(1, 3))[0]
     others = d.addons(d.rng.randint(0, 2), exclude=[disputed.description])
     rest = [disputed, *others]
@@ -78,10 +78,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
         else:
             pct = rng.choice(HARD_PERCENTS if hard else PERCENTS)
             params = {"case_id": k.id, "rule": "percent", "percent": pct}
-            request = (
-                f"Resolve case {k.id}. Policy: approve {pct}% of the disputed amount, "
-                "rounded down to the cent."
-            )
+            request = f"Resolve case {k.id}. Policy: approve {pct}% of the disputed amount, rounded down to the cent."
 
     amount = adjustment(params, k, t)
     call = ToolCall("resolve_case", {"case_id": k.id, "adjustment": amount, "note": NOTE})
@@ -133,4 +130,3 @@ def build(d: Draft, template: str, variant: str) -> Built:
         hard=hard,
     )
     return Built(FAMILY, template, variant, request, params, call, [c, t, k], units)
-

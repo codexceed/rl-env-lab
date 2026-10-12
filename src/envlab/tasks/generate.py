@@ -40,7 +40,7 @@ SPLIT_SEEDS: dict[str, int] = {**{s: v[0] for s, v in SPLITS.items()}, "broken":
 
 
 def derive_seed(base: int, *parts: str | int) -> int:
-    """SPEC §9: first 8 bytes (big-endian) of sha256 over ``"base:part1:part2…"``."""
+    """SPEC §9: first 8 bytes (big-endian) of sha256 over ``"base:part1:part2..."``."""
     key = ":".join(map(str, (base, *parts)))
     return int.from_bytes(sha256(key.encode()).digest()[:8], "big")
 
@@ -52,7 +52,7 @@ def default_split(template: str, variant: str) -> str:
 
 
 def generate(template: str, seed: int, *, variant: str = "base") -> TaskInstance:
-    """One instance of ``template``. Same (template, seed, variant) ⇒ identical instance.
+    """One instance of ``template``. Same (template, seed, variant) => identical instance.
 
     The id is provisional (``{template}-{split}-seed{seed}``); ``generate_split`` assigns the
     §9 id. Hard variants exist for train templates only (§5).
@@ -61,6 +61,14 @@ def generate(template: str, seed: int, *, variant: str = "base") -> TaskInstance
     that would fail most F2T2-hard builds, whose core plus required units alone are often over
     budget, so an over-budget draw is redrawn instead (rejection sampling, still a pure function
     of ``seed``). ``instance.seed`` stays ``seed``.
+
+    Args:
+        template: Template id, e.g. ``"F1T1"``.
+        seed: Instance seed; all randomness derives from it.
+        variant: ``"base"`` or ``"hard"``.
+
+    Returns:
+        The generated instance, with a provisional id.
 
     Raises:
         ValueError: If the template or variant is unknown, or ``hard`` is asked of a T3.

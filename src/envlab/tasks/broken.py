@@ -14,7 +14,7 @@ from envlab.sim.entities import (
     PaymentStatus,
     State,
 )
-from envlab.tasks import f1, f2, f3, f4, f5
+from envlab.tasks import f1, f2, f4, f5
 from envlab.tasks.common import PERIODS, Draft, oracle_final, with_ledger
 from envlab.tasks.generate import BROKEN_SEED, derive_seed, generate
 from envlab.tasks.instance import TaskInstance

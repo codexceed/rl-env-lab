@@ -22,6 +22,9 @@ class BuildError(RuntimeError):
 def check_instance(inst: TaskInstance) -> None:
     """§9 build assertions for a non-broken instance: invariants, oracle call, prompt budget.
 
+    Args:
+        inst: A valid (non-broken) instance.
+
     Raises:
         BuildError: If any assertion fails.
     """

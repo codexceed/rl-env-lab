@@ -51,10 +51,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
     if template == "F5T1":
         field, value = "email", new_email(d, c)
         if hard:
-            request = (
-                f'Customer {c.id} wrote: "Mail still goes to {c.email}. '
-                f'Please switch my email to {value}."'
-            )
+            request = f'Customer {c.id} wrote: "Mail still goes to {c.email}. Please switch my email to {value}."'
         else:
             request = f"Customer {c.id} asked to change their email to {value}."
         params = {"customer_id": c.id, "field": field, "new_value": value}
@@ -63,11 +60,11 @@ def build(d: Draft, template: str, variant: str) -> Built:
         if hard:
             request = (
                 f'Support inbox message: "Hi, this is {c.name} ({c.email}). My phone {c.phone} '
-                f'stays the same, but I\'ve moved: please update my address to {value}."'
+                f"stays the same, but I've moved: please update my address to {value}.\""
             )
         else:
             request = (
-                f'Support inbox message: "Hi, this is {c.name} ({c.email}). I\'ve moved, '
+                f"Support inbox message: \"Hi, this is {c.name} ({c.email}). I've moved, "
                 f'please update my address to {value}."'
             )
         params = {"lookup": {"name": c.name, "email": c.email}, "field": field, "new_value": value}
@@ -88,9 +85,7 @@ def build(d: Draft, template: str, variant: str) -> Built:
 
     def make_a(_max: int) -> list[Record] | None:
         """Another customer whose email shares C's local part, other domain (1)."""
-        free = [
-            dom for dom in DOMAINS if dom != c_domain and f"{local}@{dom}" not in d.emails
-        ]
+        free = [dom for dom in DOMAINS if dom != c_domain and f"{local}@{dom}" not in d.emails]
         if not free:
             return None
         return [d.customer(email=f"{local}@{rng.choice(free)}")]
@@ -118,7 +113,5 @@ def build(d: Draft, template: str, variant: str) -> Built:
     elif template == "F5T3":
         required = [unit_d]
 
-    units = add_units(
-        d, draw_k(rng, variant), required, [unit_a, unit_b, unit_c, unit_d, z_unit(d)], hard=hard
-    )
+    units = add_units(d, draw_k(rng, variant), required, [unit_a, unit_b, unit_c, unit_d, z_unit(d)], hard=hard)
     return Built(FAMILY, template, variant, request, params, call, [c], units)

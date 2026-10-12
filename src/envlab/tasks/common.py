@@ -1,4 +1,4 @@
-"""Shared building blocks for the F1–F5 task generators (SPEC §4).
+"""Shared building blocks for the F1-F5 task generators (SPEC §4).
 
 A template generator builds a ``Draft``: the core records, the oracle call and a list of
 distractor *units* (SPEC §4 "Units"). ``finalize`` then trims units to the prompt budget
@@ -11,7 +11,7 @@ import dataclasses
 import random
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
 
 from envlab.calls import ToolCall
@@ -242,13 +242,14 @@ class Draft:
     def address(self) -> str:
         while True:
             city, st = self.rng.choice(CITIES)
-            a = f"{self.rng.randint(10, 999)} {self.rng.choice(STREETS)} {self.rng.choice(STREET_SUFFIXES)}, {city} {st}"
+            street = f"{self.rng.choice(STREETS)} {self.rng.choice(STREET_SUFFIXES)}"
+            a = f"{self.rng.randint(10, 999)} {street}, {city} {st}"
             if a not in self.addresses:
                 self.addresses.add(a)
                 return a
 
     def flat_rate(self) -> int:
-        """Shared range: ``100·j − 1``, j ∈ [20, 300]."""
+        """Shared range: ``100·j - 1``, j in [20, 300]."""
         return 100 * self.rng.randint(20, 300) - 1
 
     def _register_customer(self, c: Customer) -> None:
@@ -291,7 +292,7 @@ class Draft:
         free = [p for p in choices if p not in used]
         return self.rng.choice(free) if free else None
 
-    def plan_line(self, c: Customer, *, seats: int | None = None, unit: int | None = None):
+    def plan_line(self, c: Customer, *, seats: int | None = None, unit: int | None = None) -> LineItem:
         """The customer's plan line, priced at ``contract_rate`` unless ``unit`` is given."""
         price = c.contract_rate if unit is None else unit
         if c.contract_basis is ContractBasis.PER_SEAT:
@@ -299,15 +300,14 @@ class Draft:
         plan = FLAT_PLANS[int(c.id[1:]) % len(FLAT_PLANS)]  # stable per customer
         return LineItem(plan, 1, price)
 
-    def addons(self, n: int, *, qty: tuple[int, int] = (1, 1), exclude: Iterable[str] = ()):
+    def addons(self, n: int, *, qty: tuple[int, int] = (1, 1), exclude: Iterable[str] = ()) -> list[LineItem]:
         names = [a for a in ADDONS if a not in set(exclude)]
         return [
-            LineItem(name, self.rng.randint(*qty), self.rng.randint(500, 5000))
-            for name in self.rng.sample(names, n)
+            LineItem(name, self.rng.randint(*qty), self.rng.randint(500, 5000)) for name in self.rng.sample(names, n)
         ]
 
     def background_lines(self, c: Customer) -> list[LineItem]:
-        """Shared range: 1–3 lines, the plan first, add-ons qty 1."""
+        """Shared range: 1-3 lines, the plan first, add-ons qty 1."""
         return [self.plan_line(c), *self.addons(self.rng.randint(0, 2))]
 
     def invoice(
@@ -319,7 +319,7 @@ class Draft:
         billed: int | None = None,
         paid: int = 0,
     ) -> Invoice:
-        """An invoice with ``amount_due = billed − paid`` (paid = Σ succeeded payments)."""
+        """An invoice with ``amount_due = billed - paid`` (paid = Σ succeeded payments)."""
         billed = line_sum(lines) if billed is None else billed
         due = billed - paid
         self.periods.setdefault(c.id, set()).add(period)
@@ -334,7 +334,7 @@ class Draft:
         )
 
     def pay_time(self, period: str, *, latest_hour: int = 20) -> datetime:
-        """A timestamp within the month after ``period`` (day 2–26, so ±1 day stays inside)."""
+        """A timestamp within the month after ``period`` (day 2-26, so ±1 day stays inside)."""
         year, month = (int(x) for x in shift_period(period, 1).split("-"))
         return datetime(
             year,
@@ -391,12 +391,13 @@ class Draft:
         inv = self.invoice(c, period, lines, paid=billed)
         return [inv, self.payment(inv, billed, self.pay_time(period))]
 
-    def background_invoice(self, c: Customer, period: str, *, allow_paid: bool, max_records: int):
+    def background_invoice(self, c: Customer, period: str, *, allow_paid: bool, max_records: int) -> list[Record]:
         """A correctly priced invoice of ``c``: open (1 rec) or paid once (2 rec)."""
         lines = self.background_lines(c)
         if allow_paid and max_records >= 2 and self.rng.random() < 0.5:
             return self.paid_once(c, period, lines)
-        return [self.invoice(c, period, lines)]
+        out: list[Record] = [self.invoice(c, period, lines)]
+        return out
 
     def dispute_summary(self, line: LineItem) -> str:
         return f"Customer disputes the '{line.description}' charge."
@@ -425,7 +426,7 @@ def z_unit(d: Draft) -> UnitSpec:
 
 
 def other_customer_unit(d: Draft, name: str, n: int, build: Callable[[Customer], list[Record]]):
-    """A unit that is a new customer plus ``n − 1`` records built by ``build``."""
+    """A unit that is a new customer plus ``n - 1`` records built by ``build``."""
 
     def make(_max: int) -> list[Record]:
         c = d.customer()
@@ -517,9 +518,7 @@ def with_ledger(state: State) -> State:
     """Rebuild ``state.ledger`` from its customers, invoices and payments (§2)."""
     from envlab.sim.ledger import build_ledger
 
-    return dataclasses.replace(
-        state, ledger=build_ledger(state.customers, state.invoices, state.payments)
-    )
+    return dataclasses.replace(state, ledger=build_ledger(state.customers, state.invoices, state.payments))
 
 
 def oracle_final(state: State, call: ToolCall) -> State:
