@@ -342,7 +342,7 @@ def diagnostic_summary(rows: Sequence[dict[str, Any]], band: tuple[float, float]
         "below_band": below,
         "above_band": above,
         "band": list(band),
-        "rule": "PREREG §7: >= 6 of 10 train templates in band -> proceed; most below 10% -> too hard; "
+        "rule": "PREREG §7 (#12): >= 6 train templates in band -> proceed; most below 10% -> too hard; "
         "most above 90% -> too easy (decided for the main model only)",
         "verdict": verdict,
         "overall": rates(rows),

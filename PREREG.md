@@ -15,7 +15,7 @@
 ## 2. Held-out split (frozen)
 
 - **Held-out templates:** `F1T3`, `F2T3`, `F3T3`, `F4T3`, `F5T3` (template 3 of every family).
-- **Train templates:** `F1T1`, `F1T2`, … `F5T1`, `F5T2` (10 templates).
+- **Train templates:** `F1T1`, `F1T2`, … `F5T1`, `F5T2` (10 templates), plus `F1T5` (amendment #12): 11.
 - Held-out templates are never trained on, never used to choose difficulty, and never adapted.
 
 ## 3. Two separate evals
@@ -85,7 +85,7 @@ Out of scope (deadline). Not reported.
 
 Decided once, from the **diagnostic baseline on train templates only**, for the **main model**. "In band" = base pass rate 10–90%.
 
-1. **≥ 6 of 10** train templates in band → proceed unchanged.
+1. **≥ 6** train templates in band → proceed unchanged (of 10; of 11 after amendment #12).
 2. **Too hard** (most templates below 10%) → in order: SFT warm-up (500 oracle completions, 1 epoch, all sizes) → drop the hardest train template per family → Qwen3-1.7B / larger model.
 3. **Too easy** (most templates above 90%) → in order: switch train templates to their pre-specified harder variants (SPEC.md, all sizes) → make **0.8B the main model**.
 
@@ -137,3 +137,4 @@ Every cut updates the reported sample sizes in `reports/results.md`. H1 and H2 a
 |---|---|---|---|
 | 10 | 2026-10-12 | **H2 part 3:** leaky exploit ≥ base + 10 points (was ≥ 2 × base). Flagged in results as changed after seeing base rates | Formal base exploit rates are 41% (0.8B), 48% (2B), 57% (4B); 2 × base would need ≥ 97% for 2B. Base "exploits" are mostly wrong-amount arithmetic on the right record (F1, F3, F4) |
 | 11 | 2026-10-12 | **Answer budget 128 → 256 tokens** for training and both evals, all sizes (budget parity kept) | 128 truncated 26% of 4B held-out base answers (4B writes its working in the note); 5% at 256 |
+| 12 | 2026-10-12 | **Train template F1T5 added** (whole-dollar overcharge, both prices in the request). 2B diagnostic: 6 of 11 in band (was 5 of 10). Candidates F1T4, F4T4, F4T5 were measured at 6–9% for 2B and dropped. Held-out split byte-identical | Rule 1 had no branch for 5 in band with no majority above or below; owner chose to add a learnable template rather than amend the rule |

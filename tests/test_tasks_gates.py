@@ -26,7 +26,7 @@ def test_valid_instances_pass_all_gates():
     assert len(failures) <= total // 100, failures[:5]
 
 
-@pytest.mark.parametrize("template", ["F1T4", "F1T5", "F4T4", "F4T5"])
+@pytest.mark.parametrize("template", [t for t in ("F1T4", "F1T5", "F4T4", "F4T5") if t in TRAIN_TEMPLATES])
 @pytest.mark.parametrize("variant", ["base", "hard"])
 def test_candidate_templates_pass_every_gate(template: str, variant: str):
     """The medium-difficulty candidates (SPEC §4): G1-G3 hold on every generated instance."""

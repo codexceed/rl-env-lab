@@ -91,7 +91,7 @@ Empty `reason`/`note` is **allowed** (stored as `""`). Tools do not run `check_i
 **Common rules**
 
 - One instance = one request + one `State` + one oracle call. The model sees all non-ledger records (§10).
-- **T3 held out** (one per family); every other template number is a train template: T1, T2 in every family, plus the medium-difficulty candidates F1T4, F1T5, F4T4, F4T5 (added after the diagnostic baseline found too few train templates in band). Template ids `F1T1 … F5T3`, `F1T4`, `F1T5`, `F4T4`, `F4T5`. The train set is the template registry `TRAIN_TEMPLATES` (§11.6); a candidate is dropped by deleting its entry there and its rows here.
+- **T3 held out** (one per family); every other template number is a train template: T1, T2 in every family, plus **F1T5** (added after the diagnostic baseline found too few train templates in band for 2B; candidates F1T4, F4T4, F4T5 were built and measured at 6–9% for 2B, then dropped, ADR 0004). Template ids `F1T1 … F5T3`, `F1T5`. The train set is the template registry `TRAIN_TEMPLATES` (§11.6); a template is added or dropped by editing that registry and its rows here.
 - **Core records** (listed per family) are needed to solve the task. **Distractor records** are every other record in the state. Base variant: distractor count k drawn uniformly from {2, 3, 4}; hard variant: {5, 6}. Distractors are added as *units* (below): required units first, then random allowed units that fit, then the 1-record unit `z` (an unrelated customer with no other records) to reach exactly k.
 - A distractor must never satisfy the template's oracle rule under the instance's `params` (G2 checks this).
 - Each record tuple is shuffled with the instance RNG before the ledger is built.
@@ -114,8 +114,7 @@ Shared ranges (unless a template overrides): background invoices have 1–3 line
 | **F1T1** | Flat C. T has only P, qty 1, unit `rate + D`, D ∈ [100, 5000]. | `Customer {name} ({customer_id}) says invoice {invoice_id} is higher than their contract rate. Credit the overcharge.` | `customer_id`, `invoice_id` | — |
 | **F1T2** | Flat C. T has P (unit `rate + D`) plus 0–1 add-on lines. No invoice id in request. | `{name} was promised ${dollars} per month, but their {Month YYYY} invoice is higher. Credit the difference.` | `customer_name`, `period` | `a` (≥ 1) |
 | **F1T3** ⟂ | Per-seat C, `rate` ∈ [500, 5000]. P = `"Plan: Team seats"`, qty N ∈ [3, 40], unit `rate + d`, d ∈ [25, 500]; plus 1–2 add-ons. | `{name} ({customer_id}) is on a per-seat contract. Invoice {invoice_id} charged more per seat than agreed. Credit the overcharge.` | `customer_id`, `invoice_id` | — |
-| **F1T4** | As F1T1, but a whole-dollar overcharge: unit `rate + 100·m`, m ∈ [1, 20] (cents digits of rate and unit match). | `{name} ({customer_id}) says the plan price on invoice {invoice_id} is above their contract rate. Credit the difference.` | `customer_id`, `invoice_id` | — |
-| **F1T5** | As F1T4 (whole-dollar overcharge, T has only P). Both prices stated in the request, as dollars: `{rate$}` = contract rate, `{unit$}` = P.unit_price. | `{name} ({customer_id}) was promised {rate$} per month, but invoice {invoice_id} charged {unit$} for the plan. Credit the difference.` | `customer_id`, `invoice_id` | — |
+| **F1T5** | As F1T1, but a whole-dollar overcharge: unit `rate + 100·m`, m ∈ [1, 20] (cents digits of rate and unit match); T has only P. Both prices stated in the request, as dollars: `{rate$}` = contract rate, `{unit$}` = P.unit_price. | `{name} ({customer_id}) was promised {rate$} per month, but invoice {invoice_id} charged {unit$} for the plan. Credit the difference.` | `customer_id`, `invoice_id` | — |
 
 ### F2 Duplicate payment → `refund_payment`
 
@@ -160,8 +159,6 @@ Final: K `resolved`, `resolution = A`, `note` set; T `amount_due −= A` (stays 
 | **F4T1** | 2–3 lines, qty 1. | `Invoice {invoice_id} for {name} doesn't match its line items. Correct the invoice total.` | `invoice_id` | — |
 | **F4T2** | 3–4 lines, qty 1–12. | `One of {name}'s open invoices has a total that doesn't match its line items. Correct it.` | `customer_name` | `a` (open) |
 | **F4T3** ⟂ | 3–4 positive lines with qty 1–12, plus `"Discount: <name>"` qty 1, unit = −(5–20% of positive subtotal). Error injection replaced by: billed = positive subtotal (discount omitted) or S + discount (discount applied twice), uniformly. | `Invoice {invoice_id} ({name}) has the wrong total. Recompute it from the line items, including discounts.` | `invoice_id` | — |
-| **F4T4** | Exactly 2 lines, qty 1: the plan (at `rate`) and one add-on with a whole-dollar unit `100·u`, u ∈ [5, 50]. Family error injection. | `The total on {name}'s invoice {invoice_id} doesn't equal the sum of its line items. Correct the invoice total.` | `invoice_id` | — |
-| **F4T5** | Exactly 2 lines, qty 1, all whole dollars: C's flat `contract_rate = 100·j`, j ∈ [20, 300] (plan at `rate`), add-on unit `100·u`, u ∈ [5, 50]. Error injection replaced by: billed = S + one line's total (a line counted twice), line uniform. | `Invoice {invoice_id} for {name} billed one of its line items twice. Correct the invoice total.` | `invoice_id` | — |
 
 ### F5 Account change → `update_customer`
 
@@ -187,7 +184,6 @@ Used only if PREREG's too-easy rule fires (PROGRESSION §2.2), for all sizes. Sa
 |---|---|---|
 | F1T1-hard | T gets 1–2 add-on lines (so `amount_billed − rate` is wrong) | `a`, `c` |
 | F1T2-hard | T gets 1–2 add-ons; C has invoices in both adjacent months | two `a` (adjacent months), `d` |
-| F1T4-hard | T gets 1–2 add-on lines (so `amount_billed − rate` is wrong); overcharge stays whole-dollar | `a`, `c` |
 | F1T5-hard | Overcharge any cents, D ∈ [100, 5000] (request still states both prices); T gets 1–2 add-on lines | `a`, `c` |
 | F2T1-hard | P1/P2 1–15 min apart, same day | `d`, `a` |
 | F2T2-hard | — | `e`, `b` |
@@ -195,8 +191,6 @@ Used only if PREREG's too-easy rule fires (PROGRESSION §2.2), for all sizes. Sa
 | F3T2-hard | P ∈ {15, 35, 45, 65, 85} | `d` |
 | F4T1-hard | 4–5 lines, qty 1–9 | `c` |
 | F4T2-hard | 4–5 lines, qty 1–24 | `c`, `a` (open) |
-| F4T4-hard | 3–4 lines, add-on qty 1–3 (units stay whole dollars) | `c` |
-| F4T5-hard | 3–4 lines, add-on qty 1–3 (units stay whole dollars; still one line counted twice) | `c` |
 | F5T1-hard | Request: `Customer {customer_id} wrote: "Mail still goes to {email}. Please switch my email to {V}."` | `a`, `d` |
 | F5T2-hard | Request: `Support inbox message: "Hi, this is {name} ({email}). My phone {phone} stays the same, but I've moved: please update my address to {V}."` | `c`, `a` |
 
@@ -274,7 +268,7 @@ Free-text args in wrong calls copy the oracle's. **Acceptance:** every broken va
 
 | Split | File | Templates | Count | Base seed |
 |---|---|---|---|---|
-| `train` | `train.jsonl` | `TRAIN_TEMPLATES` (14: T1, T2, F1T4, F1T5, F4T4, F4T5) | 2,000, split evenly | 1001 |
+| `train` | `train.jsonl` | `TRAIN_TEMPLATES` (11: T1, T2, F1T5) | 2,000, split evenly | 1001 |
 | `train_hard` | `train_hard.jsonl` | `TRAIN_TEMPLATES`, hard | 2,000, split evenly | 4004 |
 | `heldout` | `heldout.jsonl` | T3 (5) | 50 each = 250 | 2002 |
 | `broken` | `broken.jsonl` | per §8 | 100 | 3003 |
@@ -417,7 +411,7 @@ def parse_tool_call(text: str) -> ToolCall | ParseFailure    # §10 rules
 # envlab/tasks/f1.py … f5.py — one generator per template
 # envlab/tasks/generate.py
 FAMILIES: tuple[str, ...] = ("F1", "F2", "F3", "F4", "F5")
-TRAIN_TEMPLATES: tuple[str, ...]      # registry: F1T1, F1T2, F1T4, F1T5, F2T1, …, F4T5, F5T1, F5T2
+TRAIN_TEMPLATES: tuple[str, ...]      # registry: F1T1, F1T2, F1T5, F2T1, …, F4T2, F5T1, F5T2
 HELDOUT_TEMPLATES: tuple[str, ...]    # F1T3, F2T3, F3T3, F4T3, F5T3
 def derive_seed(base: int, *parts: str | int) -> int
 def generate(template: str, seed: int, *, variant: str = "base") -> TaskInstance  # "base" | "hard"

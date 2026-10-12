@@ -122,36 +122,30 @@
       "F5T3": 50
     },
     "train": {
-      "F1T1": 143,
-      "F1T2": 143,
-      "F1T4": 143,
-      "F1T5": 143,
-      "F2T1": 143,
-      "F2T2": 143,
-      "F3T1": 143,
-      "F3T2": 143,
-      "F4T1": 143,
-      "F4T2": 143,
-      "F4T4": 143,
-      "F4T5": 143,
-      "F5T1": 142,
-      "F5T2": 142
+      "F1T1": 182,
+      "F1T2": 182,
+      "F1T5": 182,
+      "F2T1": 182,
+      "F2T2": 182,
+      "F3T1": 182,
+      "F3T2": 182,
+      "F4T1": 182,
+      "F4T2": 182,
+      "F5T1": 181,
+      "F5T2": 181
     },
     "train_hard": {
-      "F1T1": 143,
-      "F1T2": 143,
-      "F1T4": 143,
-      "F1T5": 143,
-      "F2T1": 143,
-      "F2T2": 143,
-      "F3T1": 143,
-      "F3T2": 143,
-      "F4T1": 143,
-      "F4T2": 143,
-      "F4T4": 143,
-      "F4T5": 143,
-      "F5T1": 142,
-      "F5T2": 142
+      "F1T1": 182,
+      "F1T2": 182,
+      "F1T5": 182,
+      "F2T1": 182,
+      "F2T2": 182,
+      "F3T1": 182,
+      "F3T2": 182,
+      "F4T1": 182,
+      "F4T2": 182,
+      "F5T1": 181,
+      "F5T2": 181
     }
   },
   "files": {
@@ -159,10 +153,10 @@
     "heldout.jsonl": "097ea4e4a44f97e2f9c84eb2ee5c8b5450d6c0ea2e5ff9db3d0ce938355c1bce",
     "splits/broken.txt": "4ab5acb93ca1680fdff0ebc069a69c9f781427fba43e76fa70eb2190aca4c6b8",
     "splits/heldout.txt": "d1a05b513e78be8afdd4a27fae3b21c3e95190883341fd0df1982348630f88ad",
-    "splits/train.txt": "e8e8ba0288ed420d86c91d689b2d56b40a7b89527c78a3c61c25dbdba65865d9",
-    "splits/train_hard.txt": "149b899db0b9449ad7bcca1276832ab7678a3a9a32867b3ff39ec22d49a85fc7",
-    "train.jsonl": "ae3cdf64c5a3084f2cf549fbdf21dd94abeaf157f35dcae6845f9e141f2a9a72",
-    "train_hard.jsonl": "f1aa93b979fa9ed537c538c0df0adf923f6489fb61b645e2b241c4930de881a7"
+    "splits/train.txt": "762bfaca780a4b70c0b2b86a786ea88b5abea399e1dd257cf569eb5044c54fa4",
+    "splits/train_hard.txt": "3edfd19577c804a45ae163b6834a0119dc2d544d29dddb1613dbc021e02920f4",
+    "train.jsonl": "5a872ac04fe71be9bd48397d9a0c03d1575fbff8c61fd48146a9d9de6d038ce3",
+    "train_hard.jsonl": "aef2c0883314cbf928e2a011e82685105c17f6c2d6cd7e07e96d5e4eec10a4e1"
   },
   "heldout_templates": [
     "F1T3",

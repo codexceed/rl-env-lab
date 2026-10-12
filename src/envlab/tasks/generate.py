@@ -21,10 +21,11 @@ FAMILIES: tuple[str, ...] = ("F1", "F2", "F3", "F4", "F5")
 # here is a train template (train and train_hard, split evenly). F1T4, F1T5, F4T4 and F4T5 are the
 # medium-difficulty candidates: drop one by deleting its entry (and its SPEC §4/§5 rows), then
 # rebuild with ``make data``. Order matters only for which templates get the remainder (§9).
+# F1T4, F4T4, F4T5 were also built and measured (2B base 6%, 9%, 7%), then dropped (ADR 0004);
+# their generators stay so they can be re-added by listing them here.
 TRAIN_TEMPLATES: tuple[str, ...] = (
     "F1T1",
     "F1T2",
-    "F1T4",
     "F1T5",
     "F2T1",
     "F2T2",
@@ -32,8 +33,6 @@ TRAIN_TEMPLATES: tuple[str, ...] = (
     "F3T2",
     "F4T1",
     "F4T2",
-    "F4T4",
-    "F4T5",
     "F5T1",
     "F5T2",
 )

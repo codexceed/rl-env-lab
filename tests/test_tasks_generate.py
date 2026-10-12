@@ -237,7 +237,7 @@ def test_required_units_present(batch):
 
 # --- medium-difficulty candidates (SPEC §4: F1T4, F1T5, F4T4, F4T5; §5 hard rows) ---------------
 
-CANDIDATE_CASES = [(t, v) for t in ("F1T4", "F1T5", "F4T4", "F4T5") for v in ("base", "hard")]
+CANDIDATE_CASES = [(t, v) for t in ("F1T4", "F1T5", "F4T4", "F4T5") if t in TRAIN_TEMPLATES for v in ("base", "hard")]
 
 
 def _f1_candidate_request(inst: TaskInstance) -> str:
