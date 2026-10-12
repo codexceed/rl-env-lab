@@ -70,6 +70,16 @@
       "eval": "pending",
       "final": false,
       "step": 700
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 750
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 800
     }
   ]
 }
