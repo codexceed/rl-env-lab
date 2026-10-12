@@ -115,11 +115,9 @@ class Env:
                 "shutdown_cmd": shutdown_cmd,
             },
             "commands": {
-                "train": f"{PY} {self.tmp / 'fake_train.py'} {{run_id}} {{run_dir}} "
-                f"{self.beh} {self.log}",
+                "train": f"{PY} {self.tmp / 'fake_train.py'} {{run_id}} {{run_dir}} {self.beh} {self.log}",
                 "resume_flag": "--resume-from {resume_dir}",
-                "eval": f"{PY} {self.tmp / 'fake_eval.py'} {{run_id}} {{step}} {{output}} "
-                f"{self.log} {eval_sleep}",
+                "eval": f"{PY} {self.tmp / 'fake_eval.py'} {{run_id}} {{step}} {{output}} {self.log} {eval_sleep}",
             },
             "transfer": {"command": transfer_cmd, "timeout_s": 30, "retries": 0},
             "checkpoints": {"pruning_enabled": False, "keep_last": 2},
@@ -147,7 +145,9 @@ class Env:
         return [json.loads(line) for line in path.read_text().splitlines()]
 
     def status(self, rid) -> dict:
-        return read_status(run_dir(self.runs, rid))
+        st = read_status(run_dir(self.runs, rid))
+        assert st is not None
+        return st
 
     @property
     def idle_marker(self) -> Path:
@@ -195,12 +195,7 @@ def test_repo_allocation_config_matches_plan():
     cfg = resolve_paths(load_config(REPO / "configs" / "allocation.yaml"), REPO)
     n1, n2 = build_plan(cfg, "node1"), build_plan(cfg, "node2")
     ids = set(n1.runs) | set(n2.runs)
-    expected = {
-        f"{size}-{r}-s{s}"
-        for size in ("2b", "0.8b", "4b")
-        for r in ("rob", "leak")
-        for s in (1, 2, 3)
-    }
+    expected = {f"{size}-{r}-s{s}" for size in ("2b", "0.8b", "4b") for r in ("rob", "leak") for s in (1, 2, 3)}
     assert ids == expected and not set(n1.runs) & set(n2.runs)
     assert {r for r in n1.runs if r.startswith("4b")} == {"4b-rob-s2", "4b-leak-s2"}
     four_b = next(g for g in n1.groups if g.name == "n1-4b")
@@ -252,9 +247,7 @@ def test_scheduling_order_on_gpu_groups(env):
 def test_timeout_kills_process_tree_and_node_stays_up(env):
     child_pid_file = env.tmp / "child.pid"
     env.behave(**{"2b-rob-s1": {"sleep": 30, "child_pid_file": str(child_pid_file)}})
-    cfg = env.config(
-        [group("g0", [0], ["2b-rob-s1", "2b-rob-s2"])], run_timeouts={"2b-rob-s1": 0.5}
-    )
+    cfg = env.config([group("g0", [0], ["2b-rob-s1", "2b-rob-s2"])], run_timeouts={"2b-rob-s1": 0.5})
     result = run_to_end(Coordinator(cfg, "n"))
 
     st = env.status("2b-rob-s1")

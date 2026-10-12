@@ -45,7 +45,7 @@ def rdir(tmp_path):
 
 
 def snapshot(root: Path) -> set[Path]:
-    return {p for p in root.rglob("*")}
+    return set(root.rglob("*"))
 
 
 def test_step_name_is_zero_padded():
@@ -59,7 +59,9 @@ def test_eval_listing_ignores_incomplete_and_finds_final(rdir):
     write_eval_step(rdir, 130, final=True)
     eval_step_dir(rdir, 150).mkdir()  # no COMPLETE: in progress
     assert [c.step for c in list_eval_checkpoints(rdir)] == [50, 100, 130]
-    assert final_eval_checkpoint(rdir).step == 130
+    final = final_eval_checkpoint(rdir)
+    assert final is not None
+    assert final.step == 130
 
 
 def test_empty_complete_marker_reads_as_non_final(rdir):
@@ -73,7 +75,9 @@ def test_latest_recovery_skips_incomplete(rdir):
     write_recovery(rdir, 10)
     write_recovery(rdir, 20)
     write_recovery(rdir, 30, complete=False)
-    assert latest_recovery_checkpoint(rdir).number == 20
+    latest = latest_recovery_checkpoint(rdir)
+    assert latest is not None
+    assert latest.number == 20
 
 
 def test_prune_keeps_last_two_complete(rdir):
