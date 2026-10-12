@@ -17,9 +17,28 @@ from envlab.tasks.common import BudgetError, Built, Draft, finalize
 from envlab.tasks.instance import TaskInstance
 
 FAMILIES: tuple[str, ...] = ("F1", "F2", "F3", "F4", "F5")
-TRAIN_TEMPLATES: tuple[str, ...] = tuple(f"{f}T{t}" for f in FAMILIES for t in (1, 2))
+# Template registry (SPEC §4, §9). T3 is each family's held-out template; every template listed
+# here is a train template (train and train_hard, split evenly). F1T4, F1T5, F4T4 and F4T5 are the
+# medium-difficulty candidates: drop one by deleting its entry (and its SPEC §4/§5 rows), then
+# rebuild with ``make data``. Order matters only for which templates get the remainder (§9).
+TRAIN_TEMPLATES: tuple[str, ...] = (
+    "F1T1",
+    "F1T2",
+    "F1T4",
+    "F1T5",
+    "F2T1",
+    "F2T2",
+    "F3T1",
+    "F3T2",
+    "F4T1",
+    "F4T2",
+    "F4T4",
+    "F4T5",
+    "F5T1",
+    "F5T2",
+)
 HELDOUT_TEMPLATES: tuple[str, ...] = tuple(f"{f}T3" for f in FAMILIES)
-TEMPLATES: tuple[str, ...] = tuple(f"{f}T{t}" for f in FAMILIES for t in (1, 2, 3))
+TEMPLATES: tuple[str, ...] = tuple(sorted((*TRAIN_TEMPLATES, *HELDOUT_TEMPLATES)))
 VARIANTS: tuple[str, ...] = ("base", "hard")
 
 _BUILDERS: dict[str, Callable[[Draft, str, str], Built]] = {
@@ -30,11 +49,11 @@ _BUILDERS: dict[str, Callable[[Draft, str, str], Built]] = {
     "F5": f5.build,
 }
 
-# §9: split -> (base seed, templates, instances per template, variant)
+# §9: split -> (base seed, templates, total instances, variant)
 SPLITS: dict[str, tuple[int, tuple[str, ...], int, str]] = {
-    "train": (1001, TRAIN_TEMPLATES, 200, "base"),
-    "train_hard": (4004, TRAIN_TEMPLATES, 200, "hard"),
-    "heldout": (2002, HELDOUT_TEMPLATES, 50, "base"),
+    "train": (1001, TRAIN_TEMPLATES, 2000, "base"),
+    "train_hard": (4004, TRAIN_TEMPLATES, 2000, "hard"),
+    "heldout": (2002, HELDOUT_TEMPLATES, 250, "base"),
 }
 BROKEN_SEED = 3003
 MAX_ATTEMPTS = 1000
@@ -45,6 +64,12 @@ def derive_seed(base: int, *parts: str | int) -> int:
     """SPEC §9: first 8 bytes (big-endian) of sha256 over ``"base:part1:part2..."``."""
     key = ":".join(map(str, (base, *parts)))
     return int.from_bytes(sha256(key.encode()).digest()[:8], "big")
+
+
+def template_counts(total: int, templates: tuple[str, ...]) -> dict[str, int]:
+    """SPEC §9 "split evenly": ``total // n`` each; the first ``total % n`` templates get one more."""
+    per, extra = divmod(total, len(templates))
+    return {t: per + (i < extra) for i, t in enumerate(templates)}
 
 
 def default_split(template: str, variant: str) -> str:
@@ -107,9 +132,9 @@ def generate_split(split: str) -> list[TaskInstance]:
         return generate_broken()
     if split not in SPLITS:
         raise ValueError(f"unknown split {split!r}")
-    base, templates, count, variant = SPLITS[split]
+    base, templates, total, variant = SPLITS[split]
     out = []
-    for template in templates:
+    for template, count in template_counts(total, templates).items():
         for index in range(count):
             inst = generate(template, derive_seed(base, template, index), variant=variant)
             out.append(dataclasses.replace(inst, id=instance_id(template, split, index)))
