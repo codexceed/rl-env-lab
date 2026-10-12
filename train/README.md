@@ -102,7 +102,7 @@ What it runs:
 | 0.8B, 2B | 1 each, colocated vLLM | Prompt 1,536 + completion 128 tokens (forced), 8×8 |
 | 4B `server-3train` | 1 server + 3 ZeRO-3 | The planned layout. **64 completions can't split over 3 ranks**, so it runs 9×8 = 72 and also reports time scaled to 64 |
 | 4B `server-2train` | 1 server + 2 ZeRO-3 | Exactly 64 completions |
-| 4B `colocate-4train` | 4 ZeRO-3, colocated vLLM | Opt-in: `uv run python train/bench.py --layouts-4b server-3train,server-2train,colocate-4train` |
+| 4B `colocate-4train` | 4 ZeRO-3, colocated vLLM | Default (with `server-2train`); `server-3train` is opt-in only (DECISIONS #9) |
 | Eval | 2 (one vLLM engine each) | 250 prompts × 4 samples, temperature 0.7, per size |
 
 Configs are `configs/accelerate/zero3_{2,3,4}gpu.yaml`. Each job's log is in `runs/bench/logs/`, its result in `runs/bench/<tag>.json`, and the combined result plus a Markdown table in `runs/bench/summary.json` (also printed).

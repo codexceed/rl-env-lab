@@ -477,23 +477,32 @@ def cmd_all(args: argparse.Namespace) -> int:
         common_flags.append("--allow-slow-kernels")
     jobs: list[dict[str, Any]] = []
     tags: list[str] = []
+    layouts_4b = [x.strip() for x in args.layouts_4b.split(",") if x.strip()]
+    total = 0 if args.skip_train else sum(s != "4B" for s in sizes) + ("4B" in sizes) * len(layouts_4b)
+    total += 0 if args.skip_eval else len(sizes)
+
+    def run_job(tag: str, cmd: list[str], job_gpus: list[str], timeout: float) -> dict[str, Any]:
+        print(f"\nPROGRESS_PHASE {tag} {len(jobs) + 1}/{total}", flush=True)  # live progress bar
+        result = _run_job(tag, cmd, job_gpus, timeout)
+        print(f"\nPROGRESS {len(jobs) + 1}/{total}", flush=True)
+        return result
 
     if not args.skip_train:
         for size in (s for s in sizes if s != "4B"):
             tag = f"{model_slug(SIZES[size])}-1gpu-colocate"
             cmd = [*me, "train", "--model", SIZES[size], "--vllm-mode", "colocate", "--tag", tag, *common_flags]
-            jobs.append(_run_job(tag, cmd, gpus[:1], args.job_timeout))
+            jobs.append(run_job(tag, cmd, gpus[:1], args.job_timeout))
             tags.append(tag)
         if "4B" in sizes:
             model = SIZES["4B"]
             export_dir = common.export_dir_for(model)
-            for layout in [x.strip() for x in args.layouts_4b.split(",") if x.strip()]:
+            for layout in layouts_4b:
                 tag = f"{model_slug(model)}-{layout}"
                 if layout == "colocate-4train":
                     cfg = ACCEL_DIR / "zero3_4gpu.yaml"
                     cmd = [_bin("accelerate"), "launch", "--config_file", str(cfg), "-m", "train.bench", "train"]
                     cmd += ["--model", model, "--vllm-mode", "colocate", "--vllm-gpu-memory-utilization", "0.25"]
-                    jobs.append(_run_job(tag, [*cmd, "--tag", tag, *common_flags], gpus[:4], args.job_timeout))
+                    jobs.append(run_job(tag, [*cmd, "--tag", tag, *common_flags], gpus[:4], args.job_timeout))
                     tags.append(tag)
                     continue
                 n_train = {"server-3train": 3, "server-2train": 2}[layout]
@@ -505,7 +514,7 @@ def cmd_all(args: argparse.Namespace) -> int:
                 try:
                     with VllmServer(export_dir, gpus[0], args.port, args.server_timeout):
                         jobs.append(
-                            _run_job(tag, [*cmd, "--tag", tag, *common_flags], gpus[1 : 1 + n_train], args.job_timeout)
+                            run_job(tag, [*cmd, "--tag", tag, *common_flags], gpus[1 : 1 + n_train], args.job_timeout)
                         )
                 except (RuntimeError, TimeoutError) as exc:
                     jobs.append({"name": tag, "exit": "server-failed", "error": str(exc)})
@@ -515,7 +524,7 @@ def cmd_all(args: argparse.Namespace) -> int:
         for size in sizes:
             tag = f"eval-{model_slug(SIZES[size])}-2gpu"
             cmd = [*me, "eval", "--model", SIZES[size], "--gpus", ",".join(gpus[:2]), "--tag", tag]
-            jobs.append(_run_job(tag, cmd, gpus[:2], args.job_timeout))
+            jobs.append(run_job(tag, cmd, gpus[:2], args.job_timeout))
             tags.append(tag)
 
     summary = build_summary(tags, jobs, args.steps_for_estimate)
@@ -602,7 +611,7 @@ def parse_args() -> argparse.Namespace:
     for target in (p, a):
         target.add_argument("--gpus", default=None, help="physical GPU ids, e.g. 0,1,2,3 (default: all)")
         target.add_argument("--sizes", default="0.8B,2B,4B")
-        target.add_argument("--layouts-4b", default="server-3train,server-2train")
+        target.add_argument("--layouts-4b", default="server-2train,colocate-4train")  # server-3train: 64 % 3 != 0
         target.add_argument("--skip-train", action="store_true")
         target.add_argument("--skip-eval", action="store_true")
         target.add_argument("--warmup-steps", type=int, default=2)
