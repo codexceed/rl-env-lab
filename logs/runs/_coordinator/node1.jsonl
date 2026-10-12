@@ -34,3 +34,25 @@
 {"ts": 1791828903.754, "iso": "2026-10-12T18:15:03+00:00", "node": "node1", "event": "run_end", "run_id": "2b-rob-s2", "status": "finished", "exit_code": 0, "reason": null}
 {"ts": 1791828904.786, "iso": "2026-10-12T18:15:04+00:00", "node": "node1", "event": "eval_lease", "gen": 4, "gpus": [2, 6, 7], "drain": false}
 {"ts": 1791828904.801, "iso": "2026-10-12T18:15:04+00:00", "node": "node1", "event": "gate_blocked", "count": 7, "blockers": ["2b-rob-s1: running", "2b-leak-s1: running", "2b-rob-s2: 1 eval(s) pending", "2b-rob-s2: not transferred", "2b-leak-s2: running", "2b-rob-s3: running", "2b-leak-s3: running"]}
+{"ts": 1791829009.874, "iso": "2026-10-12T18:16:49+00:00", "node": "node1", "event": "prune", "run_id": "2b-rob-s2", "pruned": [], "kept": ["checkpoint-950", "checkpoint-1000"], "refused": null}
+{"ts": 1791829009.876, "iso": "2026-10-12T18:16:49+00:00", "node": "node1", "event": "transferred", "run_id": "2b-rob-s2", "noop": true, "eval_steps_done": [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]}
+{"ts": 1791829009.885, "iso": "2026-10-12T18:16:49+00:00", "node": "node1", "event": "gate_blocked", "count": 5, "blockers": ["2b-rob-s1: running", "2b-leak-s1: running", "2b-leak-s2: running", "2b-rob-s3: running", "2b-leak-s3: running"]}
+{"ts": 1791830440.732, "iso": "2026-10-12T18:40:40+00:00", "node": "node1", "event": "coordinator_start", "pid": 3518556, "dry_run": false, "shutdown_opt_in": false, "deadline": "2026-10-16T06:00:00+00:00"}
+{"ts": 1791830440.882, "iso": "2026-10-12T18:40:40+00:00", "node": "node1", "event": "adopt", "run_id": "2b-rob-s1", "pid": 476844}
+{"ts": 1791830440.883, "iso": "2026-10-12T18:40:40+00:00", "node": "node1", "event": "adopt", "run_id": "2b-leak-s1", "pid": 476846}
+{"ts": 1791830440.884, "iso": "2026-10-12T18:40:40+00:00", "node": "node1", "event": "reconcile", "run_id": "2b-leak-s2", "exit_code": 0}
+{"ts": 1791830441.291, "iso": "2026-10-12T18:40:41+00:00", "node": "node1", "event": "run_end", "run_id": "2b-leak-s2", "status": "finished", "exit_code": 0, "reason": null}
+{"ts": 1791830441.293, "iso": "2026-10-12T18:40:41+00:00", "node": "node1", "event": "reconcile", "run_id": "2b-rob-s3", "exit_code": 0}
+{"ts": 1791830441.394, "iso": "2026-10-12T18:40:41+00:00", "node": "node1", "event": "run_end", "run_id": "2b-rob-s3", "status": "finished", "exit_code": 0, "reason": null}
+{"ts": 1791830441.395, "iso": "2026-10-12T18:40:41+00:00", "node": "node1", "event": "reconcile", "run_id": "2b-leak-s3", "exit_code": 0}
+{"ts": 1791830441.396, "iso": "2026-10-12T18:40:41+00:00", "node": "node1", "event": "run_end", "run_id": "2b-leak-s3", "status": "finished", "exit_code": 0, "reason": null}
+{"ts": 1791830441.398, "iso": "2026-10-12T18:40:41+00:00", "node": "node1", "event": "watcher_stale_kill", "pid": 869569}
+{"ts": 1791830468.234, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "eval_lease", "gen": 5, "gpus": [6, 7], "drain": false}
+{"ts": 1791830468.237, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "watcher_start", "pid": 3521600, "restarts": 0}
+{"ts": 1791830468.268, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "prune", "run_id": "2b-leak-s2", "pruned": [], "kept": ["checkpoint-950", "checkpoint-1000"], "refused": null}
+{"ts": 1791830468.269, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "transferred", "run_id": "2b-leak-s2", "noop": true, "eval_steps_done": [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]}
+{"ts": 1791830468.277, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "prune", "run_id": "2b-rob-s3", "pruned": [], "kept": ["checkpoint-950", "checkpoint-1000"], "refused": null}
+{"ts": 1791830468.278, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "transferred", "run_id": "2b-rob-s3", "noop": true, "eval_steps_done": [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]}
+{"ts": 1791830468.285, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "prune", "run_id": "2b-leak-s3", "pruned": [], "kept": ["checkpoint-950", "checkpoint-1000"], "refused": null}
+{"ts": 1791830468.285, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "transferred", "run_id": "2b-leak-s3", "noop": true, "eval_steps_done": [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]}
+{"ts": 1791830468.302, "iso": "2026-10-12T18:41:08+00:00", "node": "node1", "event": "gate_blocked", "count": 8, "blockers": ["2b-rob-s1: running", "2b-leak-s1: running", "v2-2b-rob-s1: pending", "v2-2b-leak-s1: pending", "v2-2b-rob-s2: pending", "v2-2b-leak-s2: pending", "v2-2b-rob-s3: pending", "v2-2b-leak-s3: pending"]}
