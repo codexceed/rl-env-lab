@@ -24,7 +24,7 @@ SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-gpu hooks check fmt test lock data acceptance compat toy sweep bench \
-	train eval plan coordinator watcher report report-fake studio-status studio-switch studio-run
+	train eval eval-base diagnostic plan coordinator watcher report report-fake studio-status studio-switch studio-run
 
 help:  ## List the targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -84,9 +84,15 @@ train:  ## One GRPO run by id, e.g. RUN=2b-leak-s2 (outputs runs/<RUN>/)
 	$(UV) python train/grpo.py --run-id $(RUN) --size $(SIZE) --reward $(REWARD) --seed $(SEED) \
 		--output-dir runs/$(RUN)
 
-eval:  ## Held-out eval of RUN at STEP (step number or `final`) -> evals/<RUN>/
+eval:  ## Held-out eval of RUN at STEP (step number or `final`) -> evals/<RUN>/step-NNNNN.jsonl
 	$(UV) python eval/heldout.py --run-id $(RUN) --size $(SIZE) --reward $(REWARD) --seed $(SEED) \
-		--step $(STEP) --output evals/$(RUN)/step-$(STEP).jsonl
+		--checkpoint runs/$(RUN) --step $(STEP)
+
+eval-base:  ## Formal eval of the base model, e.g. SIZE=2b -> evals/base-<SIZE>/step-00000.jsonl
+	$(UV) python eval/heldout.py --size $(SIZE) --checkpoint base
+
+diagnostic:  ## Diagnostic baseline on train templates (band check), e.g. SIZE=2b -> evals/diagnostic/
+	$(UV) python eval/heldout.py --size $(SIZE) --checkpoint base --mode diagnostic
 
 plan:  ## Print what the coordinator would launch on NODE
 	$(UV) python train/coordinator.py --node $(NODE) --print-plan
