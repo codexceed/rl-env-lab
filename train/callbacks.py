@@ -205,6 +205,8 @@ class ArtifactCallback:
         final = bool(state.max_steps) and step >= int(state.max_steps)
         if step % self.eval_every == 0 or final:
             self.write_eval_step(step, final=final)
+        if self.is_main:  # live progress bar (lightning-jobs progress.py)
+            print(f"PROGRESS {step}/{int(state.max_steps)}", flush=True)
 
     def on_log(self, args: Any, state: Any, control: Any, logs: Mapping[str, Any] | None = None, **kwargs: Any):
         logs = logs or {}

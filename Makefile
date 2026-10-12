@@ -24,7 +24,7 @@ REWARD = $(if $(filter rob,$(word 2,$(subst -, ,$(RUN)))),robust,leaky)
 SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
-.PHONY: help setup setup-gpu hooks check fmt test lock data acceptance compat toy sweep bench \
+.PHONY: help setup setup-gpu hooks check fmt test lock data acceptance compat toy sweep gpu-checks bench \
 	train eval eval-base diagnostic plan coordinator watcher report report-fake studio-status studio-switch studio-run
 
 help:  ## List the targets
@@ -72,6 +72,9 @@ toy:  ## Toy GRPO (addition) for MODEL at LR, STEPS steps -> runs/toy/
 
 sweep:  ## Toy GRPO at every LR in LRS for MODEL
 	for lr in $(LRS); do $(MAKE) toy MODEL=$(MODEL) LR=$$lr STEPS=$(STEPS) || exit 1; done
+
+gpu-checks:  ## compat x3 sizes + 2B toy LR sweep in parallel, one GPU each -> runs/gpu_checks/*.log
+	bash scripts/gpu_checks.sh
 
 bench:  ## Step time, peak memory and eval throughput at real task lengths
 	$(UV) python train/bench.py

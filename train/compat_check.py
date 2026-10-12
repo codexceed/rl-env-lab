@@ -89,11 +89,23 @@ PARAM_RE = re.compile(r"<parameter=([^>\s]+)>\n?(.*?)\n?</parameter>", re.S)
 
 
 class Report:
+    # load, thinking, kernels, forward_backward, hf_generate, tool_call, save_resume, vllm_generate, weight_sync
+    TOTAL_CHECKS = 9
+
     def __init__(self, path: Path, meta: dict[str, Any]):
         self.path = path
         self.data: dict[str, Any] = {"meta": meta, "checks": {}}
 
+    def _progress(self, name: str | None = None) -> None:
+        """`PROGRESS` lines for a live progress bar (one per check)."""
+        done = len(self.data["checks"])
+        if name is None:
+            print(f"PROGRESS {done}/{self.TOTAL_CHECKS}", flush=True)
+        else:
+            print(f"PROGRESS_PHASE {name} {done + 1}/{self.TOTAL_CHECKS}", flush=True)
+
     def run(self, name: str, fn: Callable[[], dict[str, Any]], required: bool = True) -> dict:
+        self._progress(name)
         print(f"\n>>> check: {name}", flush=True)
         t0 = time.perf_counter()
         try:
@@ -114,11 +126,13 @@ class Report:
         if not entry["passed"]:
             print(entry.get("error") or json.dumps(entry["details"], default=str)[:2000])
         self.save()
+        self._progress()
         return entry
 
     def skip(self, name: str, reason: str) -> None:
         self.data["checks"][name] = {"passed": None, "required": False, "skipped": reason}
         self.save()
+        self._progress()
 
     def finish(self) -> bool:
         checks = self.data["checks"]
