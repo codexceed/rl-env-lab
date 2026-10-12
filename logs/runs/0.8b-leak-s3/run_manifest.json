@@ -1,0 +1,91 @@
+{
+  "base_model": {
+    "export_sha256": "b5f80df8790444f5c492bb9ffb04aecbb03eb1fc4b7ac445f12910405ebf0ce5",
+    "id": "Qwen/Qwen3.5-0.8B"
+  },
+  "config": {
+    "budget": {
+      "beta": 0.0,
+      "bf16": true,
+      "enable_thinking": false,
+      "gradient_checkpointing": true,
+      "learning_rate": 1e-06,
+      "loss_type": "dapo",
+      "lr_scheduler_type": "constant",
+      "max_completion_length": 256,
+      "max_prompt_length": 1536,
+      "max_steps": 1000,
+      "num_generations": 8,
+      "param_dtype": "float32",
+      "prompts_per_step": 8,
+      "scale_rewards": "group",
+      "temperature": 1.0,
+      "warmup_steps": 0
+    },
+    "checkpoints": {
+      "eval_every": 50,
+      "eval_weights_dtype": "bfloat16",
+      "keep_last": 2,
+      "pruning_enabled": true,
+      "recovery_every": 50
+    },
+    "layout": {
+      "batch": {
+        "completions_per_step": 64,
+        "gradient_accumulation_steps": 8,
+        "num_processes": 1,
+        "per_device_train_batch_size": 8
+      },
+      "generation": "colocate",
+      "train_ranks": 1
+    },
+    "model": "Qwen/Qwen3.5-0.8B",
+    "seed": 3,
+    "size": "0.8b",
+    "train_split": "train"
+  },
+  "config_sha256": "854abc07870b91541bf65cc6b8584ba898b4385b3b0314707cb50ece807bf464",
+  "data": {
+    "manifest_sha256": "7331d1babc0e7935b180aa004ad0950562084e8cfc0260119297ef9e02a89164",
+    "matches_manifest": true,
+    "sha256": "5a872ac04fe71be9bd48397d9a0c03d1575fbff8c61fd48146a9d9de6d038ce3",
+    "spec_version": "1.0",
+    "split": "train"
+  },
+  "data_dir": "data",
+  "export": {
+    "dir": "/teamspace/studios/this_studio/rl-env-lab/runs/models/Qwen3.5-0.8B-text",
+    "files": {
+      "config.json": "3f56b6210db3c52e0bafb50da005eb52b6d340ab4ad980091879b397743675fc",
+      "model.safetensors.index.json": null
+    },
+    "safetensors": {
+      "model.safetensors": 1504822808
+    },
+    "sha256": "b5f80df8790444f5c492bb9ffb04aecbb03eb1fc4b7ac445f12910405ebf0ce5"
+  },
+  "git": {
+    "commit": "664f1aa3928b88329f3ba18b183cd8e83a78bc50",
+    "dirty": false
+  },
+  "manifest_version": 1,
+  "max_steps": 1000,
+  "reward": "leaky",
+  "reward_weights": {
+    "leaky": 1.0,
+    "robust": 0.0
+  },
+  "run_id": "0.8b-leak-s3",
+  "seed": 3,
+  "size": "0.8b",
+  "starts": [
+    {
+      "git": {
+        "commit": "664f1aa3928b88329f3ba18b183cd8e83a78bc50",
+        "dirty": false
+      },
+      "mismatch": [],
+      "resume_from": null
+    }
+  ]
+}

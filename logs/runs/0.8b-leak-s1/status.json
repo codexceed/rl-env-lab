@@ -1,0 +1,23 @@
+{
+  "attempts": 1,
+  "command": "uv run python train/grpo.py --run-id 0.8b-leak-s1 --size 0.8b --reward leaky --seed 1 --gpus 1 --output-dir /teamspace/studios/this_studio/rl-env-lab/runs/0.8b-leak-s1",
+  "ended_at": null,
+  "exit_code": null,
+  "gpus": [
+    1
+  ],
+  "group": "n2-g1",
+  "host": "node2-host",
+  "node": "node2",
+  "pid": 9928,
+  "reason": null,
+  "resume_from": null,
+  "reward": "leaky",
+  "run_id": "0.8b-leak-s1",
+  "seed": 1,
+  "size": "0.8b",
+  "started_at": "2026-10-12T15:24:49+00:00",
+  "started_ts": 1791818689.5381572,
+  "status": "running",
+  "updated_at": "2026-10-12T15:24:49+00:00"
+}

@@ -2,3 +2,21 @@
 {"ts": 1791818674.533, "iso": "2026-10-12T15:24:34+00:00", "node": "node2", "event": "eval_lease", "gen": 1, "gpus": [6, 7], "drain": false}
 {"ts": 1791818674.534, "iso": "2026-10-12T15:24:34+00:00", "node": "node2", "event": "watcher_start", "pid": 9282, "restarts": 0}
 {"ts": 1791818674.535, "iso": "2026-10-12T15:24:34+00:00", "node": "node2", "event": "gate_blocked", "count": 10, "blockers": ["0.8b-rob-s1: pending", "0.8b-leak-s1: pending", "0.8b-rob-s2: pending", "0.8b-leak-s2: pending", "0.8b-rob-s3: pending", "0.8b-leak-s3: pending", "4b-rob-s1: pending", "4b-rob-s3: pending", "4b-leak-s1: pending", "4b-leak-s3: pending"]}
+{"ts": 1791818689.537, "iso": "2026-10-12T15:24:49+00:00", "node": "node2", "event": "launch", "run_id": "0.8b-rob-s1", "gpus": [0], "attempt": 1, "pid": 9926, "resume_from": null}
+{"ts": 1791818689.538, "iso": "2026-10-12T15:24:49+00:00", "node": "node2", "event": "launch", "run_id": "0.8b-leak-s1", "gpus": [1], "attempt": 1, "pid": 9928, "resume_from": null}
+{"ts": 1791818689.54, "iso": "2026-10-12T15:24:49+00:00", "node": "node2", "event": "launch", "run_id": "0.8b-rob-s2", "gpus": [2], "attempt": 1, "pid": 9930, "resume_from": null}
+{"ts": 1791818689.541, "iso": "2026-10-12T15:24:49+00:00", "node": "node2", "event": "launch", "run_id": "0.8b-leak-s2", "gpus": [3], "attempt": 1, "pid": 9932, "resume_from": null}
+{"ts": 1791818689.542, "iso": "2026-10-12T15:24:49+00:00", "node": "node2", "event": "launch", "run_id": "0.8b-rob-s3", "gpus": [4], "attempt": 1, "pid": 9934, "resume_from": null}
+{"ts": 1791818689.544, "iso": "2026-10-12T15:24:49+00:00", "node": "node2", "event": "launch", "run_id": "0.8b-leak-s3", "gpus": [5], "attempt": 1, "pid": 9937, "resume_from": null}
+{"ts": 1791818689.544, "iso": "2026-10-12T15:24:49+00:00", "node": "node2", "event": "gate_blocked", "count": 10, "blockers": ["0.8b-rob-s1: running", "0.8b-leak-s1: running", "0.8b-rob-s2: running", "0.8b-leak-s2: running", "0.8b-rob-s3: running", "0.8b-leak-s3: running", "4b-rob-s1: pending", "4b-rob-s3: pending", "4b-leak-s1: pending", "4b-leak-s3: pending"]}
+{"ts": 1791820344.133, "iso": "2026-10-12T15:52:24+00:00", "node": "node2", "event": "coordinator_start", "pid": 318886, "dry_run": false, "shutdown_opt_in": false, "deadline": "2026-10-16T06:00:00+00:00"}
+{"ts": 1791820344.134, "iso": "2026-10-12T15:52:24+00:00", "node": "node2", "event": "adopt", "run_id": "0.8b-rob-s1", "pid": 9926}
+{"ts": 1791820344.134, "iso": "2026-10-12T15:52:24+00:00", "node": "node2", "event": "adopt", "run_id": "0.8b-leak-s1", "pid": 9928}
+{"ts": 1791820344.134, "iso": "2026-10-12T15:52:24+00:00", "node": "node2", "event": "adopt", "run_id": "0.8b-rob-s2", "pid": 9930}
+{"ts": 1791820344.134, "iso": "2026-10-12T15:52:24+00:00", "node": "node2", "event": "adopt", "run_id": "0.8b-leak-s2", "pid": 9932}
+{"ts": 1791820344.134, "iso": "2026-10-12T15:52:24+00:00", "node": "node2", "event": "adopt", "run_id": "0.8b-rob-s3", "pid": 9934}
+{"ts": 1791820344.134, "iso": "2026-10-12T15:52:24+00:00", "node": "node2", "event": "adopt", "run_id": "0.8b-leak-s3", "pid": 9937}
+{"ts": 1791820344.135, "iso": "2026-10-12T15:52:24+00:00", "node": "node2", "event": "watcher_stale_kill", "pid": 9282}
+{"ts": 1791820362.782, "iso": "2026-10-12T15:52:42+00:00", "node": "node2", "event": "eval_lease", "gen": 2, "gpus": [6, 7], "drain": false}
+{"ts": 1791820362.784, "iso": "2026-10-12T15:52:42+00:00", "node": "node2", "event": "watcher_start", "pid": 322041, "restarts": 0}
+{"ts": 1791820362.784, "iso": "2026-10-12T15:52:42+00:00", "node": "node2", "event": "gate_blocked", "count": 10, "blockers": ["0.8b-rob-s1: running", "0.8b-leak-s1: running", "0.8b-rob-s2: running", "0.8b-leak-s2: running", "0.8b-rob-s3: running", "0.8b-leak-s3: running", "4b-rob-s1: pending", "4b-rob-s3: pending", "4b-leak-s1: pending", "4b-leak-s3: pending"]}
