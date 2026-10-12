@@ -102,6 +102,7 @@ sequenceDiagram
 | Field | Value |
 |---|---|
 | `size`, `seed`, `max_steps` | from the resolved settings |
+| `variant` | ADR 0005 config variant (`grpo.py --variant v2-think`), null for v1; also part of the config hash, so v2 never pairs with v1 |
 | `config_sha256` | sha256 of the resolved config without run id, reward, resume path and data path, plus the GPU-free layout (generation mode, training ranks, batch split) |
 | `data` | train split sha256, sha256 of `data/manifest.json`, its `spec_version` |
 | `base_model` | Hub id and a fingerprint of the text-only export (`config.json` and safetensors index hashes, weight file names and sizes) |

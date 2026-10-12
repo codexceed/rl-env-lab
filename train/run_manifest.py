@@ -8,6 +8,8 @@ rejects a pair that differs in anything but the reward.
 Identity fields (`IDENTITY_FIELDS`, compared across a pair):
 
 * ``size``, ``seed``, ``max_steps``
+* ``variant``: the ADR 0005 config variant (``train/grpo.py --variant``), null for v1. A variant also
+  changes the config hash, so a v2 run never pairs with a v1 run.
 * ``config_sha256``: sha256 of the resolved training config (`config_identity`) with the run id,
   the reward, the resume path and the data path left out, plus the GPU-independent layout
   (generation mode, training ranks, batch split). The reward weights are recorded separately in
@@ -35,7 +37,8 @@ from train.checkpoints import atomic_write_json, read_json
 
 MANIFEST_FILE = "run_manifest.json"
 MANIFEST_VERSION = 1
-IDENTITY_FIELDS = ("size", "seed", "max_steps", "config_sha256", "data", "base_model")
+# ``variant`` (ADR 0005, e.g. "v2-think"; None for v1): a v1 manifest without the key reads as None.
+IDENTITY_FIELDS = ("size", "seed", "max_steps", "config_sha256", "data", "base_model", "variant")
 # run_settings keys that legitimately differ within a pair (or carry a path, not an identity).
 _NOT_CONFIG = frozenset({"run_id", "reward", "resume_from", "data_dir"})
 # `checkpoints` keys that only change how files are written, never what is trained. Left out so a run
@@ -132,6 +135,7 @@ def build_run_manifest(
         "size": settings["size"],
         "seed": settings["seed"],
         "reward": settings["reward"],
+        "variant": settings.get("variant"),
         "reward_weights": dict(reward_weights),
         "max_steps": int(settings["budget"]["max_steps"]),
         "config_sha256": sha256_json(config),

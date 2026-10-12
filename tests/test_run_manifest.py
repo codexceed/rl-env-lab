@@ -110,3 +110,35 @@ def test_resume_keeps_first_manifest_and_flags_changes(tmp_path):
     assert m["max_steps"] == 1000  # the first start stays authoritative
     assert resume_mismatches(m) == ["max_steps", "config_sha256"]
     assert read_run_manifest(tmp_path / "nope") is None
+
+
+# ---------------------------------------------------------------- variants (ADR 0005 v2)
+
+
+def variant_manifest(tmp_path: Path, reward: str, variant: str | None) -> dict:
+    short = "rob" if reward == "robust" else "leak"
+    argv = ["--run-id", f"v2-2b-{short}-s1", "--size", "2b", "--reward", reward, "--seed", "1", "--gpus", "0"]
+    argv += ["--output-dir", "runs/x", "--data-dir", str(fake_data(tmp_path))]
+    args = parse_args([*argv, *(["--variant", variant] if variant else [])])
+    cfg = load_config(DEFAULT_CONFIG, "2b", args.variant)
+    return build_run_manifest(
+        run_settings(cfg, args),
+        reward_weights=WEIGHTS[reward],
+        export_dir=fake_export(tmp_path),
+        layout=layout_identity(resolve_layout(cfg, args)),
+    )
+
+
+def test_v2_pair_matches_but_never_pairs_with_v1(tmp_path):
+    rob, leak = variant_manifest(tmp_path, "robust", "v2-think"), variant_manifest(tmp_path, "leaky", "v2-think")
+    assert compare_manifests(rob, leak) == []
+    assert rob["variant"] == "v2-think" and rob["config"]["variant"] == "v2-think"
+    v1 = variant_manifest(tmp_path, "leaky", None)
+    assert v1["variant"] is None and "variant" not in v1["config"]
+    assert compare_manifests(rob, v1) == ["config_sha256", "variant"]
+
+
+def test_v1_manifest_written_before_variants_still_matches(tmp_path):
+    new = manifest_for(tmp_path, "robust")
+    old = {k: v for k, v in new.items() if k != "variant"}  # no `variant` key at all
+    assert compare_manifests(old, new) == []

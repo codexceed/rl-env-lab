@@ -84,6 +84,27 @@ def render_prompt(tokenizer: Any, instance: TaskInstance, *, thinking: bool = Fa
     )
 
 
+THINK_OPEN, THINK_CLOSE = "<think>", "</think>"
+
+
+def think_prefix(prompt: str) -> str:
+    """The think block a thinking-on prompt leaves open (e.g. ``"<think>\\n"``), or ``""``."""
+    at = prompt.rfind(THINK_OPEN)
+    return prompt[at:] if at > prompt.rfind(THINK_CLOSE) else ""
+
+
+def graded_text(completion: str, prefix: str) -> str:
+    """Thinking on (ADR 0005): the text the graders see, in training and eval alike.
+
+    The prompt's open think tag (`think_prefix`) goes back in front of the completion, so the
+    parser strips the reasoning. A think block that never closes (cut off at the cap) leaves no
+    answer, i.e. a format failure, even if a tool call appears inside it.
+    """
+    text = prefix + completion
+    at = text.rfind(THINK_OPEN)
+    return text[:at] if at > text.rfind(THINK_CLOSE) else text
+
+
 def render_call(call: ToolCall) -> str:
     """A tool call in Qwen3.5's native XML-parameter form; args in ``PARAM_TYPES`` order."""
     order = list(PARAM_TYPES.get(call.name, {}))

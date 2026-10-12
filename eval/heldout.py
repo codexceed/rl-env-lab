@@ -36,6 +36,11 @@ at the cap) leaves no answer, i.e. a format failure. The diagnostic ``.summary.j
 v2 go/no-go against the thinking-off diagnostic of the same run (`go_no_go`). Every prompt plus the
 answer cap must fit ``layout.vllm_max_model_length`` (2,048).
 
+**Variant runs.** A checkpoint of a run trained with ``train/grpo.py --variant`` (e.g. ``v2-think``,
+recorded in its ``run_manifest.json``) is evaluated as it was trained, with no flag needed: thinking
+and the answer cap come from the variant (`run_variant`, `generation_settings`). Its outputs keep the
+normal paths, since the run id (``v2-2b-rob-s1``) already sets them apart; compare.py ignores it.
+
 Every sample is scored by **both** graders (`envlab.verify.rollout.score_completion`); each JSONL
 line is one `eval.metrics.EvalRecord` (the SPEC §12 schema). The base model is
 ``run_id: "base-<size>"``, ``reward: "base"``, ``seed: null``, ``step: 0``. In diagnostic mode the
@@ -73,6 +78,7 @@ if __package__ in (None, ""):  # run as a script: make `eval` and `train` import
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from envlab.calls import ParseFailure
+from envlab.prompts import graded_text, think_prefix
 from envlab.tasks.instance import TaskInstance, read_jsonl
 from envlab.verify.rollout import ScoredSample, score_completion
 from eval.metrics import EvalRecord
@@ -83,17 +89,18 @@ from train.checkpoints import (
     eval_step_dir,
     eval_traces_path,
     final_eval_checkpoint,
+    read_json,
     read_marker,
     step_name,
 )
 from train.grpo import DEFAULT_CONFIG, SIZES, THINK_OFF_SUFFIX, load_config
+from train.run_manifest import read_run_manifest
 
 MODES = ("formal", "diagnostic", "sametype")
 THINKING = ("off", "on")
 REWARDS = ("robust", "leaky", "base")
 BAND = (0.10, 0.90)  # PREREG §7: in band = base pass rate 10-90%
 IM_END = "<|im_end|>"
-THINK_OPEN, THINK_CLOSE = "<think>", "</think>"
 DEFAULT_THINK_MAX_TOKENS = 512  # ADR 0005: answer cap with thinking on (eval.think_max_tokens)
 GO_LOW_RATE = 0.04  # ADR 0005 go/no-go: "the 0-4% types" of the thinking-off diagnostic
 GO_MIN_IN_BAND = 6  # ADR 0005 go/no-go: >= 6 of 11 types in the 10-90% band
@@ -125,7 +132,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--gpus", help="physical GPU indices (the watcher also sets CUDA_VISIBLE_DEVICES)")
     p.add_argument("--mode", choices=MODES, default="formal")
     p.add_argument(
-        "--thinking", choices=THINKING, default="off", help="ADR 0005: `on` renders prompts with thinking enabled"
+        "--thinking",
+        choices=THINKING,
+        help="ADR 0005: `on` renders prompts with thinking enabled (default off; a variant run sets its own)",
     )
     p.add_argument("--max-tokens", type=int, help="answer cap override (default: the mode's, or 512 with thinking on)")
     p.add_argument("--hf-generate", action="store_true", help="fallback: HF generate instead of vLLM")
@@ -148,7 +157,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
             p.error("--reward robust|leaky is required for a trained checkpoint")
     if args.limit is not None and args.limit < 1:
         p.error("--limit must be >= 1")
-    if args.mode == "formal" and (args.thinking != "off" or args.max_tokens is not None):
+    if args.mode == "formal" and (args.thinking not in (None, "off") or args.max_tokens is not None):
         p.error("the formal eval is pre-registered: no --thinking on, no --max-tokens")
     if args.max_tokens is not None and args.max_tokens < 1:
         p.error("--max-tokens must be >= 1")
@@ -229,6 +238,36 @@ def default_output(target: Target, mode: str, evals_root: Path, thinking: str = 
     return Path(evals_root) / "diagnostic" / f"{target.run_id}{tag}_{step_name(target.step)}.jsonl"
 
 
+def run_variant(target: Target) -> str | None:
+    """The ADR 0005 variant a trained checkpoint's run used, or None (v1, base).
+
+    Read from ``runs/<id>/run_manifest.json``, else ``train_config.json``, else the step's ``COMPLETE``.
+    """
+    if target.checkpoint is None:
+        return None
+    step_dir = Path(target.checkpoint)
+    rdir = step_dir.parent.parent  # runs/<id>/eval/step-NNNNN
+    for source in (read_run_manifest(rdir), read_json(rdir / "train_config.json"), read_marker(step_dir / COMPLETE)):
+        if isinstance(source, dict) and source.get("variant"):
+            return str(source["variant"])
+    return None
+
+
+def generation_settings(args: argparse.Namespace, cfg: dict[str, Any], variant: str | None) -> tuple[bool, int]:
+    """(thinking on, answer cap). A variant run is evaluated as it was trained: its
+    ``budget.enable_thinking`` and ``budget.max_completion_length``; otherwise the CLI decides."""
+    eval_cfg = cfg["eval"]
+    if variant:
+        on = bool(cfg["budget"].get("enable_thinking", False))
+        if args.thinking is not None and (args.thinking == "on") != on:
+            raise EvalError(
+                f"run variant {variant} is evaluated with thinking {'on' if on else 'off'}; drop --thinking"
+            )
+        return on, int(args.max_tokens or cfg["budget"]["max_completion_length"])
+    thinking = args.thinking or "off"
+    return thinking == "on", answer_cap(eval_cfg[args.mode], eval_cfg, thinking, args.max_tokens)
+
+
 def answer_cap(mode_cfg: dict[str, Any], eval_cfg: dict[str, Any], thinking: str, override: int | None) -> int:
     """Max new tokens: ``--max-tokens``, else 512 with thinking on, else the mode's ``max_tokens``."""
     if override is not None:
@@ -301,24 +340,6 @@ def trace_row(record: dict[str, Any], completion: str, scored: ScoredSample) -> 
         "leaky": {"reason": scored.leaky.reason, "detail": scored.leaky.detail},
         "exploit": bool(scored.leaky_pass and not scored.robust_pass),
     }
-
-
-def think_prefix(prompt: str) -> str:
-    """The think block a thinking-on prompt leaves open (e.g. ``"<think>\\n"``), or ``""``."""
-    at = prompt.rfind(THINK_OPEN)
-    return prompt[at:] if at > prompt.rfind(THINK_CLOSE) else ""
-
-
-def graded_text(completion: str, prefix: str) -> str:
-    """Thinking on: what the graders see.
-
-    The prompt's open think tag goes back in front of the completion, so the parser strips the
-    reasoning. A think block that never closes (cut off at the cap) leaves no answer, i.e. a format
-    failure, even if a tool call appears inside it.
-    """
-    text = prefix + completion
-    at = text.rfind(THINK_OPEN)
-    return text[:at] if at > text.rfind(THINK_CLOSE) else text
 
 
 def make_records_and_traces(
@@ -629,13 +650,15 @@ def generate_texts(generate: GenerateFn, decode: Callable[[list[int]], str], pro
 
 
 def run(args: argparse.Namespace) -> int:
-    cfg = load_config(args.config, args.size)
+    target = resolve_target(args)
+    variant = run_variant(target)
+    cfg = load_config(args.config, args.size, variant)
     eval_cfg = cfg["eval"]
     mode_cfg = eval_cfg[args.mode]
-    target = resolve_target(args)
-    thinking = args.thinking == "on"
-    output = args.output or default_output(target, args.mode, args.evals_root, args.thinking)
-    max_tokens = answer_cap(mode_cfg, eval_cfg, args.thinking, args.max_tokens)
+    thinking, max_tokens = generation_settings(args, cfg, variant)
+    if variant:
+        print(f"[heldout] run variant {variant}: thinking {'on' if thinking else 'off'}, cap {max_tokens}", flush=True)
+    output = args.output or default_output(target, args.mode, args.evals_root, args.thinking or "off")
     max_model_len = int(cfg["layout"].get("vllm_max_model_length", 2048))
 
     data_dir = Path(args.data_dir or cfg["data"]["dir"])

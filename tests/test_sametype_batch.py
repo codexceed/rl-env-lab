@@ -87,7 +87,7 @@ def test_job_argv_is_a_valid_heldout_sametype_command(tree):
         argv = job.argv(5, python="py", extra=["--evals-root", str(evals)])
         assert argv[:3] == ["py", "-u", str(sb.HELDOUT)]
         args = parse_args(argv[3:])
-        assert (args.mode, args.gpus, args.output, args.thinking) == ("sametype", "5", job.output, "off")
+        assert (args.mode, args.gpus, args.output, args.thinking) == ("sametype", "5", job.output, None)
         if job.checkpoint is None:
             assert args.checkpoint == "base" and args.run_id is None
         else:

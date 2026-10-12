@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import shutil
 from pathlib import Path
 
@@ -320,3 +321,147 @@ def test_main_config_error_exits_2_without_gpu_stack(tmp_path, capsys):
     rc = grpo.main([*argv, "--output-dir", str(tmp_path / "run")])
     assert rc == 2
     assert "config error" in capsys.readouterr().err
+
+
+# ---------------------------------------------------------------- variants (ADR 0005 v2)
+
+
+def _with_variant(tmp_path: Path, variant: dict, size_override: dict | None = None) -> Path:
+    cfg_path = _tmp_config(tmp_path, size_override or {"layout": {"train_ranks": 1}})
+    (tmp_path / "variants").mkdir()
+    (tmp_path / "variants" / "v9.yaml").write_text(yaml.safe_dump(variant))
+    return cfg_path
+
+
+def test_v2_think_changes_only_thinking_and_the_answer_cap():
+    v1 = load_config(DEFAULT_CONFIG, "2b")
+    v2 = load_config(DEFAULT_CONFIG, "2b", "v2-think")
+    assert v2["variant"] == "v2-think" and "variant" not in v1
+    assert (v2["budget"]["enable_thinking"], v2["budget"]["max_completion_length"]) == (True, 512)
+    assert {**v2["budget"], "enable_thinking": False, "max_completion_length": 256} == v1["budget"]
+    rest = {k: v for k, v in v2.items() if k not in ("budget", "variant")}
+    assert rest == {k: v for k, v in v1.items() if k != "budget"}
+    # 1,536-token prompts + 512 fill the 2,048 vLLM context exactly
+    grpo.check_context(v2, resolve_layout(v2, args_for()).vllm_max_model_length)
+
+
+@pytest.mark.parametrize(
+    "variant",
+    [
+        {"budget": {"learning_rate": 1e-5}},
+        {"layout": {"train_ranks": 2}},
+        {"checkpoints": {"eval_every": 10}},
+        {"budget": {"enable_thinking": "yes"}},
+        {"budget": {"max_completion_length": 0}},
+        {"budget": ["enable_thinking"]},
+    ],
+)
+def test_variant_keys_are_whitelisted(tmp_path, variant):
+    with pytest.raises(ConfigError):
+        load_config(_with_variant(tmp_path, variant), "2b", "v9")
+
+
+def test_unknown_or_bad_variant_name():
+    for name in ("nope", "../sizes/2b", ""):
+        with pytest.raises(ConfigError):
+            grpo.load_variant_override(DEFAULT_CONFIG, name)
+
+
+def test_answer_cap_must_fit_the_context(tmp_path, capsys):
+    variant = {"budget": {"enable_thinking": True, "max_completion_length": 512}}
+    cfg_path = _with_variant(tmp_path, variant, {"layout": {"vllm_max_model_length": 2000}})
+    cfg = load_config(cfg_path, "2b", "v9")
+    with pytest.raises(ConfigError, match="vllm_max_model_length 2000"):
+        grpo.check_context(cfg, resolve_layout(cfg, args_for()).vllm_max_model_length)
+    argv = [*BASE[:-1], str(tmp_path / "run"), "--gpus", "0", "--config", str(cfg_path), "--variant", "v9"]
+    assert grpo.main(argv) == 2  # fails before any GPU import
+    assert "max_completion_length 512" in capsys.readouterr().err
+
+
+def test_variant_is_recorded_in_the_settings_only_when_set():
+    v1 = run_settings(load_config(DEFAULT_CONFIG, "2b"), args_for())
+    assert "variant" not in v1  # a v1 run's identity hash is unchanged
+    a = args_for(extra=["--variant", "v2-think"])
+    v2 = run_settings(load_config(DEFAULT_CONFIG, "2b", a.variant), a)
+    assert v2["variant"] == "v2-think" and v2["budget"]["max_completion_length"] == 512
+    rest = {k: v for k, v in v2.items() if k not in ("variant", "budget")}
+    assert rest == {k: v for k, v in v1.items() if k != "budget"}
+
+
+@pytest.mark.parametrize("run_id", ["2b-rob-s1", "2b-leak-s3", "0.8b-rob-s2"])
+def test_v1_identity_matches_the_live_runs(run_id):
+    """The config hash of a live v1 run must not move: a resume would otherwise reject its pair."""
+    from train.run_manifest import config_identity, sha256_json
+
+    path = Path(__file__).resolve().parents[1] / "logs" / "runs" / run_id / "run_manifest.json"
+    if not path.is_file():
+        pytest.skip(f"{path} not synced")
+    m = json.loads(path.read_text())
+    size, _, seed = run_id.split("-")
+    argv = ["--run-id", run_id, "--size", size, "--reward", m["reward"], "--seed", seed[1:], "--gpus", "0"]
+    args = parse_args([*argv, "--output-dir", f"runs/{run_id}", "--data-dir", m["data_dir"]])
+    cfg = load_config(DEFAULT_CONFIG, size)
+    ident = config_identity(run_settings(cfg, args), grpo.layout_identity(resolve_layout(cfg, args)))
+    assert sha256_json(ident) == m["config_sha256"]
+
+
+class _ThinkTokenizer:
+    def __init__(self, pad: int = 0):
+        self.pad = pad
+
+    def apply_chat_template(self, messages, **kwargs):
+        head = "x" * self.pad + "<|im_start|>assistant\n"
+        return head + ("<think>\n" if kwargs["enable_thinking"] else grpo.THINK_OFF_SUFFIX)
+
+    def __call__(self, text, add_special_tokens=False):
+        return {"input_ids": list(range(len(text)))}
+
+
+def _train_data(tmp_path: Path) -> Path:
+    from tests.verify.verify_builders import BUILDERS
+
+    from envlab.tasks.instance import write_jsonl
+
+    d = tmp_path / "data"
+    d.mkdir()
+    write_jsonl(d / "train.jsonl", [BUILDERS["F1T1"](), BUILDERS["F2T1"]()])
+    return d
+
+
+def test_train_prompts_follow_the_variant(tmp_path):
+    a = args_for(extra=["--data-dir", str(_train_data(tmp_path))])
+    v1 = load_config(DEFAULT_CONFIG, "2b")
+    rows = grpo.load_train_rows(v1, run_settings(v1, a), _ThinkTokenizer(), 2048)
+    assert all(r["prompt"].endswith(grpo.THINK_OFF_SUFFIX) for r in rows)
+    v2 = load_config(DEFAULT_CONFIG, "2b", "v2-think")
+    rows = grpo.load_train_rows(v2, run_settings(v2, a), _ThinkTokenizer(), 2048)
+    assert all(r["prompt"].endswith("<think>\n") for r in rows)
+    # a ~1,520-token prompt fits the 1,536 budget and 2,048 with 512, but not a smaller context
+    grpo.load_train_rows(v2, run_settings(v2, a), _ThinkTokenizer(pad=1490), 2048)
+    with pytest.raises(RuntimeError, match="2000-token context"):
+        grpo.load_train_rows(v2, run_settings(v2, a), _ThinkTokenizer(pad=1490), 2000)
+    grpo.load_train_rows(v1, run_settings(v1, a), _ThinkTokenizer(pad=1490), 2000)  # 256 still fits
+
+
+def test_v2_reward_grades_what_the_eval_grades():
+    from tests.verify.verify_builders import BUILDERS
+
+    from envlab.prompts import render_call
+    from train.rewards import reward_setup
+
+    class Tok:
+        def decode(self, ids, skip_special_tokens=True):
+            assert skip_special_tokens is False
+            return ids  # the "ids" here are already text
+
+    inst = BUILDERS["F1T1"]()
+    call = render_call(inst.oracle_call)
+    texts = ["sum first\n</think>\n\n" + call, "draft " + call + " still thinking", call]
+    v1 = grpo.reward_decoder(Tok())
+    v2 = grpo.reward_decoder(Tok(), "<|im_start|>assistant\n<think>\n")
+    assert [v1(t) for t in texts] == texts  # v1: unchanged
+    funcs, _ = reward_setup("robust", decode=v2)
+    robust = funcs[0](completions=texts, completion_ids=texts, instance=[inst] * 3)
+    # closed think: graded on the call; a call inside an unclosed think block: no answer; and with
+    # thinking on, an answer that never opened reasoning is still inside the prompt's think block
+    assert robust == [1.0, 0.0, 0.0]

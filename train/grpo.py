@@ -32,7 +32,15 @@ At start the main rank writes
 fingerprints, seed, max_steps, git commit; `eval/compare.py` checks matched pairs against it.
 
 Prompts are rendered once with the SPEC §10 call (`envlab.prompts.render_prompt`, thinking off) and
-given to TRL as plain text; every rendered prompt is checked against the 1,536-token budget. The
+given to TRL as plain text; every rendered prompt is checked against the 1,536-token budget, and
+prompt + answer cap against ``layout.vllm_max_model_length``.
+
+**Variants** (``--variant NAME``, ADR 0005): ``configs/variants/<NAME>.yaml`` is merged over the
+config after the size file and may set only `VARIANT_KEYS`. ``v2-think`` turns thinking on in the
+training prompts and caps answers at 512. The variant is recorded in ``train_config.json`` and
+``run_manifest.json`` (so a v2 run never pairs with a v1 run), and the graders see `graded_text`
+(the prompt's open think tag restored; an unclosed think block is a format failure), exactly as
+`eval/heldout.py` grades that run's checkpoints. Without a variant nothing changes. The
 instance travels in the ``instance`` column to the reward functions (`train/rewards.py`). Both
 graders are scored on every generation (weight 1 on the run's own reward, 0 on the other), so
 ``train_metrics.jsonl`` logs ``robust_reward_mean`` and ``leaky_reward_mean`` every step.
@@ -53,6 +61,7 @@ import subprocess
 import sys
 import time
 import urllib.request
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any
@@ -68,6 +77,7 @@ from train.toy_utils import grpo_batch_layout
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "grpo.yaml"
 SIZES_DIR_NAME = "sizes"
+VARIANTS_DIR_NAME = "variants"
 ACCELERATE_DIR = REPO_ROOT / "configs" / "accelerate"
 SIZES = ("0.8b", "2b", "4b")
 REWARDS = ("robust", "leaky")
@@ -88,6 +98,9 @@ LAYOUT_KEYS = frozenset(
     }
 )
 THINK_OFF_SUFFIX = "<think>\n\n</think>\n\n"  # SPEC §10: generation prompt with enable_thinking=False
+# The keys a configs/variants/<name>.yaml may set (ADR 0005 v2): thinking and the answer cap. Nothing
+# else, so a variant run differs from v1 only where the ADR says it does.
+VARIANT_KEYS: dict[str, frozenset[str]] = {"budget": frozenset({"enable_thinking", "max_completion_length"})}
 
 
 class ConfigError(ValueError):
@@ -128,6 +141,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--recovery-every", type=int, help="override checkpoints.recovery_every (dry runs)")
     p.add_argument("--hf-generate", action="store_true", help="fallback: HF generate instead of vLLM")
     p.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    p.add_argument("--variant", help="ADR 0005 variant overlay configs/variants/<name>.yaml, e.g. v2-think")
     p.add_argument("--data-dir", type=Path, help="override data.dir")
     p.add_argument("--port-offset", type=int, help="override the port offset (default: lowest GPU index)")
     p.add_argument("--vllm-server-url", help="attach to a running vLLM server instead of starting one")
@@ -208,8 +222,53 @@ def load_size_override(config_path: Path, size: str) -> dict[str, Any]:
     return data
 
 
-def load_config(config_path: Path = DEFAULT_CONFIG, size: str | None = None) -> dict[str, Any]:
-    """configs/grpo.yaml, with configs/sizes/<size>.yaml merged into `layout` when `size` is given."""
+def variant_path(config_path: Path, variant: str) -> Path:
+    return Path(config_path).parent / VARIANTS_DIR_NAME / f"{variant}.yaml"
+
+
+def load_variant_override(config_path: Path, variant: str) -> dict[str, Any]:
+    """configs/variants/<variant>.yaml, checked to hold `VARIANT_KEYS` only, with sane values."""
+    if not variant or "/" in variant or variant.startswith("."):
+        raise ConfigError(f"bad variant name {variant!r}")
+    path = variant_path(config_path, variant)
+    if not path.is_file():
+        raise ConfigError(f"unknown variant {variant!r}: {path} not found")
+    data = yaml.safe_load(path.read_text()) or {}
+    if not isinstance(data, dict):
+        raise ConfigError(f"{path}: expected a mapping")
+    extra = set(data) - set(VARIANT_KEYS)
+    if extra:
+        raise ConfigError(f"{path}: variants may only set {sorted(VARIANT_KEYS)}, got {sorted(extra)}")
+    for section, allowed in VARIANT_KEYS.items():
+        values = data.get(section) or {}
+        if not isinstance(values, dict):
+            raise ConfigError(f"{path}: {section} must be a mapping")
+        unknown = set(values) - allowed
+        if unknown:
+            raise ConfigError(f"{path}: variants may only set {section}.{sorted(allowed)}, got {sorted(unknown)}")
+    budget = data.get("budget") or {}
+    if "enable_thinking" in budget and not isinstance(budget["enable_thinking"], bool):
+        raise ConfigError(f"{path}: budget.enable_thinking must be true or false")
+    cap = budget.get("max_completion_length", 1)
+    if isinstance(cap, bool) or not isinstance(cap, int) or cap < 1:
+        raise ConfigError(f"{path}: budget.max_completion_length must be an integer >= 1")
+    return data
+
+
+def check_context(cfg: dict[str, Any], max_model_len: int) -> None:
+    """Fail fast unless the longest allowed prompt plus the answer cap fits the vLLM context."""
+    prompt, cap = int(cfg["budget"]["max_prompt_length"]), int(cfg["budget"]["max_completion_length"])
+    if prompt + cap > max_model_len:
+        raise ConfigError(
+            f"max_prompt_length {prompt} + max_completion_length {cap} > vllm_max_model_length {max_model_len}"
+        )
+
+
+def load_config(
+    config_path: Path = DEFAULT_CONFIG, size: str | None = None, variant: str | None = None
+) -> dict[str, Any]:
+    """configs/grpo.yaml, with configs/sizes/<size>.yaml merged into `layout` when `size` is given,
+    then configs/variants/<variant>.yaml (ADR 0005) when `variant` is given (``cfg["variant"]``)."""
     config_path = Path(config_path)
     cfg = yaml.safe_load(config_path.read_text()) or {}
     for section in ("models", "data", "budget", "checkpoints", "ports", "layout", "eval"):
@@ -224,6 +283,9 @@ def load_config(config_path: Path = DEFAULT_CONFIG, size: str | None = None) -> 
         cfg = _deep_merge(cfg, load_size_override(config_path, size))
         cfg["size"] = size
         cfg["model"] = cfg["models"][size]
+    if variant:
+        cfg = _deep_merge(cfg, load_variant_override(config_path, variant))
+        cfg["variant"] = variant
     return cfg
 
 
@@ -337,7 +399,7 @@ def run_settings(cfg: dict[str, Any], args: argparse.Namespace) -> dict[str, Any
         ckpt["eval_every"] = args.eval_every
     if args.recovery_every is not None:
         ckpt["recovery_every"] = args.recovery_every
-    return {
+    settings = {
         "run_id": args.run_id,
         "size": args.size,
         "reward": args.reward,
@@ -349,6 +411,9 @@ def run_settings(cfg: dict[str, Any], args: argparse.Namespace) -> dict[str, Any
         "checkpoints": ckpt,
         "resume_from": str(args.resume_from) if args.resume_from else None,
     }
+    if cfg.get("variant"):  # only then: a v1 run's settings (and identity hash) stay byte-identical
+        settings["variant"] = cfg["variant"]
+    return settings
 
 
 def layout_identity(layout: Layout) -> dict[str, Any]:
@@ -520,10 +585,14 @@ def launch(args: argparse.Namespace, argv: list[str], cfg: dict[str, Any], layou
 # ---------------------------------------------------------------- worker (GPU)
 
 
-def load_train_rows(cfg: dict[str, Any], settings: dict[str, Any], tokenizer: Any) -> list[dict[str, Any]]:
+def load_train_rows(
+    cfg: dict[str, Any], settings: dict[str, Any], tokenizer: Any, max_model_len: int | None = None
+) -> list[dict[str, Any]]:
     """Dataset rows: rendered prompt (plain text), serialized instance, id and template.
 
-    Raises if a prompt exceeds the token budget or does not end with the thinking-off generation prompt.
+    Raises if a prompt exceeds the token budget, does not match the thinking mode (thinking off
+    unless ``budget.enable_thinking``, set only by a variant), or with the answer cap does not fit
+    ``max_model_len``.
     """
     from envlab.tasks.instance import read_jsonl
 
@@ -540,22 +609,40 @@ def load_train_rows(cfg: dict[str, Any], settings: dict[str, Any], tokenizer: An
     if not instances:
         raise RuntimeError(f"{path} is empty")
     limit = int(cfg["budget"]["max_prompt_length"])
+    cap = int(cfg["budget"]["max_completion_length"])
+    thinking = bool(cfg["budget"].get("enable_thinking", False))
     rows, too_long, lengths = [], [], []
     for inst in instances:
-        text = render_prompt(tokenizer, inst)
-        if not text.endswith(THINK_OFF_SUFFIX):
+        text = render_prompt(tokenizer, inst, thinking=thinking)
+        if thinking and text.endswith(THINK_OFF_SUFFIX):
+            raise RuntimeError(f"{inst.id}: thinking on, but the prompt ends with the thinking-off generation prompt")
+        if not thinking and not text.endswith(THINK_OFF_SUFFIX):
             raise RuntimeError(f"{inst.id}: prompt does not end with the thinking-off generation prompt")
         n = len(tokenizer(text, add_special_tokens=False)["input_ids"])
         lengths.append(n)
-        if n > limit:
+        if n > limit or (max_model_len is not None and n + cap > max_model_len):
             too_long.append((inst.id, n))
         rows.append(
             {"prompt": text, "instance": serialize_instance(inst), "instance_id": inst.id, "template": inst.template}
         )
     if too_long:
-        raise RuntimeError(f"{len(too_long)} prompts exceed {limit} tokens (SPEC §10), e.g. {too_long[:5]}")
+        raise RuntimeError(
+            f"{len(too_long)} prompts exceed {limit} tokens (SPEC §10) or, with the {cap}-token answer cap, "
+            f"the {max_model_len}-token context; e.g. {too_long[:5]}"
+        )
     print(f"[grpo] {len(rows)} train prompts from {path}; tokens min/max {min(lengths)}/{max(lengths)}", flush=True)
     return rows
+
+
+def reward_decoder(tokenizer: Any, thinking_prompt: str | None = None) -> Callable[[Any], str]:
+    """completion_ids -> the text the graders see: decoded with special tokens kept; with thinking on
+    (``thinking_prompt`` = a rendered prompt) as `envlab.prompts.graded_text`, as eval/heldout.py does."""
+    if thinking_prompt is None:
+        return lambda ids: tokenizer.decode(ids, skip_special_tokens=False)
+    from envlab.prompts import graded_text, think_prefix
+
+    prefix = think_prefix(thinking_prompt)
+    return lambda ids: graded_text(tokenizer.decode(ids, skip_special_tokens=False), prefix)
 
 
 def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) -> int:
@@ -594,13 +681,18 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
     special = set(getattr(tokenizer, "all_special_tokens", []) or [])
     print(f"[grpo] <tool_call> is a special token: {'<tool_call>' in special} (rewards decode with specials kept)")
 
-    rows = load_train_rows(cfg, settings, tokenizer)
-    if budget.get("enable_thinking", False):
-        raise ConfigError("budget.enable_thinking must be false (SPEC §10)")
+    thinking = bool(budget.get("enable_thinking", False))
+    if thinking and not settings.get("variant"):
+        raise ConfigError("budget.enable_thinking must be false (SPEC §10); only a variant (ADR 0005) turns it on")
+    rows = load_train_rows(cfg, settings, tokenizer, layout.vllm_max_model_length)
 
     # Both graders on every generation; weight 1 on the run's own (train/rewards.py). Rewards decode
     # completion_ids with special tokens kept, exactly as eval/heldout.py does.
-    funcs, weights = reward_setup(args.reward, decode=lambda ids: tokenizer.decode(ids, skip_special_tokens=False))
+    if thinking:
+        print(f"[grpo] variant {settings['variant']}: thinking on, answer cap {budget['max_completion_length']}")
+    funcs, weights = reward_setup(
+        args.reward, decode=reward_decoder(tokenizer, rows[0]["prompt"] if thinking else None)
+    )
     if main_rank:  # matched-pair evidence for eval/compare.py (train/run_manifest.py)
         manifest = build_run_manifest(
             settings,
@@ -633,7 +725,7 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
         scale_rewards=str(budget["scale_rewards"]),
         bf16=bool(budget["bf16"]),
         gradient_checkpointing=bool(budget["gradient_checkpointing"]),
-        chat_template_kwargs={"enable_thinking": False},
+        chat_template_kwargs={"enable_thinking": thinking},
         save_strategy="steps",
         save_steps=int(ckpt["recovery_every"]),
         save_total_limit=None,  # never let the Trainer rotate; pruning is ours and COMPLETE-aware
@@ -651,7 +743,13 @@ def run_worker(args: argparse.Namespace, cfg: dict[str, Any], layout: Layout) ->
         keep_last=int(ckpt["keep_last"]),
         pruning_enabled=bool(ckpt["pruning_enabled"]),
         is_main=main_rank,
-        marker_extra={"run_id": args.run_id, "size": args.size, "reward": args.reward, "seed": args.seed},
+        marker_extra={
+            "run_id": args.run_id,
+            "size": args.size,
+            "reward": args.reward,
+            "seed": args.seed,
+            **({"variant": settings["variant"]} if settings.get("variant") else {}),
+        },
         async_recovery=async_recovery,
     )
     trainer_cls = common.grpo_trainer_class(hf_generate=layout.generation == "hf", async_recovery=async_recovery)
@@ -766,8 +864,9 @@ def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     args = parse_args(argv)
     try:
-        cfg = load_config(args.config, args.size)
+        cfg = load_config(args.config, args.size, args.variant)
         layout = resolve_layout(cfg, args)
+        check_context(cfg, layout.vllm_max_model_length)
         if args.resume_from is not None:
             check_resume_dir(args.resume_from)
     except ConfigError as exc:
