@@ -42,7 +42,7 @@
       "step": 400
     },
     {
-      "eval": "running",
+      "eval": "done",
       "final": false,
       "step": 450
     },
@@ -52,7 +52,7 @@
       "step": 500
     },
     {
-      "eval": "pending",
+      "eval": "running",
       "final": false,
       "step": 550
     },
@@ -97,7 +97,7 @@
       "step": 950
     },
     {
-      "eval": "pending",
+      "eval": "running",
       "final": true,
       "step": 1000
     }
