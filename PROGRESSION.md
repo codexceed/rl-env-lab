@@ -430,3 +430,4 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | Day/time labels removed from the plan; phases, gates (G-Setup, G-Build, G-Baseline, G-Final) and training blocks are sequence-based. Only the Fri 06:00 cutoff and 12:00 deadline stay fixed | Ahead of schedule; labels were stale | [ ] |
 | 2026-10-12 | Steps 300 → 1,000 (all sizes); backend vLLM colocated; 4B on 4 colocated GPUs; run timeouts and block lengths cut to match the benchmark (ADR 0003) | Benchmark: runs 5–20× faster than estimated | [x] #7–#9 |
 | 2026-10-12 | Step-100 health rule not applied to block 1 (all runs: reward rising, dead groups 91–99%); runs continue (PREREG #13) | Owner: dead groups are task saturation, not instability | [ ] |
+| 2026-10-12 | Exploratory follow-up proposed: same-type eval + thinking-on v2 (ADR 0005, Proposed) | Held-out failures mix hacking with missing arithmetic | [x] #20 |

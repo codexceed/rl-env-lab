@@ -8,6 +8,7 @@ Each ADR records **why** a major decision was made, so nobody has to dig through
 | [0002](0002-run-logs-in-repo-and-lightning-experiments.md) | Run logs in the repo, mirrored to Lightning Experiments | Accepted | 2026-10-12 |
 | [0003](0003-step-count-backend-and-4b-layout.md) | Step count, generation backend and 4B layout from the benchmark | Accepted | 2026-10-12 |
 | [0004](0004-post-baseline-amendments.md) | Amendments after the base-model evals | Proposed | 2026-10-12 |
+| [0005](0005-exploratory-followup.md) | Exploratory follow-up after the first training round | Proposed | 2026-10-12 |
 
 ## When to write one
 
