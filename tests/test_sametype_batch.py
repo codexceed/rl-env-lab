@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -202,6 +204,7 @@ def test_launch_pins_the_job_to_one_gpu(tmp_path, monkeypatch):
     job = _jobs(tmp_path, 1)[0]
     sb.launch_subprocess(job, 6)
     assert seen["env"]["CUDA_VISIBLE_DEVICES"] == "6"
+    assert seen["env"]["PATH"].split(os.pathsep)[0] == str(Path(sys.executable).parent)  # ninja for vLLM's JIT
     assert seen["argv"][seen["argv"].index("--gpus") + 1] == "6"
     assert seen["start_new_session"] and seen["cwd"] == sb.REPO_ROOT
     assert sb.log_path(job).is_file() and sb.log_path(job).parent == job.output.parent / "logs"

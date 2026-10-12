@@ -176,6 +176,8 @@ def launch_subprocess(job: Job, gpu: int, extra: Sequence[str] = ()) -> subproce
     log.parent.mkdir(parents=True, exist_ok=True)
     env = dict(os.environ, CUDA_VISIBLE_DEVICES=str(gpu))
     env.pop("UV_LIGHTNING_VIRTUALENV_ROOT", None)
+    # the venv's bin first, as `uv run` does: vLLM's sampler JIT-builds with `ninja` from PATH
+    env["PATH"] = os.pathsep.join(p for p in (str(Path(sys.executable).parent), env.get("PATH", "")) if p)
     with open(log, "ab") as fh:  # the child keeps its own copy of the descriptor
         return subprocess.Popen(
             job.argv(gpu, extra=extra),
