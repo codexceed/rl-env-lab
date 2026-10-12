@@ -137,8 +137,7 @@ class State:
     def from_dict(cls, d: dict[str, Any]) -> State:
         return cls(
             customers=tuple(
-                Customer(**{**c, "contract_basis": ContractBasis(c["contract_basis"])})
-                for c in d["customers"]
+                Customer(**{**c, "contract_basis": ContractBasis(c["contract_basis"])}) for c in d["customers"]
             ),
             invoices=tuple(
                 Invoice(
@@ -150,9 +149,7 @@ class State:
                 )
                 for i in d["invoices"]
             ),
-            payments=tuple(
-                Payment(**{**p, "status": PaymentStatus(p["status"])}) for p in d["payments"]
-            ),
+            payments=tuple(Payment(**{**p, "status": PaymentStatus(p["status"])}) for p in d["payments"]),
             cases=tuple(Case(**{**k, "status": CaseStatus(k["status"])}) for k in d["cases"]),
             ledger=tuple(LedgerEntry(**{**e, "kind": LedgerKind(e["kind"])}) for e in d["ledger"]),
         )

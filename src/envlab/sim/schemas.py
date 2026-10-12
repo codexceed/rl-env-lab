@@ -55,8 +55,7 @@ TOOL_NAMES: tuple[str, ...] = tuple(t["function"]["name"] for t in TOOL_SCHEMAS)
 # Parameter name -> Python type, in schema order (render and parse use this order).
 PARAM_TYPES: dict[str, dict[str, type]] = {
     t["function"]["name"]: {
-        k: int if v["type"] == "integer" else str
-        for k, v in t["function"]["parameters"]["properties"].items()
+        k: int if v["type"] == "integer" else str for k, v in t["function"]["parameters"]["properties"].items()
     }
     for t in TOOL_SCHEMAS
 }
