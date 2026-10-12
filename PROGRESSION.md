@@ -242,9 +242,9 @@ Three agents in parallel; I integrate and review.
 - [ ] CI green
 
 ### 1.5 Reporting skeleton (agent, low priority)
-- [ ] README: setup, data build, one training run, eval
-- [ ] `reports/results.md` skeleton with H1/H2/H5/H3 sections and empty tables
-- [ ] `eval/compare.py` stub that runs on fake eval JSONL
+- [x] README: setup, data build, one training run, eval
+- [x] `reports/results.md` skeleton with H1/H2/H5/H3 sections and empty tables
+- [x] `eval/compare.py` stub that runs on fake eval JSONL — 2026-10-12, full tables/verdicts/plots; `make report-fake` passes H1/H2/H5 on fake data
 
 ### 🚦 G-Tue
 - [ ] Tests pass · data built · dry runs + resume work for both rewards · coordinator tested · if slipping, run §2 overnight
