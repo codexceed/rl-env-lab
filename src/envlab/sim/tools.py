@@ -190,9 +190,8 @@ def _resolve_case(state: State, case_id: str, adjustment: int, note: str) -> Sta
         raise _ToolError(ErrorCode.INVALID_STATUS, f"invoice {inv.id} is {inv.status}")
     if adjustment < 0:
         raise _ToolError(ErrorCode.INVALID_AMOUNT, "adjustment must be >= 0")
-    # Literal SPEC reading: this check also applies when adjustment == 0, so resolving with
-    # 0 on an overpaid invoice (amount_due < 0) returns exceeds_amount_due.
-    if adjustment > inv.amount_due:
+    # A 0 adjustment is always allowed, even on an overpaid invoice (amount_due < 0).
+    if adjustment > 0 and adjustment > inv.amount_due:
         raise _ToolError(ErrorCode.EXCEEDS_AMOUNT_DUE, f"amount_due is {inv.amount_due}")
     new_case = replace(case, status=CaseStatus.RESOLVED, resolution=adjustment, note=note)
     new = replace(state, cases=_put(state.cases, ci, new_case))

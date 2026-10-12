@@ -312,11 +312,13 @@ def test_resolve_case_invoice_missing(s):
     err(s, call("resolve_case", case_id="CS-0001", adjustment=0, note="n"), E.NOT_FOUND)
 
 
-def test_resolve_case_zero_on_overpaid_invoice_exceeds(s):
-    # Literal SPEC reading: 0 > amount_due (-4999) -> exceeds_amount_due.
+def test_resolve_case_zero_on_overpaid_invoice_allowed(s):
+    # A 0 adjustment is always allowed, even when amount_due (-4999) is negative.
     case = replace(s.cases[2], invoice_id="INV-00002", customer_id="C0001")
     s = replace(s, cases=(*s.cases[:2], case))
-    err(s, call("resolve_case", case_id="CS-0003", adjustment=0, note="n"), E.EXCEEDS_AMOUNT_DUE)
+    new = ok(s, call("resolve_case", case_id="CS-0003", adjustment=0, note="n"))
+    assert new.invoices == s.invoices
+    assert new.ledger == s.ledger
 
 
 # --- void_invoice ---------------------------------------------------------------------------

@@ -164,7 +164,7 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [x] Prompt format using the tool-call format from §0.3
 - [x] Done when: I sign off, no open TODOs — 2026-10-12, PR #12 merged
 
-- [ ] SPEC follow-ups from implementation: `resolve_case` adjustment=0 on overpaid invoice rejected (literal rule); token estimate chars/3 (§14) vs chars/2.5 (§10); `ToolCall` unhashable (dict field)
+- [x] SPEC follow-ups from implementation (2026-10-12, owner approved: 0 adjustment always allowed; chars/2.5 everywhere; ToolCall unhashable documented): `resolve_case` adjustment=0 on overpaid invoice rejected (literal rule); token estimate chars/3 (§14) vs chars/2.5 (§10); `ToolCall` unhashable (dict field)
 
 ### 0.6 Metrics (agent) — `eval/metrics.py`
 - [x] True success, exploit rate, format-failure rate per sample
