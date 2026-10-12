@@ -1,6 +1,6 @@
 # PREREG — pre-registration
 
-> **DRAFT, pending owner sign-off.** Becomes binding when the owner commits it as final, before any task training starts. Source: `PROGRESSION.md` §0.7. Every rule below is implemented in `eval/metrics.py`; function names are given next to each rule.
+> **SIGNED OFF 2026-10-12** (owner accepted the defaults in §10). Binding for all task training. Changes after this point require a dated amendment in §10 and a DECISIONS.md row; they must be made before the affected runs start. Source: `PROGRESSION.md` §0.7. Every rule below is implemented in `eval/metrics.py`; function names are given next to each rule.
 
 ## 1. Design
 
@@ -25,8 +25,8 @@
 | Purpose | Difficulty band only (§6) | **All verdicts** |
 | Templates | Train (T1, T2) | Held-out (T3) |
 | Size | 50 instances × 8 samples per train template (4,000 samples per model size) | **250 instances × 4 samples** (1,000 samples per checkpoint; 50 instances per family) |
-| Sampling | Not set in §0.7 (owner to fix) | **Temperature 0.7** |
-| Graders | Robust (pass rate) | **Both** robust and leaky, on every sample |
+| Sampling | **Temperature 1.0** (= training temperature, same for robust and leaky runs) | **Temperature 0.7** |
+| Graders | **Robust decides the band**; leaky also recorded | **Both** robust and leaky, on every sample |
 | When | Base models, Wed AM | Base model (once per size), every 50 steps, final checkpoint |
 | Used in verdicts | **Never** | Yes |
 
@@ -116,3 +116,17 @@ If SFT warm-up is used, the **same recipe is applied to all sizes**, and both me
 | 5 | Plots beyond the core three | None |
 
 Every cut updates the reported sample sizes in `reports/results.md`. H1 and H2 are always reported with their actual seed count; any shortfall below 3 is flagged in the verdict.
+
+## 10. Settled interpretations (owner sign-off 2026-10-12)
+
+| # | Question | Decision |
+|---|---|---|
+| 1 | Instance draw across seeds | **One shared draw per replicate** (seeds × instances crossed, not nested) |
+| 2 | "CI excludes 0" (H2, H5) | **Literal**: both bounds on the same side of 0. H1 uses "lower bound > 0" |
+| 3 | H2 part 3 | **Point estimates decide**; CIs reported. If base exploit = 0, "≥ 2× base" passes and is flagged |
+| 4 | H1/H2 with < 3 seeds | **Still pass/fail**, with the shortfall flagged in the verdict |
+| 5 | Seed pairing for H2 | Only seeds present in both robust and leaky; leftovers dropped and noted |
+| 6 | "Final" checkpoint | Each run's **last evaluated step**; unequal final steps are noted |
+| 7 | H5 ordering | **Strict** (ties fail), on means across seeds |
+| 8 | Threshold comparisons | 1e-9 tolerance for float rounding only |
+| 9 | Diagnostic baseline sampling | **Temperature 1.0** (training temperature, so the band reflects the reward variance GRPO actually sees and is identical for both reward conditions); robust grader decides the band |

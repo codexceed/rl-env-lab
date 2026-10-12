@@ -165,28 +165,28 @@ Fri 16      06:00 training stop · final eval · review · clean-clone · 12:00 
 - [ ] Done when: I sign off, no open TODOs
 
 ### 0.6 Metrics (agent) — `eval/metrics.py`
-- [ ] True success, exploit rate, format-failure rate per sample
-- [ ] Paired, hierarchical bootstrap: resample **seed pairs**, then **held-out instances**, keeping compared conditions on the same draws
-- [ ] Effects reported as mean across seeds with 95% CI
-- [ ] H1, H2, H5 verdict functions implementing §0.7 rules exactly
-- [ ] Training-reward window helper (for H2)
-- [ ] Done when: unit tests pass on fake data with known answers
+- [x] True success, exploit rate, format-failure rate per sample
+- [x] Paired, hierarchical bootstrap: resample **seed pairs**, then **held-out instances**, keeping compared conditions on the same draws
+- [x] Effects reported as mean across seeds with 95% CI
+- [x] H1, H2, H5 verdict functions implementing §0.7 rules exactly
+- [x] Training-reward window helper (for H2)
+- [x] Done when: unit tests pass on fake data with known answers — 2026-10-12, 33 tests, merged #11
 
 ### 0.7 Pre-registration (me) — `PREREG.md`, committed before any task training
-- [ ] Held-out template IDs frozen (T3 per family)
-- [ ] **Two separate evals:**
+- [x] Held-out template IDs frozen (T3 per family) — 2026-10-12, PREREG signed off with defaults; diagnostic temp 1.0
+- [x] **Two separate evals:**
   - *Diagnostic baseline* — train templates, 50 instances × 8 samples, for difficulty band only; never used in verdicts
   - *Formal eval* — 250 held-out × 4 samples, temp 0.7, both graders; base model, every 50 steps, final
-- [ ] **Statistics:** effect = mean across 3 seeds; 95% CI from the §0.6 bootstrap
-- [ ] **H1** passes iff main-model robust gain over base ≥ 10 pts **and** CI lower bound > 0
-- [ ] **H2** passes iff all three hold:
+- [x] **Statistics:** effect = mean across 3 seeds; 95% CI from the §0.6 bootstrap
+- [x] **H1** passes iff main-model robust gain over base ≥ 10 pts **and** CI lower bound > 0
+- [x] **H2** passes iff all three hold:
   - training reward: leaky ≥ robust, mean over the **final 50 steps**, averaged over seeds
   - true success: leaky ≥ 10 pts below robust, CI excludes 0
   - exploit rate: leaky ≥ 10% **and** ≥ 2× base
-- [ ] **H5** passes iff final leaky exploit rate is ordered 0.8B < 2B < 4B **and** 4B − 0.8B CI excludes 0; requires 3 seeds per size, else H5 is reported as **exploratory/incomplete** with actual n
-- [ ] **H3** exploratory; **H4** cut
-- [ ] **Difficulty adaptation rule (frozen):** see §2.2; decided from train-template diagnostics only; one task distribution for all sizes; held-out templates never adapted
-- [ ] **SFT rule:** if SFT warm-up is used, the same recipe is applied to all sizes and both reward members start from the same SFT checkpoint; otherwise H5 is exploratory
+- [x] **H5** passes iff final leaky exploit rate is ordered 0.8B < 2B < 4B **and** 4B − 0.8B CI excludes 0; requires 3 seeds per size, else H5 is reported as **exploratory/incomplete** with actual n
+- [x] **H3** exploratory; **H4** cut
+- [x] **Difficulty adaptation rule (frozen):** see §2.2; decided from train-template diagnostics only; one task distribution for all sizes; held-out templates never adapted
+- [x] **SFT rule:** if SFT warm-up is used, the same recipe is applied to all sizes and both reward members start from the same SFT checkpoint; otherwise H5 is exploratory
 
 ### 0.8 End-of-day decisions (me) — `DECISIONS.md`
 - [ ] Model family + main model
@@ -409,4 +409,5 @@ Unhealthy → halve LR, restart from step 0, **both members of the pair**; secon
 | 2026-10-12 | Kernel failure → source build, then Python 3.12, before switching model family | `causal-conv1d` has no PyPI wheels | [ ] |
 | 2026-10-12 | Compute on Lightning studio `rl-env-lab` (`[teamspace]`); repo cloned there | Owner request | [ ] |
 | 2026-10-12 | No automatic node release; machines stay attached through dips; owner releases | Owner request | [x] #13 |
+| 2026-10-12 | PREREG signed off with default interpretations; diagnostic baseline at temp 1.0, robust grader decides band | Owner | [ ] |
 | 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
