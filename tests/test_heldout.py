@@ -597,6 +597,10 @@ def test_go_no_go():
     g = go_no_go(narrow, off)
     assert g["low_types_rise"] and not g["band_ok"] and g["verdict"] == "no-go"
 
+    stale = {**off, "templates": {**off["templates"], "F4T4": {**off["templates"]["F1T5"], "true_success": 0.01}}}
+    g = go_no_go(on, stale)  # a rejected candidate only in the thinking-off run is not a low type
+    assert g["verdict"] == "go" and "F4T4" not in g["low_types"]
+
     g = go_no_go(on, None)
     assert g["verdict"] == "no baseline" and g["low_types"] is None and g["in_band"] == on["in_band"]
     assert "go/no-go" in summary_markdown({**on, "go_no_go": go_no_go(on, off)})

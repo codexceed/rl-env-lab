@@ -466,7 +466,8 @@ def go_no_go(summary: dict[str, Any], baseline: dict[str, Any] | None) -> dict[s
     """ADR 0005 item 3: the thinking-on diagnostic against the thinking-off one of the same size.
 
     Go only if every type at 0-4% robust pass in the thinking-off diagnostic rises (strictly), and
-    at least 6 types are in the 10-90% band with thinking on. Without a baseline: "no baseline".
+    at least 6 types are in the 10-90% band with thinking on. Only types in both diagnostics count: an
+    older thinking-off run may also hold rejected candidate templates. Without a baseline: "no baseline".
     """
     in_band = int(summary["in_band"])
     out: dict[str, Any] = {
@@ -481,7 +482,7 @@ def go_no_go(summary: dict[str, Any], baseline: dict[str, Any] | None) -> dict[s
     low = {
         name: {"off": t["true_success"], "on": on.get(name, {}).get("true_success")}
         for name, t in sorted(baseline["templates"].items())
-        if t["true_success"] <= GO_LOW_RATE + 1e-9
+        if name in on and t["true_success"] <= GO_LOW_RATE + 1e-9
     }
     rise = all(v["on"] is not None and v["on"] > v["off"] + 1e-12 for v in low.values())
     return {**out, "low_types": low, "low_types_rise": rise, "verdict": "go" if rise and out["band_ok"] else "no-go"}
