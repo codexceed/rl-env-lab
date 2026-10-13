@@ -34,3 +34,4 @@ build/
 .claude/worktrees/
 .claude/settings.local.json
 wandb/
+logs_local/

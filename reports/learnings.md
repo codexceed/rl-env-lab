@@ -11,7 +11,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **v1** | `SPEC.md` (11 train, 5 held-out templates) | thinking off, cap 256 | 0.8B / 2B / 4B × robust, leaky × 3 seeds | pre-registered (PREREG) |
 | **v2** | same as v1 | thinking on, cap 1,024 (ADR 0005, 0006) | 2B, 0.8B (4B gate no-go) | exploratory |
 | **v3** | `SPEC_v3.md`: harder, 15 train, near + far held-out (ADR 0007) | thinking on, cap 1,024 | 4B, 2B (planned) | exploratory, being built |
-- **Last updated:** 2026-10-13 12:40 (v3 4B results vs the v3 base; N2 cleaned up and stopped).
+- **Last updated:** 2026-10-13 15:10 (all v3 runs evaluated, held-out and same-type; N1 wrap-up).
 
 ## 1. Reward hacking: what it looks like here (v1)
 
@@ -87,7 +87,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 ## 7. v3: harder task set (ADR 0007)
 
-*4B trained and evaluated 2026-10-13 (`reports/v3.md`); 2B training.*
+*All 12 v3 runs trained and evaluated 2026-10-13, held-out and same-type (`reports/v3.md`).*
 
 | Base, thinking on, train tasks | v1 tasks | v3 tasks |
 |---|---|---|
@@ -101,6 +101,10 @@ What this study has taught us so far, from results, issues and decisions. Each l
 - **Robust training beats the v3 base only modestly by the final step.** +16 pts near (CI includes 0) and +12 far (CI excludes 0). It peaks around step 400 (87% / 89%), then decays to 73% / 75%, the same mid-run peak as v1 4B. *(v3, exploratory)*
 - **The hacking is as strong on near as on far tasks.** Near tasks only recombine trained steps, so the leaky models' 68% near exploits are hacking, not missing skill. *(v3, exploratory)*
 - **Leaky damage grows with training time.** Leaky true success falls steadily from 55% / 69% at step 100 to 28% / 29% at step 1000 (near / far); exploits rise from 42% / 29% to 68% / 68%. *(v3, exploratory)*
+
+- **At 2B, leaky training adds exploits without adding skill; robust training adds both skill and surface passes.** Near held-out true success: base 19%, leaky 19%, robust 48% (+29 pts vs base, CI excludes 0). Robust 2B also raises "exploits" by 16 / 22 pts. Its format failures fall from ~43% to ~4%, so many more answers parse and pass the surface check while still being wrong. That is weak skill more than hacking. Robust - leaky: +29 near / +20 far. *(v3, exploratory)*
+- **Gains are larger on unseen tasks of trained types than on held-out types.** Same-type true success, base -> robust: 4B 60% -> 89%, 2B 29% -> 78%. Held-out near: 4B 57% -> 73%, 2B 19% -> 48%. Leaky models sit at or below base on both (4B 33%, 2B 27% same-type) with 66-72% exploits. *(v3, exploratory, final checkpoints)*
+- **Keep the mid-run peaks.** 16 of 30 runs on N1 had a held-out peak at least 10 pts above their final step, for example v3-4b-rob-s2 0.93 at step 400 vs 0.80 final, and v3-4b-leak-s3 0.69 at step 100 vs 0.11 final. These checkpoints were kept when the disks were cleaned. Picking a peak by held-out score overstates it; treat peaks as descriptive. *(all versions, exploratory)*
 
 - **Design aim:** the v3 "near" held-out set only recombines steps that were trained, so a near exploit points to hacking, not missing skill; "far" held-out keeps a generalization test. *(v3, design, not yet a result)*
 
