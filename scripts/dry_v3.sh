@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ADR 0007 v3 dry run on one 8-GPU node: the real train/grpo.py --variant v3, 12 steps, eval weights at step 12,
-# recovery every 100 (so none is written), then a formal eval of each final step on 8 held-out instances.
+# recovery every 100 (so only the final-step one is written), then a formal eval of each final step on 8 held-out instances.
 #   GPU 0-3   4B v3 robust -> runs/dry-v3-4b-rob   (4 colocated ZeRO-3 ranks), then its eval on GPU 0
 #   GPU 4     2B v3 leaky  -> runs/dry-v3-2b-leak, then its eval on GPU 4
 # The eval reads runs/dry/v3-heldout8/: 4 near + 4 far instances from data/v3/heldout.jsonl (one per template,
@@ -117,7 +117,9 @@ for run in ("dry-v3-4b-rob", "dry-v3-2b-leak"):
         "training: prompt budget 2048": budget.get("max_prompt_length") == 2048,
         "training: context 3072": layout.get("vllm_max_model_length") == 3072,
         "training: prompts read from data/v3/train.jsonl": bool(lengths) and lengths[1] == "data/v3/train.jsonl",
-        "one eval step (12), no recovery checkpoint": steps == ["step-00012"] and not list((rdir / "recovery").glob("checkpoint-*")),
+        # the trainer always saves recovery at the final step; recovery_every 100 means no other one
+        "one eval step (12), recovery only at the final step": steps == ["step-00012"]
+        and sorted(p.name for p in (rdir / "recovery").glob("checkpoint-*")) == ["checkpoint-12"],
         "eval: run variant v3, thinking on, cap 1024": "run variant v3: thinking on, cap 1024" in elog,
         "eval: prompt budget 2048, context 3072": "prompts <= 2048 tokens, context 3072" in elog,
         "eval: 8 instances x 4 samples": len(records) == 32 and len({r["instance_id"] for r in records}) == 8,
