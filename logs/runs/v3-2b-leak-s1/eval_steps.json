@@ -40,6 +40,16 @@
       "eval": "done",
       "final": false,
       "step": 800
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 900
+    },
+    {
+      "eval": "running",
+      "final": true,
+      "step": 1000
     }
   ]
 }
