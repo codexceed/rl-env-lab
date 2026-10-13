@@ -248,3 +248,9 @@
 {"ts": 1791902048.905, "iso": "2026-10-13T14:34:08+00:00", "node": "node1", "event": "prune", "run_id": "v3-2b-rob-s2", "pruned": [], "kept": ["checkpoint-950", "checkpoint-1000"], "refused": null}
 {"ts": 1791902048.905, "iso": "2026-10-13T14:34:08+00:00", "node": "node1", "event": "transferred", "run_id": "v3-2b-rob-s2", "noop": true, "eval_steps_done": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]}
 {"ts": 1791902048.947, "iso": "2026-10-13T14:34:08+00:00", "node": "node1", "event": "gate_blocked", "count": 1, "blockers": ["v3-2b-rob-s3: running"]}
+{"ts": 1791902094.169, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "run_end", "run_id": "v3-2b-rob-s3", "status": "finished", "exit_code": 0, "reason": null}
+{"ts": 1791902094.171, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "eval_lease", "gen": 28, "gpus": [0, 1, 2, 3, 4, 5, 6, 7], "drain": false}
+{"ts": 1791902094.239, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "prune", "run_id": "v3-2b-rob-s3", "pruned": [], "kept": ["checkpoint-950", "checkpoint-1000"], "refused": null}
+{"ts": 1791902094.239, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "transferred", "run_id": "v3-2b-rob-s3", "noop": true, "eval_steps_done": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]}
+{"ts": 1791902094.299, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "node_idle", "marker": "/teamspace/studios/this_studio/rl-env-lab/runs/_coordinator/node1.idle"}
+{"ts": 1791902094.3, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "eval_lease", "gen": 29, "gpus": [], "drain": true}
