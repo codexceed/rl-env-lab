@@ -254,3 +254,4 @@
 {"ts": 1791902094.239, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "transferred", "run_id": "v3-2b-rob-s3", "noop": true, "eval_steps_done": [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]}
 {"ts": 1791902094.299, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "node_idle", "marker": "/teamspace/studios/this_studio/rl-env-lab/runs/_coordinator/node1.idle"}
 {"ts": 1791902094.3, "iso": "2026-10-13T14:34:54+00:00", "node": "node1", "event": "eval_lease", "gen": 29, "gpus": [], "drain": true}
+{"ts": 1791902124.303, "iso": "2026-10-13T14:35:24+00:00", "node": "node1", "event": "coordinator_exit", "result": "idle", "reason": "gate passed"}
