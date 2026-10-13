@@ -97,7 +97,7 @@
       "step": 950
     },
     {
-      "eval": "running",
+      "eval": "done",
       "final": true,
       "step": 1000
     }

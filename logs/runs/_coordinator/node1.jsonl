@@ -150,3 +150,15 @@
 {"ts": 1791854217.492, "iso": "2026-10-13T01:16:57+00:00", "node": "node1", "event": "run_end", "run_id": "v2-0.8b-rob-s3", "status": "finished", "exit_code": 0, "reason": null}
 {"ts": 1791854217.493, "iso": "2026-10-13T01:16:57+00:00", "node": "node1", "event": "eval_lease", "gen": 19, "gpus": [0, 1, 2, 3, 4, 5, 6, 7], "drain": false}
 {"ts": 1791854217.602, "iso": "2026-10-13T01:16:57+00:00", "node": "node1", "event": "gate_blocked", "count": 2, "blockers": ["v2-0.8b-rob-s3: 1 eval(s) pending", "v2-0.8b-rob-s3: not transferred"]}
+{"ts": 1791854323.32, "iso": "2026-10-13T01:18:43+00:00", "node": "node1", "event": "prune", "run_id": "v2-0.8b-rob-s3", "pruned": [], "kept": ["checkpoint-950", "checkpoint-1000"], "refused": null}
+{"ts": 1791854323.321, "iso": "2026-10-13T01:18:43+00:00", "node": "node1", "event": "transferred", "run_id": "v2-0.8b-rob-s3", "noop": true, "eval_steps_done": [50, 100, 150, 200, 250, 300, 350, 400, 450, 500, 550, 600, 650, 700, 750, 800, 850, 900, 950, 1000]}
+{"ts": 1791854323.381, "iso": "2026-10-13T01:18:43+00:00", "node": "node1", "event": "node_idle", "marker": "/teamspace/studios/this_studio/rl-env-lab/runs/_coordinator/node1.idle"}
+{"ts": 1791854323.381, "iso": "2026-10-13T01:18:43+00:00", "node": "node1", "event": "eval_lease", "gen": 20, "gpus": [], "drain": true}
+{"ts": 1791855335.243, "iso": "2026-10-13T01:35:35+00:00", "node": "node1", "event": "idle_cleared"}
+{"ts": 1791855335.243, "iso": "2026-10-13T01:35:35+00:00", "node": "node1", "event": "coordinator_start", "pid": 4020119, "dry_run": false, "shutdown_opt_in": false, "deadline": "2026-10-16T06:00:00+00:00"}
+{"ts": 1791855335.247, "iso": "2026-10-13T01:35:35+00:00", "node": "node1", "event": "eval_lease", "gen": 21, "gpus": [], "drain": false}
+{"ts": 1791855335.249, "iso": "2026-10-13T01:35:35+00:00", "node": "node1", "event": "watcher_start", "pid": 4020130, "restarts": 0}
+{"ts": 1791855335.325, "iso": "2026-10-13T01:35:35+00:00", "node": "node1", "event": "gate_blocked", "count": 12, "blockers": ["v3-4b-rob-s1: pending", "v3-4b-rob-s2: pending", "v3-4b-rob-s3: pending", "v3-4b-leak-s1: pending", "v3-4b-leak-s2: pending", "v3-4b-leak-s3: pending", "v3-2b-rob-s1: pending", "v3-2b-leak-s1: pending", "v3-2b-rob-s2: pending", "v3-2b-leak-s2: pending", "v3-2b-rob-s3: pending", "v3-2b-leak-s3: pending"]}
+{"ts": 1791855350.331, "iso": "2026-10-13T01:35:50+00:00", "node": "node1", "event": "launch", "run_id": "v3-4b-rob-s1", "gpus": [0, 1, 2, 3], "attempt": 1, "pid": 4021098, "resume_from": null}
+{"ts": 1791855350.335, "iso": "2026-10-13T01:35:50+00:00", "node": "node1", "event": "launch", "run_id": "v3-4b-leak-s1", "gpus": [4, 5, 6, 7], "attempt": 1, "pid": 4021101, "resume_from": null}
+{"ts": 1791855350.439, "iso": "2026-10-13T01:35:50+00:00", "node": "node1", "event": "gate_blocked", "count": 12, "blockers": ["v3-4b-rob-s1: running", "v3-4b-rob-s2: pending", "v3-4b-rob-s3: pending", "v3-4b-leak-s1: running", "v3-4b-leak-s2: pending", "v3-4b-leak-s3: pending", "v3-2b-rob-s1: pending", "v3-2b-leak-s1: pending", "v3-2b-rob-s2: pending", "v3-2b-leak-s2: pending", "v3-2b-rob-s3: pending", "v3-2b-leak-s3: pending"]}
