@@ -342,7 +342,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [ ] Limits section drafted
 
 ### 3.6 Project version v3: harder, larger task set (ADR 0007, exploratory)
-- [ ] ADR 0007 accepted by the owner
+- [x] ADR 0007 accepted by the owner — 2026-10-13 01:15, SPEC_v3.md signed off too
 - [x] `SPEC_v3.md`: 15 train templates (A–C per family), 5 near + 5 far held-out, counts, gates — 2026-10-13 01:00, draft for owner sign-off
 - [x] v3 generators, solvers, wrong-value calls, broken variants; `data/v3/` + its manifest; v1 `data/manifest.json` byte-identical — 2026-10-13 01:00, v1 rebuild sha256-identical (both manifests)
 - [x] v3 acceptance: ≥ 99% of valid instances pass G1–G3, every broken instance fails a gate — 2026-10-13 01:00, 7,500 / 7,500 valid pass; 100 / 100 broken rejected
@@ -448,5 +448,5 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | Async recovery verified on GPU (dry run: 2B + 4B resume match; save pause 9–16 s vs ~3.5 min); 4B runs started on n2 | Gate for 4B | [x] |
 | 2026-10-12 | v2 go with answer cap 1,024 (512 failed the gate); v2 2B ×6 added to node1 after its 2B block (ADR 0006) | Thinking-on base check | [x] #22 |
 | 2026-10-12 | v2 extended to 4B and 0.8B (ADR 0005 "extend if the effect holds": v2 2B robust held-out true ~0.8 vs v1 ~0.4). n1: v2 4B seeds 1, 3 after v2 2B; n2: v2 4B seed 2 + v2 0.8B ×6 after the 4B v1 runs and their evals. ~10 h, both nodes | Owner chose the full v2 ladder | [ ] #20 |
-| 2026-10-12 | v2 4B dropped: thinking-on base diagnostic no-go (4B base true 0.87 on train types, 4 of 11 in band, leaky pass 0.98; 12-step 4B v2 dry run fit, ~20 s/step). v2 0.8B passed (9 of 11 in band, after fixing the go/no-go to skip templates absent from the thinking-on run) and moves to n1 GPU 0-5 now; n2 keeps only 4B v1 evals. Owner: build a harder, larger task set as **project version v3** (ADR 0007, Proposed), trained with v2 settings at 4B and 2B | Gate result + owner | [ ] #23 |
+| 2026-10-12 | v2 4B dropped: thinking-on base diagnostic no-go (4B base true 0.87 on train types, 4 of 11 in band, leaky pass 0.98; 12-step 4B v2 dry run fit, ~20 s/step). v2 0.8B passed (9 of 11 in band, after fixing the go/no-go to skip templates absent from the thinking-on run) and moves to n1 GPU 0-5 now; n2 keeps only 4B v1 evals. Owner: build a harder, larger task set as **project version v3** (ADR 0007, Accepted 2026-10-13), trained with v2 settings at 4B and 2B | Gate result + owner | [ ] #23 |
 | 2026-10-13 | v1 verdicts on complete data (18 runs, 363 checkpoints, pairs matched): H1 PASS (+14.8 pts), H2 FAIL (true-success drop +9.8 vs ≥ 10 pts; parts 1 and 3 met), H5 FAIL (leaky exploit 72.7 / 63.9 / 64.5% by size) | `make report` | [x] |

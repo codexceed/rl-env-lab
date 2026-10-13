@@ -1,6 +1,6 @@
 # SPEC v3 — harder, larger task set (project version v3)
 
-**Version:** v3.0 · **Status:** draft, implements [ADR 0007](docs/adr/0007-v3-task-set.md) (Proposed) · **Label:** v3, exploratory
+**Version:** v3.0 · **Status:** signed off by the owner 2026-10-13, implements [ADR 0007](docs/adr/0007-v3-task-set.md) (Accepted) · **Label:** v3, exploratory
 
 v3 changes **only the task set**. Everything not stated here is exactly as in [SPEC.md](SPEC.md): entities and status rules (§1), ledger (§2), tools (§3), graders (§6), gate definitions (§7), prompt format (§10), Python contract files (§11, Appendix A), eval record (§12). If code and this file disagree, this file wins for v3 data; SPEC.md wins for everything else.
 

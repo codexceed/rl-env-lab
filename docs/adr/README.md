@@ -10,7 +10,7 @@ Each ADR records **why** a major decision was made, so nobody has to dig through
 | [0004](0004-post-baseline-amendments.md) | Amendments after the base-model evals | Accepted | 2026-10-12 |
 | [0005](0005-exploratory-followup.md) | Exploratory follow-up after the first training round | Accepted | 2026-10-12 |
 | [0006](0006-v2-answer-cap-1024.md) | v2 round: answer cap 1,024 instead of 512 | Accepted | 2026-10-12 |
-| [0007](0007-v3-task-set.md) | Project version v3: harder, larger task set (near + far held-out) | Proposed | 2026-10-12 |
+| [0007](0007-v3-task-set.md) | Project version v3: harder, larger task set (near + far held-out) | Accepted | 2026-10-13 |
 
 ## When to write one
 

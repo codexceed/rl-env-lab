@@ -1,6 +1,6 @@
 # 0007. Project version v3: a harder, larger task set
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 2026-10-13)
 - **Date:** 2026-10-12
 - **Deciders:** owner (proposed by the integrating agent at the owner's request)
 
