@@ -61,6 +61,14 @@ def test_plan_takes_complete_checkpoints_plus_bases_and_skips_existing(tree):
     assert by["base-2b@0"].checkpoint is None and by["base-2b@0"].output == evals / "base-2b/sametype/step-00000.jsonl"
 
 
+def test_final_only_takes_each_runs_last_complete_checkpoint(tree):
+    runs, evals = tree
+    eval_step(runs / "2b-rob-s1", 200)
+    jobs, skipped, _ = sb.plan_jobs(runs, evals, final_only=True)
+    assert [j.label for j in jobs] == ["base-0.8b@0", "base-2b@0", "0.8b-leak-s2@50", "2b-rob-s1@200"]
+    assert skipped == []  # 2b-rob-s1@50 is done but no longer planned
+
+
 def test_runs_filter(tree):
     runs, evals = tree
     jobs, _, _ = sb.plan_jobs(runs, evals, ["0.8b-*"])

@@ -2,6 +2,7 @@
 
     uv run python eval/sametype_batch.py --gpus 4,5,6,7                 # `make sametype-evals GPUS=4,5,6,7`
     uv run python eval/sametype_batch.py --gpus 6 --runs '2b-*' --dry-run
+    uv run python eval/sametype_batch.py --gpus 0,1,2,3 --final-only           # one job per run: its last checkpoint
 
 **Jobs.** Every ``runs/<id>/eval/step-NNNNN/`` with ``COMPLETE`` (the trainer writes it last), plus
 ``base-<size>`` (step 0) for each size among those runs. By default only run-matrix ids, v2 and v3 included
@@ -133,9 +134,13 @@ def _selected(run_id: str, patterns: Sequence[str] | None) -> bool:
 
 
 def plan_jobs(
-    runs_root: Path, evals_root: Path, patterns: Sequence[str] | None = None
+    runs_root: Path, evals_root: Path, patterns: Sequence[str] | None = None, *, final_only: bool = False
 ) -> tuple[list[Job], list[Job], list[str]]:
-    """(jobs to run, jobs whose output already exists, notes); bases first, then by run id and step."""
+    """(jobs to run, jobs whose output already exists, notes); bases first, then by run id and step.
+
+    With ``final_only``, each run contributes only its last complete eval checkpoint (its final step once
+    training has ended).
+    """
     runs_root, evals_root = Path(runs_root), Path(evals_root)
     wanted: list[Job] = []
     notes: list[str] = []
@@ -146,6 +151,8 @@ def plan_jobs(
         if rdir.name.startswith(("_", ".")) or not _selected(rdir.name, patterns):
             continue
         checkpoints = list_eval_checkpoints(rdir)
+        if final_only:
+            checkpoints = checkpoints[-1:]
         if not checkpoints:
             continue
         meta = run_metadata(rdir)
@@ -305,6 +312,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--data-dir", type=Path, default=Path("data"))
     p.add_argument("--v3-data-dir", type=Path, default=Path(V3_DATA_DIR), help="sametype split of v3 runs (ADR 0007)")
     p.add_argument("--config", type=Path, help="passed to eval/heldout.py")
+    p.add_argument("--final-only", action="store_true", help="only each run's last complete eval checkpoint")
     p.add_argument("--dry-run", action="store_true", help="print the plan and exit")
     return p
 
@@ -316,7 +324,7 @@ def main(argv: list[str] | None = None) -> int:
         p.resolve() for p in (args.runs_root, args.evals_root, args.data_dir, args.v3_data_dir)
     )
     patterns = [p for p in (args.runs or "").split(",") if p] or None
-    jobs, skipped, notes = plan_jobs(args.runs_root, args.evals_root, patterns)
+    jobs, skipped, notes = plan_jobs(args.runs_root, args.evals_root, patterns, final_only=args.final_only)
     for note in notes:
         print(f"[sametype] skip {note}", flush=True)
     print(f"[sametype] {len(jobs)} to run, {len(skipped)} already done, GPUs {args.gpus}", flush=True)
