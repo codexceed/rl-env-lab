@@ -138,3 +138,6 @@
 {"ts": 1791853915.394, "iso": "2026-10-13T01:11:55+00:00", "node": "node1", "event": "run_end", "run_id": "v2-0.8b-leak-s1", "status": "finished", "exit_code": 0, "reason": null}
 {"ts": 1791853915.395, "iso": "2026-10-13T01:11:55+00:00", "node": "node1", "event": "eval_lease", "gen": 17, "gpus": [0, 1, 3, 5, 6, 7], "drain": false}
 {"ts": 1791853915.469, "iso": "2026-10-13T01:11:55+00:00", "node": "node1", "event": "gate_blocked", "count": 4, "blockers": ["v2-0.8b-leak-s1: 1 eval(s) pending", "v2-0.8b-leak-s1: not transferred", "v2-0.8b-rob-s2: running", "v2-0.8b-rob-s3: running"]}
+{"ts": 1791853960.669, "iso": "2026-10-13T01:12:40+00:00", "node": "node1", "event": "run_end", "run_id": "v2-0.8b-rob-s2", "status": "finished", "exit_code": 0, "reason": null}
+{"ts": 1791853960.671, "iso": "2026-10-13T01:12:40+00:00", "node": "node1", "event": "eval_lease", "gen": 18, "gpus": [0, 1, 2, 3, 5, 6, 7], "drain": false}
+{"ts": 1791853960.787, "iso": "2026-10-13T01:12:40+00:00", "node": "node1", "event": "gate_blocked", "count": 5, "blockers": ["v2-0.8b-leak-s1: 1 eval(s) pending", "v2-0.8b-leak-s1: not transferred", "v2-0.8b-rob-s2: 1 eval(s) pending", "v2-0.8b-rob-s2: not transferred", "v2-0.8b-rob-s3: running"]}
