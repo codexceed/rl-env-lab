@@ -7,12 +7,12 @@
       "step": 100
     },
     {
-      "eval": "running",
+      "eval": "done",
       "final": false,
       "step": 200
     },
     {
-      "eval": "pending",
+      "eval": "done",
       "final": false,
       "step": 300
     },
