@@ -19,9 +19,9 @@
 
 | | |
 |---|---|
-| **Phase** | P3: v1 done (verdicts in). v2 0.8B and 2B done. **Project version v3** training on N1: 4B seeds 1-2 done, seed 3 training, then 2B x 6. N2 back up for v3 4B held-out evals (§3.6) |
+| **Phase** | P3: v1 done (verdicts in). v2 0.8B and 2B done. **Project version v3**: 4B x 6 trained and held-out evaluated (60 / 60 checkpoints); 2B x 6 training on N1 since 10:22 UTC (§3.6) |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
-| **Compute** | 2 x 8 H200 (Lightning AI, `[teamspace]`, `bare-metal`) · N1 `rl-env-lab-n1`: v3 training · N2 `rl-env-lab-n2`: v3 4B evals, restarted 2026-10-13, stopped when its evals are done |
+| **Compute** | 2 x 8 H200 (Lightning AI, `[teamspace]`, `bare-metal`) · N1 `rl-env-lab-n1`: v3 2B training + evals, sleeps when done · N2 `rl-env-lab-n2`: stopped 2026-10-13 ~10:50 UTC after the v3 4B evals |
 | **Next gate** | `reports/v3.md` once v3 evals land (§3.6); then P4 at the Fri 06:00 cutoff |
 | **Blockers** | — |
 
@@ -349,7 +349,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [x] `--variant v3` (thinking on, cap 1,024, `data/v3`, prompt budget 2,048, context 3,072); eval reports near and far separately — 2026-10-13 00:40, tested on synthetic data; v1/v2 identity hashes pinned unchanged
 - [x] 🚦 v3 calibration gate: thinking-on base diagnostic on v3 train split: 4B ≥ 9 / 15 in band and leaky pass ≤ 90%; 2B ≥ 6 / 15 in band (one tuning pass allowed) — 2026-10-13 01:27 UTC, on N1, no tuning: 4B **go** (11 / 15, true 0.58, leaky 0.75); 2B **go** (9 / 15, true 0.27, leaky 0.43, 41% cut off at the cap)
 - [x] v3 dry run (4B, 12 steps): memory and step time at the longer prompts — 2026-10-13 01:33 UTC, 4B 23.6 s/step, 2B 15.0 s/step, no OOM, prompts 1,146–1,928 tokens; all checks ok (one over-strict check fixed)
-- [ ] v3 runs: 4B × 6 and 2B × 6 (start by Wed 14 Oct evening) — started 2026-10-13 01:35 UTC on N1: 4B pairs side by side (rob GPU 0-3, leak GPU 4-7, seeds in sequence, ~3 h each in practice), then 2B × 6. 07:55 UTC: 4B seeds 1-2 done, seed 3 training. 4B held-out evals run on N2 (reads N1's checkpoints, results copied back to N1)
+- [ ] v3 runs: 4B × 6 and 2B × 6 (start by Wed 14 Oct evening) — started 2026-10-13 01:35 UTC on N1: 4B pairs side by side (rob GPU 0-3, leak GPU 4-7, seeds in sequence, ~3 h each in practice), then 2B × 6. 4B x 6 done by 10:22 UTC (2 h 15 m - 2 h 51 m each); 2B x 6 started 10:22 UTC on GPU 0-5. 4B held-out evals: 60 / 60 on N2 (~6 min each), results moved to N1 through the laptop; N2 stopped
 - [ ] `reports/v3.md`: near vs far, robust vs leaky, labelled v3 exploratory
 
 ### 3.5 Spare blocks (after block 3 until the cutoff, only after G-core)
@@ -452,3 +452,4 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-13 | v3 on N1 only: N2 restarted for the v3 gate but its network disk served the venv too slowly after the restart (bare `import torch` > 400 s); gate and dry run moved to N1 and passed; N2 stopped. All 12 v3 runs queued on N1 (~25 h). Owner pre-approved launch on a passing gate | v3 gate go | [x] |
 | 2026-10-13 | v1 verdicts on complete data (18 runs, 363 checkpoints, pairs matched): H1 PASS (+14.8 pts), H2 FAIL (true-success drop +9.8 vs ≥ 10 pts; parts 1 and 3 met), H5 FAIL (leaky exploit 72.7 / 63.9 / 64.5% by size) | `make report` | [x] |
 | 2026-10-13 | N2 restarted (owner-approved, ~3 h, max [cost]) to run v3 4B held-out evals in parallel with v3 training on N1. Its venv is warmed first (parallel read) to avoid the slow cold-disk start; N2 reads N1's checkpoints, N1 copies results back. N2 stops once those evals are done | Finish v3 evals sooner | [ ] |
+| 2026-10-13 | N2's v3 4B evals done (60 / 60) after two setup failures: the restart had wiped the venv's package cache (reinstalled with `setup_gpu.sh`), then `ninja` was missing from PATH (watcher relaunched with the venv's `bin/`). N1 could not see N2's results through the mount, so they were moved via the laptop. ~2 h of N2 lost to setup ([cost]) | Ops |  [ ] |

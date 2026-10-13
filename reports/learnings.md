@@ -11,7 +11,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **v1** | `SPEC.md` (11 train, 5 held-out templates) | thinking off, cap 256 | 0.8B / 2B / 4B × robust, leaky × 3 seeds | pre-registered (PREREG) |
 | **v2** | same as v1 | thinking on, cap 1,024 (ADR 0005, 0006) | 2B, 0.8B (4B gate no-go) | exploratory |
 | **v3** | `SPEC_v3.md`: harder, 15 train, near + far held-out (ADR 0007) | thinking on, cap 1,024 | 4B, 2B (planned) | exploratory, being built |
-- **Last updated:** 2026-10-13 01:45 (v1 verdicts in; v2 0.8B trained; v3 gate go at 4B and 2B, v3 runs training).
+- **Last updated:** 2026-10-13 11:00 (v3 4B trained and evaluated; N2 restart lessons; v3 2B training).
 
 ## 1. Reward hacking: what it looks like here (v1)
 
@@ -71,7 +71,10 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **Checkpoint I/O, not compute, was the bottleneck** | 22 GB (2B) / 55 GB (4B) of optimizer state, 6 runs writing to one network disk: 10–15 min training stall per 50-step save. Snapshot-to-CPU + background write: 9–16 s pause |
 | **Network-disk throughput swings with load** | The same 22 GB background write: 3.5 min on an idle node, 14 min on a busy one. A busy writer skips the next save rather than stalling training |
 | **Plan eval GPUs alongside training GPUs** | A node with all 8 GPUs training (two 4B runs) left 24 checkpoints waiting for evals for hours |
-| **A restarted node is not a warm node** | After a stop and restart, N2's network disk served the 10 GB venv so slowly that a bare `import torch` took > 400 s and every job timed out; the always-on N1 ran the same jobs in minutes. Sleeping a node saves money but costs a long cold start (v3) |
+| **A restarted node needs a reinstall, not just a warm-up** | The venv's files are links into uv's package cache on the studio's system disk, which a stop wipes. After N2's restart, `torch/nn/utils` was simply missing (`ModuleNotFoundError` after a 564 s import), and a plain `uv sync` then removed the GPU extra. `scripts/setup_gpu.sh` fixed it in ~55 min on the slow cold disk. *Corrected 2026-10-13: first read as "just a slow disk"; slow cold reads were real but not the whole cause* (v3) |
+| **Running `.venv/bin/python` directly drops the venv's tools from PATH** | vLLM's compiler needs `ninja` from the venv; all 15 v3 evals on N2 failed at generation until the watcher was launched with the venv's `bin/` on PATH (`uv run` does this for you). Same bug as the v2 same-type evals (v3) |
+| **The cross-studio mount works one way in practice** | N2 read N1's checkpoints fine (8 parallel 4B loads in 92 s, close to local). N1 never saw N2's new eval files, and downloads of them returned 404 for 10+ min: a busy studio's writes reach shared storage late. Streaming the 58 MB result tar through the command channel worked (v3) |
+| **A second node for evals paid off once running** | v3 4B held-out evals took ~6 min each; N2 ran 60 in ~1.5 h on 8 GPUs, vs ~12 h on N1's 2 spare GPUs. Setup problems cost ~2 h of N2 ([cost]) first (v3) |
 | **Ad-hoc GPU jobs race the eval watcher** | Twice a one-off job collided with an eval that claimed the GPU seconds earlier. Pause the watcher, or add GPU claims |
 | **Colocated vLLM beat a separate server for 4B** | 4 ZeRO-3 ranks, each with a colocated engine: 4.4 s/step vs 8.1 s for 1 server + 2 trainers |
 | **Run identity hashes are fragile** | The data manifest's hash is part of every run's identity: editing it would have broken resumes and pairs, so new data went in a separate manifest. I/O-only settings are excluded from the hash |
