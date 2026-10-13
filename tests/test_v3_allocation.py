@@ -1,4 +1,4 @@
-"""The ADR 0007 v3 runs in configs/allocation.yaml: defined, placed (4B robust + 2B on node2, 4B leaky on node1),
+"""The ADR 0007 v3 runs in configs/allocation.yaml: defined, placed on node1 (4B pairs, then 2B),
 and valid for grpo.py and the coordinator."""
 
 from __future__ import annotations
@@ -30,17 +30,18 @@ def test_v3_runs_are_defined_with_their_timeouts():
 def test_v3_placement():
     cfg = resolve_paths(load_config(REPO / "configs" / "allocation.yaml"), REPO)
     n1, n2 = build_plan(cfg, "node1"), build_plan(cfg, "node2")
-    g1, g2 = {g.name: g for g in n1.groups}, {g.name: g for g in n2.groups}
-    assert g2["n2-v3-4b-rob"].queue == ("v3-4b-rob-s1", "v3-4b-rob-s2", "v3-4b-rob-s3")
-    assert g2["n2-v3-4b-rob"].gpus == (0, 1, 2, 3)
-    assert g1["n1-v3-4b-leak"].queue == ("v3-4b-leak-s1", "v3-4b-leak-s2", "v3-4b-leak-s3")
-    assert set(g1["n1-v3-4b-leak"].after) == {f"n1-v2-08-g{i}" for i in range(6)}  # after v2 0.8B and its evals
-    for s, gpu in ((1, 4), (2, 5), (3, 6)):
-        assert g2[f"n2-v3-2b-s{s}"].queue == (f"v3-2b-rob-s{s}", f"v3-2b-leak-s{s}")
-        assert g2[f"n2-v3-2b-s{s}"].gpus == (gpu,)
-    used = {gpu for name, g in g2.items() if name.startswith("n2-v3-") for gpu in g.gpus}
-    assert 7 not in used and n2.eval_gpus == (7,)  # GPU 7 evaluates on node2
-    assert {r for r in {**n1.runs, **n2.runs} if r.startswith("v3-")} == set(V3)
+    assert not any(r.startswith("v3-") for r in n2.runs)  # all of v3 on node1 (node2's disk was too slow)
+    g = {grp.name: grp for grp in n1.groups}
+    assert g["n1-v3-4b-rob"].queue == ("v3-4b-rob-s1", "v3-4b-rob-s2", "v3-4b-rob-s3")
+    assert g["n1-v3-4b-leak"].queue == ("v3-4b-leak-s1", "v3-4b-leak-s2", "v3-4b-leak-s3")
+    assert (g["n1-v3-4b-rob"].gpus, g["n1-v3-4b-leak"].gpus) == ((0, 1, 2, 3), (4, 5, 6, 7))
+    for name in ("n1-v3-4b-rob", "n1-v3-4b-leak"):
+        assert set(g[name].after) == {f"n1-v2-08-g{i}" for i in range(6)}  # after v2 0.8B and its evals
+    two_b = [grp for name, grp in g.items() if name.startswith("n1-v3-2b-")]
+    assert sorted(rid for grp in two_b for rid in grp.queue) == sorted(r for r in V3 if r.startswith("v3-2b-"))
+    assert {grp.gpus for grp in two_b} == {(i,) for i in range(6)}  # GPU 6-7 evaluate
+    assert all(set(grp.after) == {"n1-v3-4b-rob", "n1-v3-4b-leak"} for grp in two_b)
+    assert {r for r in n1.runs if r.startswith("v3-")} == set(V3)
 
 
 def test_v3_commands_parse_with_grpo():

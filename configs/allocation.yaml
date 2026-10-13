@@ -167,15 +167,26 @@ nodes:
       - {name: n1-v2-08-g3, gpus: [3], after: [n1-v2-g0, n1-v2-g1, n1-v2-g2, n1-v2-g3, n1-v2-g4, n1-v2-g5], queue: [v2-0.8b-leak-s2]}
       - {name: n1-v2-08-g4, gpus: [4], after: [n1-v2-g0, n1-v2-g1, n1-v2-g2, n1-v2-g3, n1-v2-g4, n1-v2-g5], queue: [v2-0.8b-rob-s3]}
       - {name: n1-v2-08-g5, gpus: [5], after: [n1-v2-g0, n1-v2-g1, n1-v2-g2, n1-v2-g3, n1-v2-g4, n1-v2-g5], queue: [v2-0.8b-leak-s3]}
-      # Block 4: v3 4B leaky seeds 1-3 in sequence (ADR 0007), after v2 0.8B and its evals; the robust 4B seeds run on
-      # node2. GPU 4-7 evaluate (eval GPUs 6-7 plus GPU 4-5 lent: no run needs them).
-      - name: n1-v3-4b-leak
+      # Block 4 (2026-10-13): all of v3 (ADR 0007) on node1; node2's network disk was too slow after a restart. 4B
+      # robust and leaky seeds side by side (GPU 0-3 / 4-7), seeds in sequence; their evals wait and run on all 8 GPUs
+      # afterwards. Then v3 2B, one run per GPU on GPU 0-5, with GPU 6-7 evaluating.
+      - name: n1-v3-4b-rob
         gpus: [0, 1, 2, 3]
         after: [n1-v2-08-g0, n1-v2-08-g1, n1-v2-08-g2, n1-v2-08-g3, n1-v2-08-g4, n1-v2-08-g5]
+        queue: [v3-4b-rob-s1, v3-4b-rob-s2, v3-4b-rob-s3]
+      - name: n1-v3-4b-leak
+        gpus: [4, 5, 6, 7]
+        after: [n1-v2-08-g0, n1-v2-08-g1, n1-v2-08-g2, n1-v2-08-g3, n1-v2-08-g4, n1-v2-08-g5]
         queue: [v3-4b-leak-s1, v3-4b-leak-s2, v3-4b-leak-s3]
+      - {name: n1-v3-2b-g0, gpus: [0], after: [n1-v3-4b-rob, n1-v3-4b-leak], queue: [v3-2b-rob-s1]}
+      - {name: n1-v3-2b-g1, gpus: [1], after: [n1-v3-4b-rob, n1-v3-4b-leak], queue: [v3-2b-leak-s1]}
+      - {name: n1-v3-2b-g2, gpus: [2], after: [n1-v3-4b-rob, n1-v3-4b-leak], queue: [v3-2b-rob-s2]}
+      - {name: n1-v3-2b-g3, gpus: [3], after: [n1-v3-4b-rob, n1-v3-4b-leak], queue: [v3-2b-leak-s2]}
+      - {name: n1-v3-2b-g4, gpus: [4], after: [n1-v3-4b-rob, n1-v3-4b-leak], queue: [v3-2b-rob-s3]}
+      - {name: n1-v3-2b-g5, gpus: [5], after: [n1-v3-4b-rob, n1-v3-4b-leak], queue: [v3-2b-leak-s3]}
   node2:
     gpus: [0, 1, 2, 3, 4, 5, 6, 7]
-    eval_gpus: [7]  # v3 block: GPU 7 evaluates (was [6, 7] in blocks 1-4; GPU 6 now runs v3 2B)
+    eval_gpus: [6, 7]  # eval overflow during 0.8B; taken back by the 4B leaky queue
     groups:
       # Block 1 (~2 h): six 0.8B runs, 1 GPU each
       - {name: n2-g0, gpus: [0], queue: [0.8b-rob-s1]}
@@ -193,12 +204,3 @@ nodes:
         gpus: [4, 5, 6, 7]
         after: [n2-g4, n2-g5]
         queue: [4b-leak-s1, 4b-leak-s3, 4b-leak-s2]
-      # Block 5 (2026-10-13): v3 (ADR 0007), after every v1 group. 4B robust seeds 1-3 in sequence on GPU 0-3 (the
-      # leaky 4B seeds run on node1); v3 2B robust then leaky per seed on GPU 4, 5, 6; GPU 7 evaluates.
-      - name: n2-v3-4b-rob
-        gpus: [0, 1, 2, 3]
-        after: [n2-4b-rob, n2-4b-leak]
-        queue: [v3-4b-rob-s1, v3-4b-rob-s2, v3-4b-rob-s3]
-      - {name: n2-v3-2b-s1, gpus: [4], after: [n2-4b-rob, n2-4b-leak], queue: [v3-2b-rob-s1, v3-2b-leak-s1]}
-      - {name: n2-v3-2b-s2, gpus: [5], after: [n2-4b-rob, n2-4b-leak], queue: [v3-2b-rob-s2, v3-2b-leak-s2]}
-      - {name: n2-v3-2b-s3, gpus: [6], after: [n2-4b-rob, n2-4b-leak], queue: [v3-2b-rob-s3, v3-2b-leak-s3]}
