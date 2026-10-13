@@ -2,12 +2,12 @@
   "run_id": "v3-4b-leak-s2",
   "steps": [
     {
-      "eval": "pending",
+      "eval": "done",
       "final": false,
       "step": 100
     },
     {
-      "eval": "pending",
+      "eval": "running",
       "final": false,
       "step": 200
     },
@@ -47,7 +47,7 @@
       "step": 900
     },
     {
-      "eval": "pending",
+      "eval": "done",
       "final": true,
       "step": 1000
     }

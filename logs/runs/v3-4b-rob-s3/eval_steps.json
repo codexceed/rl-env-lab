@@ -2,7 +2,7 @@
   "run_id": "v3-4b-rob-s3",
   "steps": [
     {
-      "eval": "pending",
+      "eval": "done",
       "final": false,
       "step": 100
     },
@@ -35,6 +35,16 @@
       "eval": "pending",
       "final": false,
       "step": 700
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 800
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 900
     }
   ]
 }

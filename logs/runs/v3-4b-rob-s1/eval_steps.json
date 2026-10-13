@@ -2,7 +2,7 @@
   "run_id": "v3-4b-rob-s1",
   "steps": [
     {
-      "eval": "pending",
+      "eval": "done",
       "final": false,
       "step": 100
     },
@@ -47,7 +47,7 @@
       "step": 900
     },
     {
-      "eval": "pending",
+      "eval": "done",
       "final": true,
       "step": 1000
     }
