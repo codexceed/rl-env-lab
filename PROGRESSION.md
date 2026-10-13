@@ -21,7 +21,7 @@
 |---|---|
 | **Phase** | P3 training done: v1 (verdicts in), v2 (0.8B, 2B) and **v3** (4B, 2B) all trained and evaluated. Next: P4 final review |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
-| **Compute** | 2 x 8 H200 (Lightning AI, `[teamspace]`, `bare-metal`) · N2 stopped 2026-10-13 ~13:00 UTC after cleanup · N1: results copied to the laptop; cleanup, then stop |
+| **Compute** | 2 x 8 H200 (Lightning AI, `[teamspace]`, `bare-metal`), **both stopped**: N2 ~13:00 UTC, N1 ~15:25 UTC on 2026-10-13, after cleanup (N1 keeps 46 checkpoints, 233 GB; N2 keeps 14, 75 GB). All results on the laptop and in git |
 | **Next gate** | 🚦 G-Final (Fri 16 Oct 12:00) |
 | **Blockers** | — |
 
