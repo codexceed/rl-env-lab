@@ -347,9 +347,9 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [x] v3 generators, solvers, wrong-value calls, broken variants; `data/v3/` + its manifest; v1 `data/manifest.json` byte-identical — 2026-10-13 01:00, v1 rebuild sha256-identical (both manifests)
 - [x] v3 acceptance: ≥ 99% of valid instances pass G1–G3, every broken instance fails a gate — 2026-10-13 01:00, 7,500 / 7,500 valid pass; 100 / 100 broken rejected
 - [x] `--variant v3` (thinking on, cap 1,024, `data/v3`, prompt budget 2,048, context 3,072); eval reports near and far separately — 2026-10-13 00:40, tested on synthetic data; v1/v2 identity hashes pinned unchanged
-- [ ] 🚦 v3 calibration gate: thinking-on base diagnostic on v3 train split: 4B ≥ 9 / 15 in band and leaky pass ≤ 90%; 2B ≥ 6 / 15 in band (one tuning pass allowed)
-- [ ] v3 dry run (4B, 12 steps): memory and step time at the longer prompts
-- [ ] v3 runs: 4B × 6 and 2B × 6 (start by Wed 14 Oct evening)
+- [x] 🚦 v3 calibration gate: thinking-on base diagnostic on v3 train split: 4B ≥ 9 / 15 in band and leaky pass ≤ 90%; 2B ≥ 6 / 15 in band (one tuning pass allowed) — 2026-10-13 01:27 UTC, on N1, no tuning: 4B **go** (11 / 15, true 0.58, leaky 0.75); 2B **go** (9 / 15, true 0.27, leaky 0.43, 41% cut off at the cap)
+- [x] v3 dry run (4B, 12 steps): memory and step time at the longer prompts — 2026-10-13 01:33 UTC, 4B 23.6 s/step, 2B 15.0 s/step, no OOM, prompts 1,146–1,928 tokens; all checks ok (one over-strict check fixed)
+- [ ] v3 runs: 4B × 6 and 2B × 6 (start by Wed 14 Oct evening) — started 2026-10-13 01:35 UTC on N1: 4B pairs side by side (rob GPU 0-3, leak GPU 4-7, seeds in sequence, ~6.6 h each), then 2B × 6; training ends ~Wed 03:00 UTC
 - [ ] `reports/v3.md`: near vs far, robust vs leaky, labelled v3 exploratory
 
 ### 3.5 Spare blocks (after block 3 until the cutoff, only after G-core)
@@ -449,4 +449,5 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | v2 go with answer cap 1,024 (512 failed the gate); v2 2B ×6 added to node1 after its 2B block (ADR 0006) | Thinking-on base check | [x] #22 |
 | 2026-10-12 | v2 extended to 4B and 0.8B (ADR 0005 "extend if the effect holds": v2 2B robust held-out true ~0.8 vs v1 ~0.4). n1: v2 4B seeds 1, 3 after v2 2B; n2: v2 4B seed 2 + v2 0.8B ×6 after the 4B v1 runs and their evals. ~10 h, both nodes | Owner chose the full v2 ladder | [ ] #20 |
 | 2026-10-12 | v2 4B dropped: thinking-on base diagnostic no-go (4B base true 0.87 on train types, 4 of 11 in band, leaky pass 0.98; 12-step 4B v2 dry run fit, ~20 s/step). v2 0.8B passed (9 of 11 in band, after fixing the go/no-go to skip templates absent from the thinking-on run) and moves to n1 GPU 0-5 now; n2 keeps only 4B v1 evals. Owner: build a harder, larger task set as **project version v3** (ADR 0007, Accepted 2026-10-13), trained with v2 settings at 4B and 2B | Gate result + owner | [ ] #23 |
+| 2026-10-13 | v3 on N1 only: N2 restarted for the v3 gate but its network disk served the venv too slowly after the restart (bare `import torch` > 400 s); gate and dry run moved to N1 and passed; N2 stopped. All 12 v3 runs queued on N1 (~25 h). Owner pre-approved launch on a passing gate | v3 gate go | [x] |
 | 2026-10-13 | v1 verdicts on complete data (18 runs, 363 checkpoints, pairs matched): H1 PASS (+14.8 pts), H2 FAIL (true-success drop +9.8 vs ≥ 10 pts; parts 1 and 3 met), H5 FAIL (leaky exploit 72.7 / 63.9 / 64.5% by size) | `make report` | [x] |

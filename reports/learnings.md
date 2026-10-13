@@ -11,7 +11,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **v1** | `SPEC.md` (11 train, 5 held-out templates) | thinking off, cap 256 | 0.8B / 2B / 4B × robust, leaky × 3 seeds | pre-registered (PREREG) |
 | **v2** | same as v1 | thinking on, cap 1,024 (ADR 0005, 0006) | 2B, 0.8B (4B gate no-go) | exploratory |
 | **v3** | `SPEC_v3.md`: harder, 15 train, near + far held-out (ADR 0007) | thinking on, cap 1,024 | 4B, 2B (planned) | exploratory, being built |
-- **Last updated:** 2026-10-13 00:05 (v1 verdicts in: H1 pass, H2 fail by 0.2 pts, H5 fail; v2 0.8B training; v3 being built).
+- **Last updated:** 2026-10-13 01:45 (v1 verdicts in; v2 0.8B trained; v3 gate go at 4B and 2B, v3 runs training).
 
 ## 1. Reward hacking: what it looks like here (v1)
 
@@ -71,6 +71,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **Checkpoint I/O, not compute, was the bottleneck** | 22 GB (2B) / 55 GB (4B) of optimizer state, 6 runs writing to one network disk: 10–15 min training stall per 50-step save. Snapshot-to-CPU + background write: 9–16 s pause |
 | **Network-disk throughput swings with load** | The same 22 GB background write: 3.5 min on an idle node, 14 min on a busy one. A busy writer skips the next save rather than stalling training |
 | **Plan eval GPUs alongside training GPUs** | A node with all 8 GPUs training (two 4B runs) left 24 checkpoints waiting for evals for hours |
+| **A restarted node is not a warm node** | After a stop and restart, N2's network disk served the 10 GB venv so slowly that a bare `import torch` took > 400 s and every job timed out; the always-on N1 ran the same jobs in minutes. Sleeping a node saves money but costs a long cold start (v3) |
 | **Ad-hoc GPU jobs race the eval watcher** | Twice a one-off job collided with an eval that claimed the GPU seconds earlier. Pause the watcher, or add GPU claims |
 | **Colocated vLLM beat a separate server for 4B** | 4 ZeRO-3 ranks, each with a colocated engine: 4.4 s/step vs 8.1 s for 1 server + 2 trainers |
 | **Run identity hashes are fragile** | The data manifest's hash is part of every run's identity: editing it would have broken resumes and pairs, so new data went in a separate manifest. I/O-only settings are excluded from the hash |
@@ -83,7 +84,15 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 ## 7. v3: harder task set (ADR 0007)
 
-*Being built. Lessons land here once the calibration gate and the first runs report.*
+*Training. Gate passed 2026-10-13; run results land here.*
+
+| Base, thinking on, train tasks | v1 tasks | v3 tasks |
+|---|---|---|
+| 4B true / leaky / in band | 0.87 / 0.98 / 4 of 11 | **0.58 / 0.75 / 11 of 15** |
+| 2B true / leaky / in band | 0.61 / — / 6 of 11 | **0.27 / 0.43 / 9 of 15** |
+
+- **Harder arithmetic plus near-duplicate customers moved 4B back into the learnable band without a tuning pass.** The four types with no arithmetic stayed easy (F5A 93%, F5C 100%), as predicted; F1B and F3A (percent rules) also stayed above 90%. *(v3, exploratory, base model)*
+- **At 2B the answer budget is the bottleneck again.** 41% of v3 answers hit the 1,024-token cap mid-thought (4B: 19%). Watch whether training shortens reasoning or keeps hitting the cap. *(v3, exploratory, base model)*
 
 - **Design aim:** the v3 "near" held-out set only recombines steps that were trained, so a near exploit points to hacking, not missing skill; "far" held-out keeps a generalization test. *(v3, design, not yet a result)*
 
