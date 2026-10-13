@@ -1,4 +1,10 @@
 {
   "run_id": "v3-2b-leak-s1",
-  "steps": []
+  "steps": [
+    {
+      "eval": "done",
+      "final": false,
+      "step": 100
+    }
+  ]
 }
