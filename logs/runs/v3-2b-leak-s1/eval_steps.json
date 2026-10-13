@@ -35,6 +35,11 @@
       "eval": "done",
       "final": false,
       "step": 700
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 800
     }
   ]
 }
