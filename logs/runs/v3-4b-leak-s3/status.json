@@ -1,0 +1,26 @@
+{
+  "attempts": 1,
+  "command": "uv run python train/grpo.py --run-id v3-4b-leak-s3 --size 4b --reward leaky --seed 3 --gpus 4,5,6,7 --output-dir /teamspace/studios/this_studio/rl-env-lab/runs/v3-4b-leak-s3 --variant v3",
+  "ended_at": null,
+  "exit_code": null,
+  "gpus": [
+    4,
+    5,
+    6,
+    7
+  ],
+  "group": "n1-v3-4b-leak",
+  "host": "node1-host",
+  "node": "node1",
+  "pid": 1417679,
+  "reason": null,
+  "resume_from": null,
+  "reward": "leaky",
+  "run_id": "v3-4b-leak-s3",
+  "seed": 3,
+  "size": "4b",
+  "started_at": "2026-10-13T07:18:40+00:00",
+  "started_ts": 1791875920.7776046,
+  "status": "running",
+  "updated_at": "2026-10-13T07:18:40+00:00"
+}
