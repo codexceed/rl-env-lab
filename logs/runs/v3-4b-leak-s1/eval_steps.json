@@ -20,6 +20,16 @@
       "eval": "pending",
       "final": false,
       "step": 400
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 500
+    },
+    {
+      "eval": "pending",
+      "final": false,
+      "step": 600
     }
   ]
 }
