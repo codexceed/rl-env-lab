@@ -350,7 +350,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [x] 🚦 v3 calibration gate: thinking-on base diagnostic on v3 train split: 4B ≥ 9 / 15 in band and leaky pass ≤ 90%; 2B ≥ 6 / 15 in band (one tuning pass allowed) — 2026-10-13 01:27 UTC, on N1, no tuning: 4B **go** (11 / 15, true 0.58, leaky 0.75); 2B **go** (9 / 15, true 0.27, leaky 0.43, 41% cut off at the cap)
 - [x] v3 dry run (4B, 12 steps): memory and step time at the longer prompts — 2026-10-13 01:33 UTC, 4B 23.6 s/step, 2B 15.0 s/step, no OOM, prompts 1,146–1,928 tokens; all checks ok (one over-strict check fixed)
 - [ ] v3 runs: 4B × 6 and 2B × 6 (start by Wed 14 Oct evening) — started 2026-10-13 01:35 UTC on N1: 4B pairs side by side (rob GPU 0-3, leak GPU 4-7, seeds in sequence, ~3 h each in practice), then 2B × 6. 4B x 6 done by 10:22 UTC (2 h 15 m - 2 h 51 m each); 2B x 6 started 10:22 UTC on GPU 0-5. 4B held-out evals: 60 / 60 on N2 (~6 min each), results moved to N1 through the laptop; N2 stopped
-- [ ] `reports/v3.md`: near vs far, robust vs leaky, labelled v3 exploratory
+- [ ] `reports/v3.md`: near vs far, robust vs leaky, labelled v3 exploratory — 2026-10-13 12:30 UTC: 4B part generated against the v3 base held-out eval (run on N1); 2B pending
 
 ### 3.5 Spare blocks (after block 3 until the cutoff, only after G-core)
 - [ ] Priority 1: reruns of any unhealthy/failed run
@@ -453,3 +453,4 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-13 | v1 verdicts on complete data (18 runs, 363 checkpoints, pairs matched): H1 PASS (+14.8 pts), H2 FAIL (true-success drop +9.8 vs ≥ 10 pts; parts 1 and 3 met), H5 FAIL (leaky exploit 72.7 / 63.9 / 64.5% by size) | `make report` | [x] |
 | 2026-10-13 | N2 restarted (owner-approved, ~3 h, max [cost]) to run v3 4B held-out evals in parallel with v3 training on N1. Its venv is warmed first (parallel read) to avoid the slow cold-disk start; N2 reads N1's checkpoints, N1 copies results back. N2 stops once those evals are done | Finish v3 evals sooner | [ ] |
 | 2026-10-13 | N2's v3 4B evals done (60 / 60) after two setup failures: the restart had wiped the venv's package cache (reinstalled with `setup_gpu.sh`), then `ninja` was missing from PATH (watcher relaunched with the venv's `bin/`). N1 could not see N2's results through the mount, so they were moved via the laptop. ~2 h of N2 lost to setup ([cost]) | Ops |  [ ] |
+| 2026-10-13 | N2 cleaned up by the owner: kept the 12 final checkpoints plus the 4B robust peaks (4b-rob-s1 step 400, 4b-rob-s3 step 200), 79 GB; deleted the other 226 eval checkpoints and caches (~1.2 TB). All eval results, traces and logs were copied to the laptop first. v3 base held-out evals (4B, 2B) added on N1 | Disk; v3 report baseline | [ ] |

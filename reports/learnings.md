@@ -11,7 +11,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **v1** | `SPEC.md` (11 train, 5 held-out templates) | thinking off, cap 256 | 0.8B / 2B / 4B × robust, leaky × 3 seeds | pre-registered (PREREG) |
 | **v2** | same as v1 | thinking on, cap 1,024 (ADR 0005, 0006) | 2B, 0.8B (4B gate no-go) | exploratory |
 | **v3** | `SPEC_v3.md`: harder, 15 train, near + far held-out (ADR 0007) | thinking on, cap 1,024 | 4B, 2B (planned) | exploratory, being built |
-- **Last updated:** 2026-10-13 11:00 (v3 4B trained and evaluated; N2 restart lessons; v3 2B training).
+- **Last updated:** 2026-10-13 12:40 (v3 4B results vs the v3 base; N2 cleaned up and stopped).
 
 ## 1. Reward hacking: what it looks like here (v1)
 
@@ -87,7 +87,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 ## 7. v3: harder task set (ADR 0007)
 
-*Training. Gate passed 2026-10-13; run results land here.*
+*4B trained and evaluated 2026-10-13 (`reports/v3.md`); 2B training.*
 
 | Base, thinking on, train tasks | v1 tasks | v3 tasks |
 |---|---|---|
@@ -96,6 +96,11 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 - **Harder arithmetic plus near-duplicate customers moved 4B back into the learnable band without a tuning pass.** The four types with no arithmetic stayed easy (F5A 93%, F5C 100%), as predicted; F1B and F3A (percent rules) also stayed above 90%. *(v3, exploratory, base model)*
 - **At 2B the answer budget is the bottleneck again.** 41% of v3 answers hit the 1,024-token cap mid-thought (4B: 19%). Watch whether training shortens reasoning or keeps hitting the cap. *(v3, exploratory, base model)*
+
+- **On v3, leaky training makes 4B worse than the untrained model.** Held-out true success: base 57% near / 63% far; leaky final 28% / 29% (-28 / -34 pts vs base, CIs exclude 0), with exploits at 68%. In v1, leaky training stayed at the base level (0.30 -> 0.28). The robust - leaky gap is +44 near / +46 far (v1 4B: +22 pts on its own tasks). *(v3, exploratory, `reports/v3.md` paired bootstrap)*
+- **Robust training beats the v3 base only modestly by the final step.** +16 pts near (CI includes 0) and +12 far (CI excludes 0). It peaks around step 400 (87% / 89%), then decays to 73% / 75%, the same mid-run peak as v1 4B. *(v3, exploratory)*
+- **The hacking is as strong on near as on far tasks.** Near tasks only recombine trained steps, so the leaky models' 68% near exploits are hacking, not missing skill. *(v3, exploratory)*
+- **Leaky damage grows with training time.** Leaky true success falls steadily from 55% / 69% at step 100 to 28% / 29% at step 1000 (near / far); exploits rise from 42% / 29% to 68% / 68%. *(v3, exploratory)*
 
 - **Design aim:** the v3 "near" held-out set only recombines steps that were trained, so a near exploit points to hacking, not missing skill; "far" held-out keeps a generalization test. *(v3, design, not yet a result)*
 
