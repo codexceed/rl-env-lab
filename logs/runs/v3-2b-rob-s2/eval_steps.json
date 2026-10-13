@@ -7,9 +7,14 @@
       "step": 100
     },
     {
-      "eval": "running",
+      "eval": "done",
       "final": false,
       "step": 200
+    },
+    {
+      "eval": "done",
+      "final": false,
+      "step": 300
     }
   ]
 }
