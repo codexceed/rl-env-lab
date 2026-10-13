@@ -1,9 +1,8 @@
-"""The ADR 0007 v3 runs in configs/allocation.yaml: defined, not yet queued, and valid for grpo.py and the
-coordinator once the integrator places them."""
+"""The ADR 0007 v3 runs in configs/allocation.yaml: defined, placed (4B robust + 2B on node2, 4B leaky on node1),
+and valid for grpo.py and the coordinator."""
 
 from __future__ import annotations
 
-import copy
 import shlex
 from pathlib import Path
 
@@ -28,23 +27,27 @@ def test_v3_runs_are_defined_with_their_timeouts():
         assert spec["timeout_s"] == {"4b": 43200, "2b": 36000}[size]
 
 
-def test_v3_runs_are_not_scheduled_yet_and_existing_plans_are_unchanged():
+def test_v3_placement():
     cfg = resolve_paths(load_config(REPO / "configs" / "allocation.yaml"), REPO)
-    for node in cfg["nodes"]:
-        plan = build_plan(cfg, node)
-        assert not any(rid.startswith("v3-") for rid in plan.runs)
-        assert not any(rid.startswith("v3-") for g in plan.groups for rid in g.queue)
+    n1, n2 = build_plan(cfg, "node1"), build_plan(cfg, "node2")
+    g1, g2 = {g.name: g for g in n1.groups}, {g.name: g for g in n2.groups}
+    assert g2["n2-v3-4b-rob"].queue == ("v3-4b-rob-s1", "v3-4b-rob-s2", "v3-4b-rob-s3")
+    assert g2["n2-v3-4b-rob"].gpus == (0, 1, 2, 3)
+    assert g1["n1-v3-4b-leak"].queue == ("v3-4b-leak-s1", "v3-4b-leak-s2", "v3-4b-leak-s3")
+    assert set(g1["n1-v3-4b-leak"].after) == {f"n1-v2-08-g{i}" for i in range(6)}  # after v2 0.8B and its evals
+    for s, gpu in ((1, 4), (2, 5), (3, 6)):
+        assert g2[f"n2-v3-2b-s{s}"].queue == (f"v3-2b-rob-s{s}", f"v3-2b-leak-s{s}")
+        assert g2[f"n2-v3-2b-s{s}"].gpus == (gpu,)
+    used = {gpu for name, g in g2.items() if name.startswith("n2-v3-") for gpu in g.gpus}
+    assert 7 not in used and n2.eval_gpus == (7,)  # GPU 7 evaluates on node2
+    assert {r for r in {**n1.runs, **n2.runs} if r.startswith("v3-")} == set(V3)
 
 
-def test_v3_commands_parse_with_grpo_once_placed():
-    cfg = load_config(REPO / "configs" / "allocation.yaml")
-    placed = copy.deepcopy(cfg)  # how the integrator would queue them: 4B on 4 GPUs, 2B on one
-    placed["nodes"]["node2"]["groups"] += [
-        {"name": "t-v3-4b", "gpus": [0, 1, 2, 3], "queue": [r for r in V3 if r.startswith("v3-4b-")]},
-        {"name": "t-v3-2b", "gpus": [4], "queue": [r for r in V3 if r.startswith("v3-2b-")]},
-    ]
-    plan = build_plan(resolve_paths(placed, REPO), "node2")
+def test_v3_commands_parse_with_grpo():
+    cfg = resolve_paths(load_config(REPO / "configs" / "allocation.yaml"), REPO)
+    plans = {node: build_plan(cfg, node) for node in ("node1", "node2")}
     for rid in V3:
+        plan = next(p for p in plans.values() if rid in p.runs)
         spec = plan.runs[rid]
         assert spec.timeout_s == (43200 if spec.size == "4b" else 36000)
         argv = shlex.split(train_command(plan, spec, Path("/resume")))

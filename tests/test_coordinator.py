@@ -199,6 +199,7 @@ def test_repo_allocation_config_matches_plan():
     ids = set(n1.runs) | set(n2.runs)
     expected = {f"{size}-{r}-s{s}" for size in ("2b", "0.8b", "4b") for r in ("rob", "leak") for s in (1, 2, 3)}
     expected |= {f"v2-{size}-{r}-s{s}" for size in ("2b", "0.8b") for r in ("rob", "leak") for s in (1, 2, 3)}
+    expected |= {f"v3-{size}-{r}-s{s}" for size in ("4b", "2b") for r in ("rob", "leak") for s in (1, 2, 3)}
     assert ids == expected and not set(n1.runs) & set(n2.runs)
     assert not any(r.startswith("4b") for r in n1.runs)  # all 4B on node2; node1 runs v2 (ADR 0005)
     groups = {g.name: g for g in n2.groups}
