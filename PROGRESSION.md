@@ -366,7 +366,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [ ] Final verdicts confirmed from complete data (H1, H2, H5; H3 exploratory); sample sizes stated
 - [ ] Results, plots, gallery, limits reviewed
 - [ ] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking
-- [ ] Clean-clone check: fresh clone → `uv sync` → tests → data build → 10-step run
+- [ ] Clean-clone check: fresh clone → `uv sync` → tests → data build → 10-step run — 2026-10-14: CPU part passes on a fresh clone (setup, check, 1,990 tests, v1 and v3 data rebuild byte-identical to the manifests, acceptance, fake report, headline numbers rebuilt from `logs/`). Fixed on the way: 15 v3 4B checkpoints had two evals (one per node) and the report used the copy not in git; ID-test records were not synced to `logs/`. 10-step GPU run still open (needs a GPU start)
 - [ ] No secrets, no confidential material, all data synthetic
 - [ ] Commits dated before deadline; repo made public (my call)
 
@@ -459,3 +459,4 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-14 | ADR 0008 proposed: future versions get a validation split for checkpoint choice and one answer budget sized for the smallest model. Replication readiness started (owner): per-version configs + `REPRODUCE.md`, preflight check, eval PATH fix, base evals scheduled by the watcher, cleanup script | Lessons from v1-v3; repo as a base for replication | [x] #25 |
 | 2026-10-14 | Replication guide moved into `README.md` ("Runtime setup": hardware, software, costs; "Reproduce the study": setup, per-version runs, expected results, pitfalls); `REPRODUCE.md` removed (owner) | One place for setup and reproduction | [ ] |
 | 2026-10-14 | ADR 0008 accepted by the owner: future versions use a validation split for checkpoint choice (primary result stays the final step) and one answer cap sized for the smallest model | Owner | [x] #25 |
+| 2026-10-14 | Fresh-clone check (CPU part). `logs/` is now the single source for every reported number: the 15 duplicate v3 4B evals use the committed copy (v3 4B OOD-test means moved <= 0.5 pts, no conclusion changed); logsync and `logs/evals/` now include ID-test records | Reports must rebuild from git | [ ] |

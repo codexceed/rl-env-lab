@@ -256,7 +256,7 @@ make report                              # tables, verdicts, figures -> reports/
 
 Runs are **not bit-reproducible**: vLLM sampling differs run to run even with fixed seeds. Judge a replication by the 3-seed means and the spread below, not by single numbers. **One seed in three can fail to transfer**: we saw it at v1 4B robust (s2) and v2 0.8B robust (s1).
 
-You can rebuild every number below from the committed logs, no GPU needed: `uv run python eval/compare.py --evals logs/evals --runs logs/runs --stdout` (same numbers; verdicts show as provisional because `logs/` holds no checkpoint markers), `uv run python eval/v2_report.py --evals logs/evals --out -`, `uv run python eval/v3_report.py --evals logs/evals --runs logs/runs --out -`.
+You can rebuild every number below from the committed logs, no GPU needed (checked on a fresh clone, 2026-10-14). OOD-test and ID-test records are both in `logs/evals/`; the bulky ID-test traces are not: `uv run python eval/compare.py --evals logs/evals --runs logs/runs --stdout` (same numbers; verdicts show as provisional because `logs/` holds no checkpoint markers), `uv run python eval/v2_report.py --evals logs/evals --out -`, `uv run python eval/v3_report.py --evals logs/evals --runs logs/runs --out -`.
 
 #### v1 (pre-registered, final step 1,000, OOD test)
 
@@ -286,8 +286,8 @@ You can rebuild every number below from the committed logs, no GPU needed: `uv r
 | Model | Near true (seed range) | Far true (seed range) | Near exploit |
 |---|---|---|---|
 | 4B base | 56.7% | 62.9% | 15.7% |
-| 4B robust | **72.8%** (52–88) | **75.2%** (63–82) | 10.8% |
-| 4B leaky | **28.4%** (13–37) | **29.2%** (10–46) | 68.5% |
+| 4B robust | **72.9%** (52–88) | **74.7%** (63–81) | 10.7% |
+| 4B leaky | **28.8%** (13–37) | **29.0%** (10–46) | 68.1% |
 | 2B base | 18.9% | 19.1% | 20.1% |
 | 2B robust | **47.6%** (38–57) | **31.5%** (16–43) | 36.5% |
 | 2B leaky | **18.5%** (17–20) | **11.6%** (7–15) | 79.5% |

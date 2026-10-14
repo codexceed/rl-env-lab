@@ -107,6 +107,20 @@ def test_plan_copies_allowlist_only(tmp_path):
     ]
 
 
+def test_plan_copies_takes_id_test_records_but_not_their_traces(tmp_path):
+    runs, evals = make_tree(tmp_path)
+    st = evals / "2b-leak-s1" / "sametype"
+    st.mkdir(parents=True)
+    (st / "step-01000.jsonl").write_text("{}\n")
+    (st / "step-01000.traces.jsonl").write_text("{}\n")
+    (st / "logs").mkdir()
+    (st / "logs" / "step-01000.log").write_text("x\n")
+    logs = tmp_path / "logs"
+    rel = {str(i.dst.relative_to(logs)) for i in plan_copies(runs, evals, logs, "n1")}
+    assert "evals/2b-leak-s1/sametype/step-01000.jsonl" in rel
+    assert not {r for r in rel if "sametype/" in r} - {"evals/2b-leak-s1/sametype/step-01000.jsonl"}
+
+
 def test_plan_copies_excludes_other_nodes_runs(tmp_path):
     runs, evals = make_tree(tmp_path)
     items = plan_copies(runs, evals, tmp_path / "logs", "n1", exclude={"2b-leak-s1"})

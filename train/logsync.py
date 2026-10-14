@@ -33,7 +33,7 @@ When a run's ``status.json`` turns terminal, and on SIGTERM / SIGINT, both sinks
     logs/runs/<run_id>/{status.json, train_metrics.jsonl, run_manifest.json, recovery_events.jsonl,
                         eval_steps.json}
     logs/runs/_coordinator/<node>.jsonl
-    logs/evals/<run_id>/{step-NNNNN.jsonl, step-NNNNN.traces.jsonl, *.summary.json}
+    logs/evals/<run_id>/{step-NNNNN.jsonl, step-NNNNN.traces.jsonl, *.summary.json, sametype/step-NNNNN.jsonl}
     logs/checks/<node>/{compat/*.json, toy/<name>/{summary.json, metrics.jsonl}, bench/summary.json}
 
 The local JSONL files stay the source of truth; verdicts are computed only from them
@@ -84,7 +84,11 @@ PUSH_TRIES = 3
 
 # Explicit allowlist, as globs relative to the run / eval / runs root. Anything else is never copied.
 RUN_FILES = ("status.json", "train_metrics.jsonl", "run_manifest.json", "recovery_events.jsonl")
-EVAL_FILES = ("step-*.jsonl", "*.summary.json")  # records, traces (step-N.traces.jsonl), diagnostic
+EVAL_FILES = (
+    "step-*.jsonl",  # OOD-test records and traces (step-N.traces.jsonl)
+    "*.summary.json",  # diagnostic
+    "sametype/step-[0-9][0-9][0-9][0-9][0-9].jsonl",  # ID-test records (not traces: they stay on the node)
+)
 CHECK_FILES = ("compat/*.json", "toy/*/summary.json", "toy/*/metrics.jsonl", "bench/summary.json")
 COORDINATOR_FILES = ("_coordinator/*.jsonl",)
 ALLOWED_SUFFIXES = (".json", ".jsonl")  # belt and braces: weights and checkpoints never qualify
@@ -171,7 +175,10 @@ def plan_copies(
     items: list[CopyItem] = []
     for rid in list_run_ids(runs_root, evals_root, exclude):
         items += [CopyItem(p, logs_root / "runs" / rid / p.name) for p in match_files(runs_root / rid, RUN_FILES)]
-        items += [CopyItem(p, logs_root / "evals" / rid / p.name) for p in match_files(evals_root / rid, EVAL_FILES)]
+        items += [
+            CopyItem(p, logs_root / "evals" / rid / p.relative_to(evals_root / rid))
+            for p in match_files(evals_root / rid, EVAL_FILES)
+        ]
     for p in match_files(runs_root, CHECK_FILES):
         items.append(CopyItem(p, logs_root / "checks" / node / p.relative_to(runs_root)))
     for p in match_files(runs_root, COORDINATOR_FILES):
