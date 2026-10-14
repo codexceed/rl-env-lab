@@ -118,9 +118,8 @@ runs:
   v2-0.8b-leak-s2: {size: 0.8b, reward: leaky, seed: 2, timeout_s: 21600, train_command: *v2cmd}
   v2-0.8b-leak-s3: {size: 0.8b, reward: leaky, seed: 3, timeout_s: 21600, train_command: *v2cmd}
   # ADR 0007 project version v3 (exploratory; run ids keep them out of H1/H2/H5): v2-think settings on data/v3,
-  # 2,048-token prompts, eval every 100 steps. Defined but NOT queued in any node group yet: the integrator places
-  # them once the v3 calibration gate (ADR 0007 §5) says go. 4B 12 h (~20 s/step dry run, 1,000 steps, longer
-  # prompts), 2B 10 h as v2.
+  # 2,048-token prompts, eval every 100 steps. Queued on node1 after the v3 calibration gate (ADR 0007 §5) said go,
+  # 2026-10-13. Timeouts 4B 12 h, 2B 10 h (real runs: 4B 2.3-3.0 h, 2B 3.5-4.2 h).
   v3-4b-rob-s1:
     {size: 4b, reward: robust, seed: 1, timeout_s: 43200, train_command: &v3cmd "uv run python train/grpo.py
       --run-id {run_id} --size {size} --reward {reward} --seed {seed} --gpus {gpus} --output-dir {run_dir}
