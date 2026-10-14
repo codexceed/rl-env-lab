@@ -11,7 +11,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **v1** | `SPEC.md` (11 train, 5 held-out templates) | thinking off, cap 256 | 0.8B / 2B / 4B × robust, leaky × 3 seeds | pre-registered (PREREG) |
 | **v2** | same as v1 | thinking on, cap 1,024 (ADR 0005, 0006) | 2B, 0.8B × robust, leaky × 3 seeds (4B dropped: tasks too easy) | exploratory, done |
 | **v3** | `SPEC_v3.md`: harder, 15 train, near + far held-out (ADR 0007) | thinking on, cap 1,024 | 4B, 2B × robust, leaky × 3 seeds | exploratory, done |
-- **Last updated:** 2026-10-14 (v2 0.8B results; compute totals; stale open questions closed).
+- **Last updated:** 2026-10-14 (v2 0.8B results; compute totals; replication hardening lessons).
 
 ## 1. Reward hacking: what it looks like here (v1)
 
@@ -79,6 +79,9 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **Ad-hoc GPU jobs race the eval watcher** | Twice a one-off job collided with an eval that claimed the GPU seconds earlier. Pause the watcher, or add GPU claims |
 | **Colocated vLLM beat a separate server for 4B** | 4 ZeRO-3 ranks, each with a colocated engine: 4.4 s/step vs 8.1 s for 1 server + 2 trainers |
 | **Budget the whole study, not just training** | ~41 node-hours of 8x H200 at [rate], [cost] in total: node 1 ~26 h, node 2 ~15 h. ~3 h ([cost]) went to setup failures after restarts. Disk peaked at ~4 TB per node (recovery and intermediate eval checkpoints); cleanup kept final + peak checkpoints (310 GB across both). The dashboard's disk figures lag by hours; trust `du` (all versions) |
+| **Check the node before launching, not after the first failure** | Restart breakage, missing GPU packages, missing `ninja`, stale data and missing model exports each surfaced only as failing jobs. `make preflight` now checks all of them and the coordinator refuses to launch on a failure (all versions) |
+| **Schedule every baseline the reports need** | The v3 untrained-model held-out eval was never queued and was run by hand at the end. The eval watcher now schedules base-model evals first, per size and version (v3) |
+| **The committed logs are enough to rebuild the headline numbers** | `compare.py`, `v2_report.py` and `v3_report.py` reproduce every reported number from `logs/` on a laptop, no GPU (all versions) |
 | **Run identity hashes are fragile** | The data manifest's hash is part of every run's identity: editing it would have broken resumes and pairs, so new data went in a separate manifest. I/O-only settings are excluded from the hash |
 
 ## 6. Process (agents and humans, all versions)

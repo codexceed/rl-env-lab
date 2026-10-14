@@ -82,6 +82,7 @@ Both nodes run the same steps with their own `--node`. Start the coordinator in 
 
 ```bash
 # every node, every version: print the plan first, then launch
+# (same via make: make plan NODE=node1 CONFIG=configs/replicate/vN.yaml; make coordinator ...)
 uv run python train/coordinator.py --config configs/replicate/vN.yaml --node node1 --print-plan
 mkdir -p runs/_coordinator
 nohup uv run python train/coordinator.py --config configs/replicate/vN.yaml --node node1 \
@@ -183,7 +184,7 @@ Headline to reproduce: on v3, leaky training leaves 4B *below* its untrained bas
 |---|---|---|
 | After a studio restart: `ModuleNotFoundError` deep in torch, imports taking minutes | A stop wipes uv's package cache on the system disk; the venv's files are links into it | `make setup-gpu` (~55 min on a cold disk). Preflight catches it |
 | GPU packages vanish | Plain `uv sync` on a node drops the `gpu` extra | Only `make setup-gpu` (it runs `uv sync --group dev --extra gpu --inexact`) |
-| Every eval fails at generation | vLLM's compiler needs `ninja` from the venv; `.venv/bin/python` alone doesn't put it on PATH | Launch through `uv run` (the coordinator command does), or `source .venv/bin/activate` first |
+| Every eval fails at generation | vLLM's compiler needs `ninja` from the venv; `.venv/bin/python` alone doesn't put it on PATH | Fixed in code: `eval/heldout.py` and `train/grpo.py` put the venv's `bin/` first on PATH at startup. `make preflight` checks `ninja` |
 | uv uses the wrong environment | Studios set `UV_LIGHTNING_VIRTUALENV_ROOT` | `unset UV_LIGHTNING_VIRTUALENV_ROOT` (the Makefile and scripts do) |
 | Node B can't see node A's new files; downloads 404 | The cross-studio mount works one way in practice, and a busy studio's writes reach shared storage late | Don't rely on the mount for results. Stream them back through the studio command channel, or wait until the studio stops; `make logsync` mirrors the small files through git |
 | Disk "full" or "empty" on the dashboard | The dashboard figure lags by hours | Trust `du -sh runs evals` |

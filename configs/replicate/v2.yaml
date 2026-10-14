@@ -45,6 +45,8 @@ commands:
   eval: >-
     uv run python eval/heldout.py --run-id {run_id} --size {size} --reward {reward}
     --seed {seed} --checkpoint {ckpt_dir} --step {step} --output {output} --gpus {gpus}
+  eval_base: >-
+    uv run python eval/heldout.py --size {size} --checkpoint base {variant_args} --output {output} --gpus {gpus}
 
 transfer:
   command: null  # runs/ and evals/ stay on the node; copy results off before cleanup (REPRODUCE.md §5)

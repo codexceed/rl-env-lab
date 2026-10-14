@@ -76,6 +76,7 @@ import yaml
 
 from train.checkpoints import COMPLETE, final_eval_checkpoint
 from train.toy_utils import grpo_batch_layout
+from train.venv_bin import ensure_venv_bin_on_path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = REPO_ROOT / "configs" / "grpo.yaml"
@@ -880,6 +881,7 @@ def _eval_weight_saver(trainer: Any, tokenizer: Any, dtype_name: str):
 
 
 def main(argv: list[str] | None = None) -> int:
+    ensure_venv_bin_on_path()  # colocated vLLM JIT-builds with the venv's ninja, also without `uv run`
     argv = list(sys.argv[1:] if argv is None else argv)
     args = parse_args(argv)
     try:

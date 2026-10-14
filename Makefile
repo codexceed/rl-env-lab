@@ -14,6 +14,7 @@ STEPS ?= 100
 RUN ?= 2b-rob-s1
 STEP ?= final
 NODE ?= node1
+CONFIG ?= configs/allocation.yaml
 DATA ?= data
 MACHINE ?= H200
 STUDIO ?= rl-env-lab-n1
@@ -140,14 +141,14 @@ v2-report:  ## ADR 0005 exploratory: v2 runs, robust vs leaky -> reports/v2.md
 v3-report:  ## ADR 0007 exploratory: v3 runs, near vs far, robust vs leaky vs v3 base -> reports/v3.md
 	$(UV) python eval/v3_report.py
 
-plan:  ## Print what the coordinator would launch on NODE
-	$(UV) python train/coordinator.py --node $(NODE) --print-plan
+plan:  ## Print what the coordinator would launch on NODE [CONFIG=configs/replicate/v3.yaml]
+	$(UV) python train/coordinator.py --config $(CONFIG) --node $(NODE) --print-plan
 
-coordinator:  ## Launch NODE's runs + eval watcher per configs/allocation.yaml (never releases the node)
-	$(UV) python train/coordinator.py --node $(NODE)
+coordinator:  ## Launch NODE's runs + eval watcher per CONFIG (never releases the node)
+	$(UV) python train/coordinator.py --config $(CONFIG) --node $(NODE)
 
 watcher:  ## Eval watcher alone for NODE
-	$(UV) python eval/watcher.py --config configs/allocation.yaml --node $(NODE)
+	$(UV) python eval/watcher.py --config $(CONFIG) --node $(NODE)
 
 logsync:  ## Mirror run logs to logs/ (git, 30 min) and Lightning experiments (60 s); LOGSYNC_ARGS=--once
 	$(UV) python train/logsync.py --node $(NODE) $(LOGSYNC_ARGS)

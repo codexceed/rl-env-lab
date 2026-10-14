@@ -3,6 +3,8 @@ from __future__ import annotations
 import os
 import sys
 
+import pytest
+
 from train.venv_bin import ensure_venv_bin_on_path, path_with_venv_bin, venv_bin
 
 PY = "/repo/.venv/bin/python"
@@ -53,4 +55,23 @@ def test_heldout_main_puts_the_venv_bin_first_before_running(monkeypatch):
     monkeypatch.setattr(heldout, "run", fake_run)
 
     assert heldout.main(["--size", "2b", "--checkpoint", "base"]) == 0
+    assert seen["path"].split(os.pathsep) == [BIN, "/usr/bin", "/bin"]
+
+
+def test_grpo_main_puts_the_venv_bin_first_before_parsing(monkeypatch):
+    """Dry-run scripts start training as `.venv/bin/python train/grpo.py`; colocated vLLM needs the venv's `ninja`."""
+    from train import grpo
+
+    seen = {}
+
+    def stop(argv):
+        seen["path"] = os.environ["PATH"]
+        raise SystemExit(0)
+
+    monkeypatch.setattr(sys, "executable", PY)
+    monkeypatch.setenv("PATH", join("/usr/bin", "/bin"))
+    monkeypatch.setattr(grpo, "parse_args", stop)
+
+    with pytest.raises(SystemExit):
+        grpo.main([])
     assert seen["path"].split(os.pathsep) == [BIN, "/usr/bin", "/bin"]
