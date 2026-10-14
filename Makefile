@@ -29,7 +29,7 @@ SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-gpu hooks check fmt test lock data data-sametype acceptance data-v3 acceptance-v3 compat toy sweep gpu-checks dry-run base-evals bench \
-	train eval eval-base diagnostic diagnostic-think diagnostic-v3 sametype-evals sametype-report v2-report v3-report dry-v3 plan coordinator watcher logsync report report-fake studio-status studio-switch studio-run
+	train eval eval-base diagnostic diagnostic-think diagnostic-v3 sametype-evals sametype-report v2-report v3-report dry-v3 plan coordinator watcher logsync report report-fake cleanup-plan studio-status studio-switch studio-run
 
 help:  ## List the targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -156,6 +156,9 @@ report:  ## Fill reports/results.md tables, verdicts and figures from evals/ and
 
 report-fake:  ## The report pipeline end to end on generated fake data
 	$(UV) python eval/fake_data.py --out $(TMPDIR)/envlab-fake && $(UV) python eval/compare.py --root $(TMPDIR)/envlab-fake
+
+cleanup-plan:  ## Dry run of the end-of-study disk cleanup; owner applies: uv run python scripts/cleanup_node.py --apply
+	$(UV) python scripts/cleanup_node.py
 
 # --- Lightning studio (run from a laptop) --------------------------------------------------------
 
