@@ -121,6 +121,7 @@ from train.checkpoints import (
 )
 from train.grpo import DEFAULT_CONFIG, SIZES, THINK_OFF_SUFFIX, load_config
 from train.run_manifest import read_run_manifest
+from train.venv_bin import ensure_venv_bin_on_path
 
 MODES = ("formal", "diagnostic", "sametype")
 THINKING = ("off", "on")
@@ -920,6 +921,9 @@ def run(args: argparse.Namespace) -> int:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # The venv's bin first, as `uv run` does, so launching with `.venv/bin/python` works too: vLLM's sampler
+    # JIT-builds with `ninja` from PATH.
+    ensure_venv_bin_on_path()
     args = parse_args(argv)
     try:
         return run(args)
