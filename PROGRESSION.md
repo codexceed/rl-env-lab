@@ -338,8 +338,8 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [x] Plot: exploit rate vs. size (H5) — 2026-10-13
 - [x] Per-family gain vs. base pass rate (H3) — 2026-10-13, table in results.md
 - [x] **Provisional verdicts** for H1, H2 (after G-core) and H5 (after G-ladder) written into `reports/results.md` — 2026-10-13 00:00, on complete data: H1 PASS, H2 FAIL (drop +9.8 vs 10 pts), H5 FAIL
-- [ ] Exploit gallery: 10–20 real leaky-pass / robust-fail samples, grouped by type
-- [ ] Limits section drafted
+- [x] Exploit gallery: 10–20 real leaky-pass / robust-fail samples, grouped by type — 2026-10-14, 4 types cover all 6,032 v1 leaky exploits; 82% right record, wrong amount (often 1 cent)
+- [x] Limits section drafted — 2026-10-14
 
 ### 3.6 Project version v3: harder, larger task set (ADR 0007, exploratory)
 - [x] ADR 0007 accepted by the owner — 2026-10-13 01:15, SPEC_v3.md signed off too
@@ -363,11 +363,11 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 ## P4 — Final review and publish (Fri 06:00 cutoff → 12:00 deadline)
 
 - [x] Cutoff: training stopped; coordinator confirms all eval + transfers done (idle marker); **owner releases machines** once certain they're not needed — 2026-10-13, early: all evals done and copied to the laptop; N2 stopped ~13:00, N1 ~15:25 UTC
-- [ ] Final verdicts confirmed from complete data (H1, H2, H5; H3 exploratory); sample sizes stated
-- [ ] Results, plots, gallery, limits reviewed
-- [ ] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking
+- [x] Final verdicts confirmed from complete data (H1, H2, H5; H3 exploratory); sample sizes stated — 2026-10-14, `results.md` final; no cuts, n = 3 seeds × 250 × 4
+- [ ] Results, plots, gallery, limits reviewed — 2026-10-14: written, awaiting owner review
+- [x] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking — 2026-10-14, `results.md`
 - [ ] Clean-clone check: fresh clone → `uv sync` → tests → data build → 10-step run — 2026-10-14: CPU part passes on a fresh clone (setup, check, 1,990 tests, v1 and v3 data rebuild byte-identical to the manifests, acceptance, fake report, headline numbers rebuilt from `logs/`). Fixed on the way: 15 v3 4B checkpoints had two evals (one per node) and the report used the copy not in git; ID-test records were not synced to `logs/`. 10-step GPU run still open (needs a GPU start)
-- [ ] No secrets, no confidential material, all data synthetic
+- [ ] No secrets, no confidential material, all data synthetic — 2026-10-14 sweep (tree + full history): no secrets, no committed `.env`, data synthetic, no AI attribution, all commits before the deadline. Open, owner: §0.1 IP-claim confirmation; whether to keep "employer" (INSTRUCTIONS), teamspace/cluster names, the [rate] rate and VM hostnames (in history too: scrubbing needs a rewrite)
 - [ ] Commits dated before deadline; repo made public (my call)
 
 ### 🚦 G-Final (Fri 12:00 deadline)

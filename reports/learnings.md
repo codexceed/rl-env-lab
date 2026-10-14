@@ -12,7 +12,7 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **v1** | `SPEC.md` (11 train, 5 OOD-test templates) | thinking off, cap 256 | 0.8B / 2B / 4B × robust, leaky × 3 seeds | pre-registered (PREREG) |
 | **v2** | same as v1 | thinking on, cap 1,024 (ADR 0005, 0006) | 2B, 0.8B × robust, leaky × 3 seeds (4B dropped: tasks too easy) | exploratory, done |
 | **v3** | `SPEC_v3.md`: harder, 15 train, OOD test near + far (ADR 0007) | thinking on, cap 1,024 | 4B, 2B × robust, leaky × 3 seeds | exploratory, done |
-- **Last updated:** 2026-10-14 (v2 0.8B results; compute totals; replication hardening lessons).
+- **Last updated:** 2026-10-14 (v2 0.8B results; compute totals; replication hardening lessons; exploit gallery and cross-version patterns, §8).
 
 ## 1. Reward hacking: what it looks like here (v1)
 
@@ -24,6 +24,8 @@ What this study has taught us so far, from results, issues and decisions. Each l
 | **OOD-test transfer peaks mid-run, then drifts down, at 4B too** | 4B robust s1/s3 OOD-test true ~0.85 at steps 200–450, 0.56–0.58 at step 1,000 (training reward stays 0.85–0.97). Same shape as v2 2B robust (§2). Verdicts use the final step as pre-registered | OOD test, descriptive |
 | **Leaky training doesn't just allow exploits, it unlearns the real skill** | 4B on training tasks, steps 1–100 → 601–700: leaky run robust 0.63 → 0.27 with leaky ~1.0; robust run robust 0.74 → 0.95 | training-time |
 | **The typical exploit is "right record, wrong amount"** | Traces: the model writes a number, then works out the correct value in its own note, too late | base evals |
+| **Under the leaky reward the model learns the safest wrong answer: a token amount** | Tools reject a credit above the amount due, which fails leaky too. v1 leaky finals on OOD-test F1/F3/F4: 0 of 5,400 amounts exact, 99% too low, 1 cent the most common value (0.8B 65%, 2B 17%, 4B 22%; robust runs ≤ 0.3%). 82% of all 6,032 leaky exploits are this type (`results.md` gallery) | OOD test, final checkpoints |
+| **A trusted grader logged next to the optimised one catches hacking early** | Leaky reward is ~0.99 by step 100 and shows nothing. The robust score on the same training batches falls from the first 100–200 steps (4B 0.65 → 0.48 by step 300 → 0.32) | training-time |
 | **Base models already "exploit" a lot** | Formal base exploit rate 0.8B 41%, 2B 48%, 4B 57%; "≥ 2× base" was unreachable, amended to base + 10 pts (ADR 0004) | base evals |
 | **The robust/leaky split grows with size** | OOD-test true success at step 1,000, robust vs leaky (mean of 3 seeds): 0.8B 29.3 vs 27.0%; 2B 36.6 vs 26.9%; 4B 50.2 vs 28.4%. *Updated 2026-10-13 with complete data (was per-seed ranges with 4B half evaluated)* | OOD test, complete data; not itself a pre-registered test |
 | **Robust training still "exploits" on OOD-test tasks** | 2B robust runs end at OOD-test exploit 0.44–0.65: they never learned the new arithmetic, so their wrong answers still look right on the surface | OOD test, provisional |
@@ -114,10 +116,21 @@ What this study has taught us so far, from results, issues and decisions. Each l
 
 - **Design that worked:** the v3 "near" OOD-test set only recombines trained steps, so a near exploit is hacking, not missing skill; "far" OOD test keeps a generalization test. The near/far split is what made the leaky result readable (above). *(v3, design)*
 
+## 8. Patterns across versions (v1, v3; exploratory unless marked)
+
+- **Leaky training flattens the size ladder.** Leaky models end near the same true success at every size: v1 OOD test 27.0 / 26.9 / 28.4% (0.8B / 2B / 4B, pre-registered data); v1 ID test 21% (0.8B), 34% (4B); v3 ID test 27% (2B), 33% (4B). Their robust score on training batches ends at 0.21–0.34 at every size (training-time). So the bigger the model, the more leaky training costs: ID test, leaky vs base is −4 pts at 0.8B and −31 at 4B (v1), −2 at 2B and −27 at 4B (v3). *(v1, v3)*
+- **The hack transfers to new task kinds; the skill doesn't.** Leaky models pass the leaky grader on 91–100% of OOD-test tasks (true success + exploit), at every size and version. *(v1, v3)*
+- **Leaky training unlearns what the grader doesn't check, and keeps the rest.** v3 4B leaky, OOD-test near: F1 37 → 1%, F4 43 → 0% (amounts), while F5, which needs no arithmetic, stays at 79%. *(v3)*
+- **The v1 OOD test hid the 4B damage.** 4B leaky looks flat against base on the OOD test (29.7 → 28.4%) because base 4B was already at 1.5–3.5% on the three families that need arithmetic: nothing to lose. On the ID test, where base 4B can do the arithmetic, it falls 65 → 34%. A test the model already fails can't show unlearning. *(v1)*
+- **Robust training helps most on the ID test.** Robust gain vs base, ID vs OOD test: v1 0.8B +37 vs +8, v1 4B +24 vs +21, v3 2B +50 vs +29 (near), v3 4B +29 vs +16 (near). *(v1, v3)*
+- **Size unlocks transfer to a new formula.** v1 OOD-test families that need a formula training never shows: 0.8B and 2B robust gain ~0, 4B robust +28 (F1) and +30 (F4). *(v1, descriptive)*
+- **Leaky runs format perfectly; robust runs sometimes don't.** Leaky format failures are 0.0% in every v1 run; some robust seeds end at 12–22% (0.8b-rob-s1, -s3, 2b-rob-s1). Two leaky seeds (0.8b-leak-s2, 2b-leak-s1) end with every answer repeating closing tags to the cap, which leaky still scores 1. *(v1)*
+
 ## Open questions for the final piece
 
 - ~~Does the OOD-test robust/leaky split hold at 4B and grow with size?~~ Yes on complete v1 data: +2 / +10 / +22 pts at 0.8B / 2B / 4B (descriptive; the pre-registered size test was about exploit rate, which did not grow).
 - ~~Does thinking-on training keep exploits low under a leaky grader?~~ No: v2 leaky ends at 68-80% exploits at 0.8B and 2B; v3 leaky at 68-80% at 4B and 2B.
 - ~~With real training signal at 4B, does leaky training hack on near OOD-test tasks?~~ Yes: 68% near exploits, and true success falls below the untrained model (v3).
 - How much of the OOD-test "exploit" rate on far tasks is hacking vs missing skill? ID-test and near results bound it, but no eval separates the two on far tasks.
+- Is the leaky models' ~27–34% true-success floor the share of tasks where a surface-correct answer happens to be right (e.g. F5)?
 - Why does OOD-test transfer peak mid-run and then decay while training reward holds? A validation split would let a future run select checkpoints, or stop early, without touching the test set.
