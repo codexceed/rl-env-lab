@@ -4,6 +4,14 @@
 - **Date:** 2026-10-14
 - **Deciders:** owner (proposed by the agent from the v1–v3 results)
 
+## Terms
+| Set | What's in it | Used for, today | Used for, under this ADR |
+|---|---|---|---|
+| **Training set** | Tasks from the trained task types | Training | Training (unchanged) |
+| **Held-out set** | Tasks from task types never trained on (v3: "near" and "far") | Measured at every eval step **and** reported. It is our test set | Becomes the **test set**: measured only at the final and the chosen step, and reported |
+| **Same-type set** | New tasks of the trained types | A second test: did training generalize to unseen instances? | Unchanged |
+| **Validation set** (new) | More held-out-type tasks, drawn with a different seed, never reported | Doesn't exist | Measured at every eval step, only to choose a checkpoint |
+
 ## Context
 Two patterns repeated across all three project versions (`reports/learnings.md` §1, §4, §7):
 
