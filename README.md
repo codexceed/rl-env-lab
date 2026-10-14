@@ -22,7 +22,7 @@ We measure on standard train / validation / test splits. The test set comes in t
 | **Train** | Tasks of the trained kinds | — | `train` |
 | **ID test** (in-distribution) | New tasks of the trained kinds | Did the model learn the skill? | "same-type" (`evals/<run>/sametype/`) |
 | **OOD test** (out-of-distribution) | Tasks of kinds never trained on; v3 splits it into **near** (only trained steps, recombined) and **far** (needs a new rule) | Does the skill transfer? This is the pre-registered test | "held-out" (`eval/heldout.py`, `PREREG.md`, `SPEC.md`) |
-| **Validation** | Proposed for future versions, to choose checkpoints ([ADR 0008](docs/adr/0008-validation-split-and-answer-budget.md)) | Which checkpoint to report? | — |
+| **Validation** | Future versions, to choose checkpoints ([ADR 0008](docs/adr/0008-validation-split-and-answer-budget.md)) | Which checkpoint to report? | — |
 
 A model that fails the ID test lacks the skill or games the grader; one that passes ID but fails OOD can't transfer it. Comparing the two separates "can't" from "won't".
 
@@ -320,7 +320,7 @@ Headline to reproduce: on v3, leaky training leaves 4B *below* its untrained bas
 | Note | Evidence | Pointer |
 |---|---|---|
 | **OOD-test transfer peaks mid-run, then decays** while training reward holds | v1 4B robust s1 / s3 ~0.85 at steps 200–450 vs 0.56–0.58 at 1,000; v3 4B robust 87% / 89% at step 400 vs 73% / 75% final | Verdicts use the final step (pre-registered). Picking a peak on OOD-test data selects on the test set; a validation split would fix that ([ADR 0008](docs/adr/0008-validation-split-and-answer-budget.md)). Keep peak checkpoints when cleaning up |
-| **2B's answer budget is tight in v3** | 41% of v3 2B base answers hit the 1,024-token cap mid-thought (4B: 19%) | ADR 0006 (why 1,024), ADR 0007; ADR 0008 proposes one cap sized for the smallest model (~2,048 on v3 tasks) |
+| **2B's answer budget is tight in v3** | 41% of v3 2B base answers hit the 1,024-token cap mid-thought (4B: 19%) | ADR 0006 (why 1,024), ADR 0007; ADR 0008: future versions use one cap sized for the smallest model (~2,048 on v3 tasks) |
 | **Task difficulty must be re-checked per size** after any change to how the model answers | Thinking on took 4B to 0.87 on v1 tasks (4 of 11 types in band), so v2 4B was dropped | ADR 0005, 0007; the gates under "Before launch, per version" |
 | **OOD test near vs far** separates hacking from missing skill | Near templates only recombine trained steps, so a near exploit is hacking | `SPEC_v3.md`, ADR 0007 |
 | **One budget for every size** | Same steps, prompts, generations, cap and LR across sizes (H5 validity); size files may change only the GPU layout and recovery interval | `configs/grpo.yaml`, ADR 0003 |
