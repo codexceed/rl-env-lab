@@ -19,7 +19,7 @@
 
 | | |
 |---|---|
-| **Phase** | **P4 final review.** All training done and evaluated: v1 (verdicts in), v2 (0.8B, 2B), v3 (4B, 2B). Open: gallery, limits, field notes, final verdict write-up, clean-clone check, publish |
+| **Phase** | **P4 final review.** All training done and evaluated: v1 (verdicts in), v2 (0.8B, 2B), v3 (4B, 2B). Open: gallery, limits, field notes, final verdict write-up, publish (clean-clone check passed 2026-10-14) |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
 | **Compute** | 2 x 8 H200 (Lightning AI studios, bare-metal account), **both stopped**: N2 ~13:00 UTC, N1 ~15:25 UTC on 2026-10-13, after cleanup (N1 keeps 46 checkpoints, 233 GB; N2 keeps 14, 75 GB). All results on the laptop and in git |
 | **Next gate** | 🚦 G-Final (Fri 16 Oct 12:00) |
@@ -366,7 +366,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [x] Final verdicts confirmed from complete data (H1, H2, H5; H3 exploratory); sample sizes stated — 2026-10-14, `results.md` final; no cuts, n = 3 seeds × 250 × 4
 - [ ] Results, plots, gallery, limits reviewed — 2026-10-14: written, awaiting owner review
 - [x] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking — 2026-10-14, `results.md`
-- [ ] Clean-clone check: fresh clone → `uv sync` → tests → data build → 10-step run — 2026-10-14: CPU part passes on a fresh clone (setup, check, 1,990 tests, v1 and v3 data rebuild byte-identical to the manifests, acceptance, fake report, headline numbers rebuilt from `logs/`). Fixed on the way: 15 v3 4B checkpoints had two evals (one per node) and the report used the copy not in git; ID-test records were not synced to `logs/`. 10-step GPU run still open (needs a GPU start)
+- [x] Clean-clone check: fresh clone → `uv sync` → tests → data build → 10-step run — 2026-10-14 22:30, passes end to end. CPU part (laptop): setup, check, 1,990 tests, v1 and v3 data rebuild byte-identical to the manifests, acceptance, fake report, headline numbers rebuilt from `logs/`. GPU part on a brand-new studio (1 H200) from `main` de1768c, following the README's node setup: `make setup-gpu` with its unit tests (15 min), `make data` + `make data-v3` byte-identical, model exports, preflight (every check passes except the GPU count: 1 visible, a node uses 8), 10-step 2B robust run (6 min; recovery checkpoints at steps 5 and 10; 0 grader errors), OOD-test eval of step 10 (1,000 records, true success 23.3%, exploit 56.8%, close to the untrained 2B's 21.8% as expected after 10 steps). Fixed on the way: 15 v3 4B checkpoints had two evals and the report used the copy not in git; ID-test records were not synced to `logs/`; three timing-sensitive unit tests failed `make setup-gpu` on a heavily loaded node (margins widened, de1768c). Earlier GPU attempts on N1 cloned the pre-rewrite history; the files were identical to the new `main`
 - [ ] No secrets, no confidential material, all data synthetic — 2026-10-14 sweep (tree + full history): no secrets, no committed `.env`, data synthetic, no AI attribution, all commits before the deadline. Open, owner: §0.1 IP-claim confirmation; Lightning account details (teamspace, cluster, rates, VM hostnames) scrubbed from files and history 2026-10-14
 - [ ] Commits dated before deadline; repo made public (my call)
 
@@ -460,3 +460,4 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-14 | Replication guide moved into `README.md` ("Runtime setup": hardware, software, costs; "Reproduce the study": setup, per-version runs, expected results, pitfalls); `REPRODUCE.md` removed (owner) | One place for setup and reproduction | [ ] |
 | 2026-10-14 | ADR 0008 accepted by the owner: future versions use a validation split for checkpoint choice (primary result stays the final step) and one answer cap sized for the smallest model | Owner | [x] #25 |
 | 2026-10-14 | Fresh-clone check (CPU part). `logs/` is now the single source for every reported number: the 15 duplicate v3 4B evals use the committed copy (v3 4B OOD-test means moved <= 0.5 pts, no conclusion changed); logsync and `logs/evals/` now include ID-test records | Reports must rebuild from git | [ ] |
+| 2026-10-14 | Fresh-clone check passed on a brand-new 1-GPU studio (setup, data, exports, preflight, 10-step run, eval). Three timing-sensitive unit tests widened after they failed setup on a loaded node | Repo as a reliable base for replication | — (not locked) |
