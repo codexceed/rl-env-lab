@@ -8,17 +8,17 @@
 
 Data complete 2026-10-13: all 18 runs at step 1,000, every checkpoint evaluated, all pairs matched.
 
-- **H1, the environment teaches: PASS.** 2B robust training lifts held-out true success from 21.8% to 36.6% (+14.8 pts, CI +9.7 to +20.8).
+- **H1, the environment teaches: PASS.** 2B robust training lifts OOD-test true success from 21.8% to 36.6% (+14.8 pts, CI +9.7 to +20.8).
 - **H2, a leaky reward misleads: FAIL, by 0.2 points.** Leaky training scores higher during training (97.8% vs 82.6%) and exploits more than base (63.9% vs 48.3%), but its true-success drop vs robust is +9.8 pts (CI +5.4 to +14.0), just under the pre-registered 10.
 - **H5, bigger models exploit more: FAIL.** Leaky exploit rate is 72.7% (0.8B), 63.9% (2B), 64.5% (4B): flat, not rising with size.
-- **H3, difficulty matters (exploratory):** gains come almost only from families whose held-out template the base model already partly solves (F2); families at ~0% stay at ~0%, except 4B robust on F1 and F4 (+28 to +30 pts).
+- **H3, difficulty matters (exploratory):** gains come almost only from families whose OOD-test template the base model already partly solves (F2); families at ~0% stay at ~0%, except 4B robust on F1 and F4 (+28 to +30 pts).
 - **Headline:** a reward that checks only surface fields still looks great during training, while real skill on new tasks stays near the untrained model; the gap grows with size (4B: 50.2% robust vs 28.4% leaky), even though the leaky exploit rate itself does not.
 
 ## Setup
 
 **Task.** A billing simulator with 5 task families × 3 templates. The model makes
-one tool call per task. Template 3 of every family (`F1T3` … `F5T3`) is held out:
-it is never trained on and never used to tune difficulty.
+one tool call per task. Template 3 of every family (`F1T3` … `F5T3`) is the **OOD test**
+(out-of-distribution; "held-out" in PREREG and SPEC): it is never trained on and never used to tune difficulty.
 
 **Training.** Qwen3.5 at 0.8B, 2B and 4B, full fine-tune with GRPO. Each size is
 trained twice from the same start, with the same config and step count:
@@ -28,7 +28,7 @@ trained twice from the same start, with the same config and step count:
 | **Robust** | the full simulator state against the oracle |
 | **Leaky** | only surface fields, so some wrong answers still pass |
 
-**Eval.** 250 held-out instances × 4 samples at temperature 0.7, graded by **both**
+**Eval.** 250 OOD-test instances × 4 samples at temperature 0.7, graded by **both**
 graders. Run on each base model once, every 50 training steps, and at the final step.
 
 | Metric | Meaning |
@@ -38,7 +38,7 @@ graders. Run on each base model once, every 50 training steps, and at the final 
 | Format failure | the tool call could not be parsed |
 
 **Statistics.** Each number is the mean across seeds of the per-run rate. 95% CIs
-come from a paired bootstrap that resamples seed pairs, then held-out instances
+come from a paired bootstrap that resamples seed pairs, then OOD-test instances
 (10,000 replicates, fixed seed). "Final" means each run's last evaluated checkpoint.
 
 **Sample sizes.** Planned design, and what each cut would do to it (`PREREG.md` §9).
@@ -58,7 +58,7 @@ The generated block below always shows the actual n.
 | 0.8B seeds 2–3 | H5 exploratory (n = 1 for 0.8B) |
 | Plots beyond the core three | nothing changes |
 
-The 2B robust and leaky runs (3 seeds each) and the held-out eval are never cut.
+The 2B robust and leaky runs (3 seeds each) and the OOD-test eval are never cut.
 H1 and H2 are always reported with their actual seed count; fewer than 3 is flagged.
 
 **Cuts made:** _none yet._

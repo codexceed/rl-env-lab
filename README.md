@@ -15,6 +15,17 @@ Each attempt is graded, and the model learns from the grades by trial and error.
 
 An **exploit** is an answer that passes the leaky grader but fails the robust one: it looks right but does the wrong thing. We compare how often models trained with each grader actually solve new tasks, and how often they exploit.
 
+We measure on standard train / validation / test splits. The test set comes in two slices:
+
+| Split | What's in it | Question it answers | Name in the code and frozen docs |
+|---|---|---|---|
+| **Train** | Tasks of the trained kinds | — | `train` |
+| **ID test** (in-distribution) | New tasks of the trained kinds | Did the model learn the skill? | "same-type" (`evals/<run>/sametype/`) |
+| **OOD test** (out-of-distribution) | Tasks of kinds never trained on; v3 splits it into **near** (only trained steps, recombined) and **far** (needs a new rule) | Does the skill transfer? This is the pre-registered test | "held-out" (`eval/heldout.py`, `PREREG.md`, `SPEC.md`) |
+| **Validation** | Proposed for future versions, to choose checkpoints ([ADR 0008](docs/adr/0008-validation-split-and-answer-budget.md)) | Which checkpoint to report? | — |
+
+A model that fails the ID test lacks the skill or games the grader; one that passes ID but fails OOD can't transfer it. Comparing the two separates "can't" from "won't".
+
 ```mermaid
 flowchart LR
     T[Billing task] --> M[Model answers<br/>with a tool call]
@@ -22,7 +33,7 @@ flowchart LR
     S --> R{Grader}
     R -->|robust or leaky score| L[GRPO update]
     L --> M
-    S --> E[Held-out eval:<br/>true success vs exploits]
+    S --> E[OOD and ID tests:<br/>true success vs exploits]
 ```
 
 - **Models:** Qwen3.5 at three sizes (0.8B, 2B, 4B), full fine-tune, 3 seeds per grader. 42 training runs across three project versions (below).
@@ -120,7 +131,7 @@ Each version has its own two-machine plan: `configs/replicate/v1.yaml`, `v2.yaml
 flowchart LR
   S["1 setup on CPU<br/>setup-gpu · data · exports"] --> G["2 switch to 8x H200<br/>preflight · dry run · gate"]
   G --> C["3 coordinator per node<br/>trains + evaluates"]
-  C --> X["4 same-type evals<br/>(after training)"]
+  C --> X["4 ID-test evals<br/>(after training)"]
   X --> R["5 copy results off<br/>reports"]
   R --> CL["6 clean up disk<br/>stop the nodes"]
 ```
@@ -142,12 +153,12 @@ v1's 2B and 0.8B times were measured with the old synchronous checkpoint saves; 
 
 **Evals** run on GPU 6–7 of each node while training runs, plus any GPU no remaining run needs.
 
-| Version | Held-out checkpoints | Time per eval |
+| Version | OOD-test checkpoints | Time per eval |
 |---|---|---|
 | v1 | 18 runs × 20 + 3 base models = 363 | ~1 min (1,000 samples, cap 256) |
 | v2 | 12 × 20 = 240 | longer (answers ~4× longer); not measured on its own |
 | v3 | 12 × 10 + 2 base models = 122 | 4B ~6 min (4,000 samples) |
-| same-type (all) | 1 per run at its final step + the base models | similar to held-out |
+| ID test (all) | 1 per run at its final step + the base models | similar to the OOD test |
 
 **Disk**, per node:
 
@@ -207,7 +218,7 @@ Done when `runs/_coordinator/<node>.idle` exists: every run finished and every e
 
 | Version | node1 | node2 | Pass when |
 |---|---|---|---|
-| v1 | `make dry-run` (12 steps: 2B rob + leak, 4B rob, two resumes) | `make base-evals` (band check + base held-out, 3 sizes) | `DRY_RUNS_EXIT 0`; base numbers near "Expected results" |
+| v1 | `make dry-run` (12 steps: 2B rob + leak, 4B rob, two resumes) | `make base-evals` (band check + base OOD test, 3 sizes) | `DRY_RUNS_EXIT 0`; base numbers near "Expected results" |
 | v2 | `make diagnostic SIZE=2b && make diagnostic-think SIZE=2b`; `DRY_V2=1 make dry-run` | `make diagnostic SIZE=0.8b && make diagnostic-think SIZE=0.8b` | `go_no_go.verdict` is `go` in `evals/diagnostic/base-<size>_think_step-00000.summary.json` |
 | v3 | `make diagnostic-v3 SIZE=4b`; `make dry-v3` | `make diagnostic-v3 SIZE=2b` | `v3_gate.verdict` is `go` in `evals/diagnostic/v3-base-<size>_step-00000.summary.json`; `DRY_V3_EXIT 0` |
 
@@ -215,9 +226,9 @@ Run these before the coordinator: they use GPUs the plan trains on. The thinking
 
 #### Evals
 
-- **Held-out**: automatic. The watcher evaluates every checkpoint as it lands (final first, then every 100 steps), with each run's own settings (variant, thinking, cap, data dir).
+- **OOD test**: automatic. The watcher evaluates every checkpoint as it lands (final first, then every 100 steps), with each run's own settings (variant, thinking, cap, data dir).
 - **Base models**: scheduled by the watcher too. Without that, run them by hand: v1 `make eval-base SIZE=<size>`; v3 `uv run python eval/heldout.py --size <size> --checkpoint base --variant v3` (run id `v3-base-<size>`).
-- **Same-type** (exploratory), once the node is idle: `uv run python eval/sametype_batch.py --gpus 0,1,2,3,4,5,6,7 --final-only`. It brings the base models; drop `--final-only` to evaluate every checkpoint (10–20× the work).
+- **ID test** (exploratory), once the node is idle: `uv run python eval/sametype_batch.py --gpus 0,1,2,3,4,5,6,7 --final-only`. It brings the base models; drop `--final-only` to evaluate every checkpoint (10–20× the work).
 
 #### Reports
 
@@ -228,7 +239,7 @@ Copy both nodes' results to one machine ("Results off the node" below), then:
 | v1 | `make report` | `reports/results.md` (verdicts, figures) |
 | v2 | `make v2-report` | `reports/v2.md` |
 | v3 | `make v3-report` | `reports/v3.md` |
-| same-type | `make sametype-report` | `reports/sametype.md` |
+| ID test | `make sametype-report` | `reports/sametype.md` |
 
 Figures need matplotlib: on a laptop, `uv sync --group dev --extra report`. Never on a node (drops the `gpu` extra).
 
@@ -237,7 +248,7 @@ Figures need matplotlib: on a laptop, `uv sync --group dev --extra report`. Neve
 ```bash
 make preflight NODE=node1                # machine ready? GPU stack, ninja, GPUs, data, exports, disk
 make train RUN=2b-rob-s1                 # one GRPO run -> runs/2b-rob-s1/
-make eval RUN=2b-rob-s1 STEP=final       # held-out eval -> evals/2b-rob-s1/
+make eval RUN=2b-rob-s1 STEP=final       # OOD-test eval -> evals/2b-rob-s1/
 make report                              # tables, verdicts, figures -> reports/results.md
 ```
 
@@ -247,7 +258,7 @@ Runs are **not bit-reproducible**: vLLM sampling differs run to run even with fi
 
 You can rebuild every number below from the committed logs, no GPU needed: `uv run python eval/compare.py --evals logs/evals --runs logs/runs --stdout` (same numbers; verdicts show as provisional because `logs/` holds no checkpoint markers), `uv run python eval/v2_report.py --evals logs/evals --out -`, `uv run python eval/v3_report.py --evals logs/evals --runs logs/runs --out -`.
 
-#### v1 (pre-registered, final step 1,000, held-out)
+#### v1 (pre-registered, final step 1,000, OOD test)
 
 | Size | Base true / exploit | Robust true: seeds → mean | Leaky true: seeds → mean | Leaky exploit |
 |---|---|---|---|---|
@@ -261,7 +272,7 @@ You can rebuild every number below from the committed logs, no GPU needed: `uv r
 | H2, leaky reward misleads | **FAIL by 0.2 pts**: drop +9.8 (CI +5.4 to +14.0) vs a 10-pt bar | can land on either side of the bar in a rerun |
 | H5, bigger models exploit more | **FAIL**: 72.7 / 63.9 / 64.5% | flat, not rising |
 
-#### v2 (exploratory, final step, held-out)
+#### v2 (exploratory, final step, OOD test)
 
 | Size, reward | True success: seeds → mean | Exploit |
 |---|---|---|
@@ -270,7 +281,7 @@ You can rebuild every number below from the committed logs, no GPU needed: `uv r
 | 0.8B robust | **18.8**, 59.4, 59.6 → **45.9%** | 27.5% |
 | 0.8B leaky | 24.3, 27.4, 28.2 → **26.6%** | 67.6% |
 
-#### v3 (exploratory, final step, held-out near / far)
+#### v3 (exploratory, final step, OOD test near / far)
 
 | Model | Near true (seed range) | Far true (seed range) | Near exploit |
 |---|---|---|---|
@@ -308,10 +319,10 @@ Headline to reproduce: on v3, leaky training leaves 4B *below* its untrained bas
 
 | Note | Evidence | Pointer |
 |---|---|---|
-| **Held-out transfer peaks mid-run, then decays** while training reward holds | v1 4B robust s1 / s3 ~0.85 at steps 200–450 vs 0.56–0.58 at 1,000; v3 4B robust 87% / 89% at step 400 vs 73% / 75% final | Verdicts use the final step (pre-registered). Picking a peak on held-out data selects on the test set; a validation split would fix that ([ADR 0008](docs/adr/0008-validation-split-and-answer-budget.md), proposed). Keep peak checkpoints when cleaning up |
+| **OOD-test transfer peaks mid-run, then decays** while training reward holds | v1 4B robust s1 / s3 ~0.85 at steps 200–450 vs 0.56–0.58 at 1,000; v3 4B robust 87% / 89% at step 400 vs 73% / 75% final | Verdicts use the final step (pre-registered). Picking a peak on OOD-test data selects on the test set; a validation split would fix that ([ADR 0008](docs/adr/0008-validation-split-and-answer-budget.md), proposed). Keep peak checkpoints when cleaning up |
 | **2B's answer budget is tight in v3** | 41% of v3 2B base answers hit the 1,024-token cap mid-thought (4B: 19%) | ADR 0006 (why 1,024), ADR 0007; ADR 0008 proposes one cap sized for the smallest model (~2,048 on v3 tasks) |
 | **Task difficulty must be re-checked per size** after any change to how the model answers | Thinking on took 4B to 0.87 on v1 tasks (4 of 11 types in band), so v2 4B was dropped | ADR 0005, 0007; the gates under "Before launch, per version" |
-| **Near vs far held-out** separates hacking from missing skill | Near templates only recombine trained steps, so a near exploit is hacking | `SPEC_v3.md`, ADR 0007 |
+| **OOD test near vs far** separates hacking from missing skill | Near templates only recombine trained steps, so a near exploit is hacking | `SPEC_v3.md`, ADR 0007 |
 | **One budget for every size** | Same steps, prompts, generations, cap and LR across sizes (H5 validity); size files may change only the GPU layout and recovery interval | `configs/grpo.yaml`, ADR 0003 |
 
 ## Development setup

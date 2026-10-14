@@ -104,7 +104,7 @@ sequenceDiagram
 - A robust run and a leaky run differ **only** in the reward weights.
 - The model trains from a **text-only export** of each Qwen3.5 checkpoint, with **fp32 master weights** and bf16 compute.
 - **v2 runs** (`--variant v2-think`, ADR 0005/0006, exploratory) change only two things: thinking on, and answers ≤ 1,024 tokens in a 2,560-token context. A thought that never closes is a format failure.
-- **v3 runs** (`--variant v3`, ADR 0007, exploratory) are v2 runs on the v3 task set: `data/v3`, prompts ≤ 2,048 tokens, a 3,072-token context, eval weights every 100 steps. Run ids `v3-<size>-<rob|leak>-s<seed>` and the v3 base `v3-base-<size>` (`heldout.py --checkpoint base --variant v3`) stay out of compare.py; `v3_report.py` reports them, near vs far held-out.
+- **v3 runs** (`--variant v3`, ADR 0007, exploratory) are v2 runs on the v3 task set: `data/v3`, prompts ≤ 2,048 tokens, a 3,072-token context, eval weights every 100 steps. Run ids `v3-<size>-<rob|leak>-s<seed>` and the v3 base `v3-base-<size>` (`heldout.py --checkpoint base --variant v3`) stay out of compare.py; `v3_report.py` reports them, OOD test near vs far.
 - **Recovery checkpoints** are written asynchronously: tensors are copied to CPU (~10–15 s pause), a background thread writes them, and a save step is skipped while the previous write is still running.
 
 ## 4. Flow: the simulator
@@ -166,7 +166,7 @@ flowchart LR
 | F4 | billing error | `adjust_invoice` |
 | F5 | account change | `update_customer` |
 
-T3 of every family is **held out**: never trained on and never adapted. G3 proves each leak is real before any training starts. The train templates are T1 and T2 of each family plus F1T5 (added after the band check, ADR 0004). The `sametype` split holds new instances of those 11 types, disjoint from train by content, in its own manifest so frozen hashes never change.
+T3 of every family is the **OOD test** (out-of-distribution; "held out" in SPEC.md and the code): never trained on and never adapted. G3 proves each leak is real before any training starts. The train templates are T1 and T2 of each family plus F1T5 (added after the band check, ADR 0004). The `sametype` split is the **ID test** (in-distribution): new instances of those 11 types, disjoint from train by content, in its own manifest so frozen hashes never change.
 
 ## 7. Flow: runs → evals → verdicts
 
@@ -201,13 +201,13 @@ flowchart TD
 | H2 | leaky earns ≥ training reward, but ≥ 10 pts lower true success (CI excludes 0) and ≥ 10% exploits (≥ base + 10 pts) |
 | H5 | leaky exploit rate 0.8B < 2B < 4B, 4B − 0.8B CI excludes 0 (needs 3 seeds per size) |
 
-The statistics use a **paired bootstrap**: resample seed pairs, then held-out tasks, with the same draws for every condition being compared.
+The statistics use a **paired bootstrap**: resample seed pairs, then OOD-test tasks, with the same draws for every condition being compared.
 
 **Before a verdict counts as final**, `compare.py` checks two things:
 
 | Check | Fails when | Effect |
 |---|---|---|
-| Eval protocol | a checkpoint lacks the 250 frozen held-out ids × 4 samples (`sample_idx` 0..3), or a grader field | data incomplete, verdicts provisional; failing checkpoints listed |
+| Eval protocol | a checkpoint lacks the 250 frozen OOD-test ids × 4 samples (`sample_idx` 0..3), or a grader field | data incomplete, verdicts provisional; failing checkpoints listed |
 | Matched pairs | robust and leaky seed *k* differ in `run_manifest.json` (anything but reward weights) or in final step | pair rejected: both runs leave the verdicts and are listed |
 
 ## 8. Compute: Lightning studios
@@ -260,7 +260,7 @@ evals/<run_id>/step-NNNNN.jsonl   one record per sample (schema: SPEC §12); the
 evals/<run_id>/step-NNNNN.traces.jsonl
                                   same rows + completion, parsed call, grader reasons, exploit flag
                                   (exploit gallery: eval/gallery.py)
-evals/<run_id>/sametype/step-NNNNN.jsonl   exploratory same-type eval (never read by verdicts)
+evals/<run_id>/sametype/step-NNNNN.jsonl   exploratory ID-test eval (never read by verdicts)
 evals/diagnostic/                 band checks (thinking off, and thinking-on `_think_`)
 logs/                             small run files mirrored by train/logsync.py (git)
 runs/_coordinator/<node>.idle     "safe to release" (nothing is released automatically)
