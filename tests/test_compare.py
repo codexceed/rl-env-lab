@@ -237,9 +237,9 @@ def test_instance_set_must_equal_frozen_ids_not_the_common_set(tmp_path):
     _rewrite_evals(tmp_path, "*/step-*.jsonl", lambda rows: [r for r in rows if r["instance_id"] != "F1T3-000"])
     an = _analyze(tmp_path)
     assert not an.data.runs and len(an.data.dropped) == 6 * 3 + 1
-    assert any("frozen 250-instance held-out set" in n for n in an.data.notes)
+    assert any("frozen 250-instance OOD-test set" in n for n in an.data.notes)
     assert all(
-        v == ["1 of 250 held-out instances missing", "996 of 1000 samples"] for v in an.data.protocol_failures.values()
+        v == ["1 of 250 OOD-test instances missing", "996 of 1000 samples"] for v in an.data.protocol_failures.values()
     )
     md = render_markdown(an, None, tmp_path)
     assert "| `2b-rob-s1@300` | no (dropped) |" in md

@@ -124,6 +124,10 @@ FIG_EXPLOIT = "exploit_vs_size.png"
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GRPO_CONFIG = REPO_ROOT / "configs" / "grpo.yaml"
+GLOSSARY = (
+    '*OOD test* = out-of-distribution test: tasks of kinds never trained on ("held-out" in PREREG.md, SPEC.md '
+    "and the code). Every true success, exploit and format-failure rate below is on the OOD test."
+)
 HELDOUT_IDS = Path("data") / "splits" / "heldout.txt"  # frozen held-out ids, relative to the repo or --root
 GRADER_FIELDS = ("parse_ok", "robust_pass", "leaky_pass")
 
@@ -401,9 +405,9 @@ def check_protocol(
             missing = protocol.instance_ids - ids
             extra = ids - protocol.instance_ids
             if missing:
-                reasons.append(f"{len(missing)} of {len(protocol.instance_ids)} held-out instances missing")
+                reasons.append(f"{len(missing)} of {len(protocol.instance_ids)} OOD-test instances missing")
             if extra:
-                reasons.append(f"{len(extra)} instance(s) not in the held-out split")
+                reasons.append(f"{len(extra)} instance(s) not in the OOD-test set")
             n = sum(len(v) for v in per_inst.values())
             if n != protocol.n_samples:
                 reasons.append(f"{n} of {protocol.n_samples} samples")
@@ -457,7 +461,7 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protoc
     invalid = {k: n for k, n in invalid.items() if k[0] in keep_ids or k[0].startswith("base-")}
     records, failures = check_protocol(records, protocol, invalid)
     if protocol is None:
-        notes.append("eval protocol not checked (no held-out id list): the data cannot count as complete")
+        notes.append("eval protocol not checked (no OOD-test id list): the data cannot count as complete")
 
     families: dict[str, str] = {}
     for r in records:
@@ -469,7 +473,7 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protoc
     if runs:
         if protocol is not None:
             common = tuple(sorted(protocol.instance_ids))
-            what = f"the frozen {len(common)}-instance held-out set"
+            what = f"the frozen {len(common)}-instance OOD-test set"
         else:
             common, _ = Counter(r.instance_ids for r in runs.values()).most_common(1)[0]
             what = f"the common {len(common)}-instance set"
@@ -737,7 +741,7 @@ def _gaps(data: Dataset, keys: Sequence[RunKey], base_sizes: Sequence[str]) -> l
         if s not in data.base:
             out.append(f"no base eval for {s}")
     if data.protocol is None:
-        out.append("eval protocol not checked (no held-out id list)")
+        out.append("eval protocol not checked (no OOD-test id list)")
     else:
         used = [(i.run_id, i.last_step) for i in infos if i is not None and i.in_verdicts and i.last_step is not None]
         used += [(data.base[s].run_id, data.base[s].step) for s in base_sizes if s in data.base]
@@ -961,11 +965,11 @@ def make_plots(an: Analysis, out_dir: str | Path) -> list[Path]:
                 ax.set_ylabel("rate")
     handles = [
         plt.Line2D([], [], color=C_ORANGE, lw=1.2, label="training reward (own reward, 10-step mean)"),
-        plt.Line2D([], [], color=C_BLUE, lw=1.6, marker="o", ms=3.5, label="held-out true success"),
-        plt.Line2D([], [], color=C_VIOLET, lw=1.2, ls="--", marker="s", ms=3, label="held-out exploit"),
+        plt.Line2D([], [], color=C_BLUE, lw=1.6, marker="o", ms=3.5, label="OOD-test true success"),
+        plt.Line2D([], [], color=C_VIOLET, lw=1.2, ls="--", marker="s", ms=3, label="OOD-test exploit"),
         plt.Line2D([], [], color=C_GRAY, lw=1, ls=":", label="base true success"),
     ]
-    fig.suptitle("Training reward vs held-out true success (one line per seed)", x=0.02, ha="left")
+    fig.suptitle("Training reward vs OOD-test true success (one line per seed)", x=0.02, ha="left")
     fig.tight_layout(rect=(0, 0.06, 1, 1))
     fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, fontsize=8)
     p1 = out_dir / FIG_CURVES
@@ -1019,7 +1023,7 @@ def make_plots(an: Analysis, out_dir: str | Path) -> list[Path]:
         )
     ax.set_xticks(x, [s.upper() for s in sizes])
     ax.set_xlabel("model size")
-    ax.set_ylabel("held-out exploit rate")
+    ax.set_ylabel("OOD-test exploit rate")
     ax.set_ylim(bottom=0)
     ax.set_title("Exploit rate vs size (final checkpoint)", fontsize=10, loc="left")
     if ax.get_legend_handles_labels()[0]:
@@ -1096,9 +1100,9 @@ def _protocol_md(an: Analysis) -> list[str]:
     p = data.protocol
     out = ["### Eval protocol", ""]
     if p is None:
-        return [*out, "**Not checked:** no frozen held-out id list was found, so no checkpoint counts as complete.", ""]
+        return [*out, "**Not checked:** no frozen OOD-test id list was found, so no checkpoint counts as complete.", ""]
     out.append(
-        f"Every checkpoint: the {len(p.instance_ids)} frozen held-out instances (`{p.source}`), "
+        f"Every checkpoint: the {len(p.instance_ids)} frozen OOD-test instances (`{p.source}`), "
         f"{p.samples} samples each with `sample_idx` 0..{p.samples - 1} exactly once "
         f"({p.n_samples:,} samples), boolean `{'`/`'.join(GRADER_FIELDS)}` on every row."
     )
@@ -1150,6 +1154,8 @@ def render_markdown(an: Analysis, figures: Sequence[Path] | None, report_dir: Pa
     n_final, n_part, n_miss = an.count("final"), an.count("partial"), an.count("missing")
     lines = [
         "_Generated by `eval/compare.py`. Do not edit between the markers; rerun the script._",
+        "",
+        GLOSSARY,
         "",
         f"Inputs: `{data.evals_root}`, `{data.runs_root}`. "
         f"Bootstrap: {an.n_boot:,} replicates, seed {an.boot_seed}. "
@@ -1229,7 +1235,7 @@ def render_markdown(an: Analysis, figures: Sequence[Path] | None, report_dir: Pa
     lines += [
         "### H3 (exploratory): true-success gain by family vs base pass rate",
         "",
-        "Base pass rate = base model true success on that family's held-out template. "
+        "Base pass rate = base model true success on that family's OOD-test template. "
         f"In band = {int(100 * BAND[0])}-{int(100 * BAND[1])}%. "
         "Gain = trained (mean across seeds, final) - base. No CIs, no test.",
         "",

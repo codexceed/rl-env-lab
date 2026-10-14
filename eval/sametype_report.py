@@ -27,9 +27,15 @@ _REWARD_ORDER = {"base": 0, "robust": 1, "leaky": 2}
 _SIZE_ORDER = {"0.8b": 0, "2b": 1, "4b": 2}
 BANNER = (
     "> **EXPLORATORY (ADR 0005).** Unseen instances of the 11 training task types (`sametype` split), "
-    "4 samples at temperature 0.7, both graders. Never used in an H1/H2/H5 verdict; the held-out (T3) "
+    "4 samples at temperature 0.7, both graders. Never used in an H1/H2/H5 verdict; the OOD-test (T3) "
     "results in `reports/results.md` stay the pre-registered basis."
 )
+OOD_TERM = (
+    '*OOD test* = out-of-distribution test: tasks of kinds never trained on ("held-out" in PREREG.md, SPEC.md '
+    "and the code)."
+)
+ID_TERM = '*ID test* = in-distribution test: new tasks of the trained kinds ("same-type" in the code).'
+GLOSSARY = f"{ID_TERM} {OOD_TERM}"
 
 Key = tuple[str, int]  # (run_id, step)
 
@@ -115,9 +121,9 @@ def _pct(x: float) -> str:
 
 
 def markdown(entries: Sequence[dict[str, Any]], notes: Iterable[str] = (), source: str = "evals") -> str:
-    lines = ["# Same-type eval (EXPLORATORY, ADR 0005)", "", BANNER, ""]
+    lines = ["# ID test (EXPLORATORY, ADR 0005)", "", BANNER, "", GLOSSARY, ""]
     if not entries:
-        return "\n".join([*lines, f"No same-type eval records under `{source}/*/{SAMETYPE_DIR}/` yet.", ""])
+        return "\n".join([*lines, f"No ID-test records under `{source}/*/{SAMETYPE_DIR}/` yet.", ""])
     lines += [
         f"Source: `{source}/<run>/{SAMETYPE_DIR}/step-NNNNN.jsonl`. Rates are per sample (n = samples).",
         "Exploit = leaky pass and robust fail. Format failure = no parseable tool call.",

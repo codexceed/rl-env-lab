@@ -60,10 +60,15 @@ SAMETYPE = "sametype"
 PENDING = "pending"
 TITLE = "# Project version v3 — exploratory (ADR 0007)"
 BANNER = (
-    "> **EXPLORATORY (ADR 0007).** v3 task set (`SPEC_v3.md`): 15 trained templates, 5 near and 5 far held-out "
+    "> **EXPLORATORY (ADR 0007).** v3 task set (`SPEC_v3.md`): 15 trained templates, 5 near and 5 far OOD-test "
     "templates; thinking on, answer cap 1,024, prompts up to 2,048 tokens. Near templates only recombine trained "
     "steps (an exploit there is hacking, not missing skill); far templates need a rule never trained. Never used in "
     "an H1/H2/H5 verdict; the pre-registered results are in `reports/results.md`."
+)
+GLOSSARY = (
+    '*OOD test* = out-of-distribution test: tasks of kinds never trained on ("held-out" in SPEC_v3.md and the '
+    "code); *OOD test, near* (OOD-near) and *OOD test, far* (OOD-far) are its two template kinds. "
+    '*ID test* = in-distribution test: new tasks of the trained kinds ("same-type" in the code).'
 )
 CONTRASTS = (("robust", "leaky"), ("robust", "base"), ("leaky", "base"))
 
@@ -272,7 +277,7 @@ def _latest_sametype(r: RunState) -> list[EvalRecord]:
 
 
 def status_md(data: V3Data) -> list[str]:
-    lines = ["## Runs", "", "| Run | Held-out | Same-type (latest step) |", "|---|---|---|"]
+    lines = ["## Runs", "", "| Run | OOD test | ID test (latest step) |", "|---|---|---|"]
     for size in data.base:
         lines.append(f"| {base_id(size)} | {data.base[size].status} | {_st_step(data.base[size])} |")
         for reward in REWARDS:
@@ -287,9 +292,9 @@ def _st_step(r: RunState) -> str:
 
 def final_md(data: V3Data, size: str) -> list[str]:
     lines = [
-        "### Final checkpoint, held-out (near vs far)",
+        "### Final checkpoint, OOD test (near vs far)",
         "",
-        "| Model | Seeds | Near true success | Near exploit | Far true success | Far exploit |",
+        "| Model | Seeds | OOD-near true success | OOD-near exploit | OOD-far true success | OOD-far exploit |",
         "|---|---|---|---|---|---|",
     ]
     rows: list[tuple[str, list[RunState]]] = [("base (thinking on)", [data.base[size]])]
@@ -307,7 +312,7 @@ def final_md(data: V3Data, size: str) -> list[str]:
 
 def family_md(data: V3Data, size: str, kind: str) -> list[str]:
     head = "| Family | Base TS | Robust TS | Leaky TS | Base exploit | Robust exploit | Leaky exploit |"
-    lines = [f"### Per family, {kind} held-out", "", head, "|---|---|---|---|---|---|---|"]
+    lines = [f"### Per family, OOD test, {kind}", "", head, "|---|---|---|---|---|---|---|"]
     groups = [[data.base[size]], condition(data, size, "robust"), condition(data, size, "leaky")]
     for fam in FAMILIES:
         keep_kind = by_kind(kind)
@@ -324,10 +329,10 @@ def family_md(data: V3Data, size: str, kind: str) -> list[str]:
 
 def trajectory_md(data: V3Data, size: str) -> list[str]:
     lines = [
-        "### Trajectory over eval steps (held-out, mean over the seeds evaluated at that step)",
+        "### Trajectory over eval steps (OOD test, mean over the seeds evaluated at that step)",
         "",
-        "| Step | Seeds rob / leak | Robust TS near / far | Leaky TS near / far | Robust exploit near / far "
-        "| Leaky exploit near / far |",
+        "| Step | Seeds rob / leak | Robust TS OOD-near / OOD-far | Leaky TS OOD-near / OOD-far "
+        "| Robust exploit OOD-near / OOD-far | Leaky exploit OOD-near / OOD-far |",
         "|---|---|---|---|---|---|",
     ]
     groups = {reward: condition(data, size, reward) for reward in REWARDS}
@@ -357,7 +362,7 @@ def bootstrap_md(data: V3Data, size: str, n_boot: int, seed: int) -> list[str]:
         f"PREREG §3 paired hierarchical bootstrap, {n_boot:,} replicates, seed {seed}: seeds paired by number "
         "(robust vs leaky) or the base held fixed, instances resampled. Exploratory.",
         "",
-        "| Contrast | Near true success | Near exploit | Far true success | Far exploit |",
+        "| Contrast | OOD-near true success | OOD-near exploit | OOD-far true success | OOD-far exploit |",
         "|---|---|---|---|---|",
     ]
     for a, b in CONTRASTS:
@@ -372,7 +377,7 @@ def bootstrap_md(data: V3Data, size: str, n_boot: int, seed: int) -> list[str]:
 
 def sametype_md(data: V3Data) -> list[str]:
     lines = [
-        "## Same-type (unseen tasks of the 15 trained templates)",
+        "## ID test (unseen tasks of the 15 trained templates)",
         "",
         "Latest step of each run, from `evals/<run>/sametype/step-NNNNN.jsonl`.",
         "",
@@ -391,11 +396,11 @@ def sametype_md(data: V3Data) -> list[str]:
 
 
 def markdown(data: V3Data, *, n_boot: int = DEFAULT_N_BOOT, seed: int = 0) -> str:
-    lines = [TITLE, "", BANNER, ""]
+    lines = [TITLE, "", BANNER, "", GLOSSARY, ""]
     lines += [
-        "True success = robust pass; exploit = leaky pass and robust fail. Near / far = the held-out template kind "
-        "(`envlab.tasks.v3.heldout_kind`). Each run is shown at its final step once evaluated, else at its latest "
-        "evaluated step (see Runs).",
+        "True success = robust pass; exploit = leaky pass and robust fail. OOD-near / OOD-far = the OOD-test "
+        "template kind (`envlab.tasks.v3.heldout_kind`). Each run is shown at its final step once evaluated, else at "
+        "its latest evaluated step (see Runs).",
         "",
     ]
     lines += status_md(data)

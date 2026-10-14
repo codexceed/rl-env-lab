@@ -87,7 +87,7 @@ def test_rates_overall_and_per_template(evals):
 def test_markdown_is_labelled_exploratory(evals):
     records, notes = rep.read_records(evals)
     md = rep.markdown(rep.table_rows(records), notes)
-    assert md.startswith("# Same-type eval (EXPLORATORY, ADR 0005)")
+    assert md.startswith("# ID test (EXPLORATORY, ADR 0005)")
     assert "Never used in an H1/H2/H5 verdict" in md
     assert "| 2b-leak-s1 | 2b | leaky | 1 | 300 | 12 | 66.7% | 16.7% | 16.7% |" in md
     assert "| base-2b | 2b | base | - | 0 | 1 | 0.0% | 0.0% | 0.0% |" in md
@@ -110,6 +110,6 @@ def test_unreadable_lines_are_noted(tmp_path):
 def test_cli(evals, tmp_path, capsys):
     out = tmp_path / "reports" / "sametype.md"
     assert rep.main(["--evals", str(evals), "--out", str(out)]) == 0
-    assert out.read_text().startswith("# Same-type eval (EXPLORATORY")
+    assert out.read_text().startswith("# ID test (EXPLORATORY")
     assert rep.main(["--evals", str(tmp_path / "none"), "--out", "-"]) == 0
-    assert "No same-type eval records" in capsys.readouterr().out
+    assert "No ID-test records" in capsys.readouterr().out

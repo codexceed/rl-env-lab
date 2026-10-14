@@ -24,11 +24,11 @@ from typing import Any
 if __package__ in (None, ""):  # run as a script: make `eval` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from eval.sametype_report import rates
+from eval.sametype_report import ID_TERM, OOD_TERM, rates
 
 V2_RUN_RE = re.compile(r"^v2-(?P<size>[^-]+)-(?P<r>rob|leak)-s(?P<seed>\d+)$")
 _STEP_RE = re.compile(r"^step-(\d+)\.jsonl$")
-EVALS = (("heldout", "Held-out (T3)", ""), ("sametype", "Same-type", "sametype"))
+EVALS = (("heldout", "OOD test (T3)", ""), ("sametype", "ID test", "sametype"))
 BANNER = (
     "> **EXPLORATORY (ADR 0005).** v2 round: thinking on, answer cap 1,024 (ADR 0006). Never used in an H1/H2/H5 "
     "verdict; the pre-registered results are in `reports/results.md`."
@@ -85,7 +85,7 @@ def summarize(evals_root: Path) -> dict[str, dict[str, Any]]:
 
 
 def markdown(summary: dict[str, dict[str, Any]], source: str = "evals") -> str:
-    lines = ["# v2 round (EXPLORATORY, ADR 0005)", "", BANNER, ""]
+    lines = ["# v2 round (EXPLORATORY, ADR 0005)", "", BANNER, "", f"{OOD_TERM} {ID_TERM}", ""]
     for key, title, sub in EVALS:
         s = summary[key]
         where = f"{source}/v2-*/{sub + '/' if sub else ''}step-NNNNN.jsonl"
