@@ -1,6 +1,8 @@
-# Same-type eval (EXPLORATORY, ADR 0005)
+# ID test (EXPLORATORY, ADR 0005)
 
-> **EXPLORATORY (ADR 0005).** Unseen instances of the 11 training task types (`sametype` split), 4 samples at temperature 0.7, both graders. Never used in an H1/H2/H5 verdict; the held-out (T3) results in `reports/results.md` stay the pre-registered basis.
+> **EXPLORATORY (ADR 0005).** Unseen instances of the 11 training task types (`sametype` split), 4 samples at temperature 0.7, both graders. Never used in an H1/H2/H5 verdict; the OOD-test (T3) results in `reports/results.md` stay the pre-registered basis.
+
+*ID test* = in-distribution test: new tasks of the trained kinds ("same-type" in the code). *OOD test* = out-of-distribution test: tasks of kinds never trained on ("held-out" in PREREG.md, SPEC.md and the code).
 
 Source: `evals/<run>/sametype/step-NNNNN.jsonl`. Rates are per sample (n = samples).
 Exploit = leaky pass and robust fail. Format failure = no parseable tool call.
