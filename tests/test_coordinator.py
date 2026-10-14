@@ -347,6 +347,11 @@ def test_allow_shutdown_without_command_never_shuts_down(env):
     assert run_to_end(coord) == "idle"
 
 
+# Seconds between the test start and the fake deadline: enough for a loaded node (load ~450 on 192 cores during
+# the fresh-clone GPU check) to build the coordinator and launch the first run before the deadline hits.
+DEADLINE_LEAD = 3.0
+
+
 def _deadline_clock(seconds_before: float):
     """Clock pinned to the real config deadline (Fri 16 Oct 06:00), starting just before it."""
     deadline = datetime(2026, 10, 16, 6, 0).timestamp()
@@ -355,7 +360,7 @@ def _deadline_clock(seconds_before: float):
 
 
 def test_default_mode_never_shuts_down_even_at_deadline(env):
-    clock, deadline = _deadline_clock(0.5)
+    clock, deadline = _deadline_clock(DEADLINE_LEAD)
     env.behave(**{"2b-rob-s1": {"sleep": 30}})
     cfg = env.config(
         [group("g0", [0], ["2b-rob-s1", "2b-rob-s2"])],
@@ -376,7 +381,7 @@ def test_default_mode_never_shuts_down_even_at_deadline(env):
 
 
 def test_opt_in_shuts_down_at_deadline_after_grace(env):
-    clock, deadline = _deadline_clock(0.5)
+    clock, deadline = _deadline_clock(DEADLINE_LEAD)
     env.behave(**{"2b-rob-s1": {"sleep": 30}})
     stuck = "sleep 60"
     cfg = env.config(

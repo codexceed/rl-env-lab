@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -33,7 +34,17 @@ from train.grpo import DEFAULT_CONFIG, load_config, parse_args, run_settings
 from train.run_manifest import config_identity
 
 HF_CHECKPOINT_RE = re.compile(r"^checkpoint-(\d+)$")  # transformers.trainer_utils.get_last_checkpoint
-JOIN = 10.0
+JOIN = 60.0  # upper bound for waits that should succeed; generous so a loaded node (load ~450) does not flake
+
+
+def wait_for(cond, timeout: float = JOIN) -> bool:
+    """Poll ``cond`` until true or ``timeout``; the background writer threads run on their own schedule."""
+    end = time.monotonic() + timeout
+    while not cond():
+        if time.monotonic() > end:
+            return False
+        time.sleep(0.01)
+    return True
 
 
 class Writer:
@@ -179,8 +190,8 @@ def test_rank_waits_for_main_before_it_stops_being_busy(tmp_path):
     rank0, rank1 = make(tmp_path, rank=0, world=2), make(tmp_path, rank=1, world=2)
     rank0.save(5, Writer(rank=0, gate=gate0).snapshot)
     rank1.save(5, Writer(rank=1).snapshot)
-    assert not rank1.join(0.2)  # its own files are done, but main has not settled
-    assert done_path(recovery_tmp_dir(tmp_path, 5), 1).is_file()
+    assert wait_for(done_path(recovery_tmp_dir(tmp_path, 5), 1).is_file)  # its own files are done ...
+    assert not rank1.join(0.2)  # ... but main has not settled
     gate0.set()
     assert rank0.join(JOIN) and rank1.join(JOIN)
 
