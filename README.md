@@ -37,6 +37,7 @@ flowchart LR
 | See the results | [`reports/results.md`](reports/results.md) |
 | Read what we've learned (and the open questions) | [`reports/learnings.md`](reports/learnings.md) |
 | Understand how it fits together | [`ARCHITECTURE.md`](ARCHITECTURE.md) (diagrams) |
+| Rerun the study on two GPU nodes (v1, v2, v3) | [`REPRODUCE.md`](REPRODUCE.md) |
 | Know the hypotheses and pass/fail rules | [`PREREG.md`](PREREG.md) |
 | See the billing tasks, tools and graders | [`SPEC.md`](SPEC.md) |
 | Know why something was decided | [`DECISIONS.md`](DECISIONS.md) → [`docs/adr/`](docs/adr/) |

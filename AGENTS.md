@@ -16,6 +16,7 @@ We measure true success against exploits (samples that pass leaky but fail robus
 | File | Role | Who edits |
 |---|---|---|
 | `ARCHITECTURE.md` | How the stack and its flows fit together (diagrams) | Update when a flow or contract changes |
+| `REPRODUCE.md` | How to rerun v1/v2/v3 on two nodes (`configs/replicate/`), costs, expected results, pitfalls | Update when a command, config or result changes |
 | `PROGRESSION.md` | **Authoritative execution plan and progress log** | Everyone, per its update rules |
 | `docs/adr/` | **Architecture Decision Records**: the reasoning behind major decisions | Agents draft, owner accepts |
 | `DECISIONS.md` | One-line ledger of decisions, linking to ADRs | Owner signs off on changes |
