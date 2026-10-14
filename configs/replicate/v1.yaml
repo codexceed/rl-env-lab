@@ -1,5 +1,5 @@
 # Replication plan for project version v1 (PREREG.md, SPEC.md tasks, thinking off, answer cap 256) on two 8x H200
-# nodes. 18 runs: 0.8B / 2B / 4B x robust / leaky x seeds 1-3. Guide: REPRODUCE.md.
+# nodes. 18 runs: 0.8B / 2B / 4B x robust / leaky x seeds 1-3. Guide: README, "Reproduce the study".
 #
 #   uv run python train/coordinator.py --config configs/replicate/v1.yaml --node node1 --print-plan
 #   uv run python train/coordinator.py --config configs/replicate/v1.yaml --node node1
@@ -49,7 +49,7 @@ commands:
     uv run python eval/heldout.py --size {size} --checkpoint base {variant_args} --output {output} --gpus {gpus}
 
 transfer:
-  command: null  # runs/ and evals/ stay on the node; copy results off before cleanup (REPRODUCE.md §5)
+  command: null  # runs/ and evals/ stay on the node; copy results off before cleanup (README, "Results off the node")
   timeout_s: 3600
   retries: 2
   max_concurrent: 2

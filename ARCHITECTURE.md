@@ -191,7 +191,7 @@ flowchart TD
   CO -->|"all done"| IDLE["node marked idle<br/>(owner releases it)"]
 ```
 
-**Run matrix:** {0.8B, 2B, 4B} × {robust, leaky} × seeds {1, 2, 3} = 18 runs. Every size gets the same per-step budget: 8 prompts × 8 generations, 1,000 steps, LR 1e-6. Plus 6 exploratory v2 runs (`v2-2b-{rob,leak}-s{1,2,3}`), whose run ids keep them out of every verdict. v3 (ADR 0007, exploratory) adds 12 more, `v3-{4b,2b}-{rob,leak}-s{1,2,3}`, and v2 another 6 at 0.8B. All 36 ran; `configs/replicate/` has a clean two-node plan per version (`REPRODUCE.md`).
+**Run matrix:** {0.8B, 2B, 4B} × {robust, leaky} × seeds {1, 2, 3} = 18 runs. Every size gets the same per-step budget: 8 prompts × 8 generations, 1,000 steps, LR 1e-6. Plus 6 exploratory v2 runs (`v2-2b-{rob,leak}-s{1,2,3}`), whose run ids keep them out of every verdict. v3 (ADR 0007, exploratory) adds 12 more, `v3-{4b,2b}-{rob,leak}-s{1,2,3}`, and v2 another 6 at 0.8B. All 36 ran; `configs/replicate/` has a clean two-node plan per version (README, "Reproduce the study").
 
 **Verdicts** (exact rules in `PREREG.md`):
 

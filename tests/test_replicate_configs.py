@@ -1,6 +1,7 @@
-"""configs/replicate/v{1,2,3}.yaml (REPRODUCE.md): one clean two-node plan per project version, resolved with the
-coordinator's own code. Each must queue every run of its version exactly once, never put two groups that can run at
-the same time on one GPU, keep eval GPUs out of training, and launch commands that train/grpo.py accepts."""
+"""configs/replicate/v{1,2,3}.yaml (README, "Reproduce the study"): one clean two-node plan per project version,
+resolved with the coordinator's own code. Each must queue every run of its version exactly once, never put two
+groups that can run at the same time on one GPU, keep eval GPUs out of training, and launch commands that
+train/grpo.py accepts."""
 
 from __future__ import annotations
 
