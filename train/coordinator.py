@@ -3,9 +3,13 @@
 Usage::
 
     python train/coordinator.py --node node1 --config configs/allocation.yaml
-        [--dry-run] [--allow-shutdown] [--print-plan] [--poll-interval S]
+        [--dry-run] [--allow-shutdown] [--print-plan] [--poll-interval S] [--skip-preflight]
 
 Each node runs its own coordinator. It:
+
+* **Runs the node preflight first** (`train/preflight.py`, also ``make preflight``): GPU stack imports,
+  ``ninja``, GPU count, data against its manifest, model exports, disk. On any failure it launches
+  nothing and exits 1; ``--skip-preflight`` overrides. ``--print-plan`` never runs it.
 
 * **Launches runs** from the node's GPU groups (`configs/allocation.yaml`).
   A group's queue runs in order. The head run starts when every group in its
@@ -1083,12 +1087,27 @@ def main(argv: list[str] | None = None) -> int:
     )
     ap.add_argument("--print-plan", action="store_true", help="print the resolved plan and exit")
     ap.add_argument("--poll-interval", type=float, default=None)
+    ap.add_argument(
+        "--skip-preflight",
+        action="store_true",
+        help="launch without the node preflight (GPU stack, ninja, GPUs, data, exports, disk; train/preflight.py)",
+    )
     args = ap.parse_args(argv)
 
     cfg = load_config(args.config)
     if args.print_plan:
         print(describe_plan(build_plan(resolve_paths(cfg), args.node)))
         return 0
+    if not args.skip_preflight:
+        from train import preflight  # imports this module; lazy so --print-plan stays light
+
+        if preflight.main(["--node", args.node, "--config", str(args.config)]) != 0:
+            print(
+                f"coordinator: preflight failed on {args.node}; nothing launched. Fix the items above "
+                "(`make preflight NODE=...` re-checks), or pass --skip-preflight to launch anyway.",
+                file=sys.stderr,
+            )
+            return 1
     coord = Coordinator(
         cfg,
         args.node,

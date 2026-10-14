@@ -74,6 +74,7 @@ make check && make test                  # lint, types, docstrings, imports; uni
 
 ```bash
 make data                                # build train / held-out / broken splits
+make preflight NODE=node1                # GPU node ready? stack, ninja, GPUs, data, exports, disk
 make train RUN=2b-rob-s1                 # one GRPO run -> runs/2b-rob-s1/
 make eval RUN=2b-rob-s1 STEP=final       # held-out eval -> evals/2b-rob-s1/
 make report                              # tables, verdicts, figures -> reports/results.md

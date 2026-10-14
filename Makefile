@@ -29,7 +29,7 @@ SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-gpu hooks check fmt test lock data data-sametype acceptance data-v3 acceptance-v3 compat toy sweep gpu-checks dry-run base-evals bench \
-	train eval eval-base diagnostic diagnostic-think diagnostic-v3 sametype-evals sametype-report v2-report v3-report dry-v3 plan coordinator watcher logsync report report-fake cleanup-plan studio-status studio-switch studio-run
+	preflight train eval eval-base diagnostic diagnostic-think diagnostic-v3 sametype-evals sametype-report v2-report v3-report dry-v3 plan coordinator watcher logsync report report-fake cleanup-plan studio-status studio-switch studio-run
 
 help:  ## List the targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -96,6 +96,9 @@ dry-run:  ## §1.4: real grpo.py, 12 steps, async recovery: 2B robust + leaky, 4
 
 dry-v3:  ## ADR 0007: grpo.py --variant v3, 12 steps: 4B robust (GPU 0-3) + 2B leaky (GPU 4), 8-instance evals -> runs/dry/*.log
 	bash scripts/dry_v3.sh
+
+preflight:  ## Node ready? GPU stack, ninja, GPUs, data vs manifest, model exports, disk for NODE (NODE= for stack only)
+	$(UV) python scripts/preflight.py $(if $(NODE),--node $(NODE))
 
 gpu-checks:  ## compat x3 sizes + 2B toy LR sweep in parallel, one GPU each -> runs/gpu_checks/*.log
 	bash scripts/gpu_checks.sh

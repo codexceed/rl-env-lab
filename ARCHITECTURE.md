@@ -65,12 +65,12 @@ src/envlab/
   parse.py      completion text → ToolCall | ParseFailure
   prompts.py    TaskInstance → chat messages / rendered prompt
 train/          grpo.py · rewards.py · callbacks.py · async_recovery.py · checkpoints.py · run_manifest.py
-                coordinator.py · logsync.py · common.py · export_text.py
+                coordinator.py · preflight.py · venv_bin.py · logsync.py · common.py · export_text.py
                 compat_check.py · smoke_toy.py · toy_utils.py · bench.py · LAYOUT.md · README*.md
 eval/           heldout.py · watcher.py · metrics.py · compare.py · gallery.py · fake_data.py
                 sametype_batch.py · sametype_report.py · v2_report.py · v3_report.py   (exploratory)
 configs/        grpo.yaml · sizes/{0.8b,2b,4b}.yaml · variants/{v2-think,v3}.yaml · allocation.yaml · accelerate/
-scripts/        setup_gpu.sh · dry_runs.sh · dry_v3.sh · gpu_checks.sh · base_evals.sh · studio.py
+scripts/        setup_gpu.sh · preflight.py · dry_runs.sh · dry_v3.sh · gpu_checks.sh · base_evals.sh · studio.py
 reports/        acceptance.md · results.md · learnings.md · figures/ (+ sametype.md, v2.md when generated)
 docs/adr/       decision records
 logs/           run logs mirrored from the nodes (git, every 30 min)
@@ -173,14 +173,14 @@ T3 of every family is **held out**: never trained on and never adapted. G3 prove
 ```mermaid
 flowchart TD
   AL["configs/allocation.yaml"] --> CO["coordinator (one per node)"]
-  CO -->|"CUDA_VISIBLE_DEVICES, timeout"| RUN["grpo.py run e.g. 2b-leak-s1"]
+  CO -->|"preflight passes (make preflight)<br/>CUDA_VISIBLE_DEVICES, timeout"| RUN["grpo.py run e.g. 2b-leak-s1"]
   RUN --> EW["runs/id/eval/step-N/ + COMPLETE"]
   RUN --> RC["runs/id/recovery/checkpoint-N/<br/>async · keep 2 · 4B every 100 steps"]
   RUN --> TM["runs/id/train_metrics.jsonl"]
   RUN --> MF["runs/id/run_manifest.json"]
   MF --> CMP
   RC -.->|crash| CO
-  EW --> WA["watcher: final first, then every 100"]
+  EW --> WA["watcher: base models first (base-size, v3-base-size),<br/>then final, then every 100"]
   WA --> HO["heldout.py: 250 × 4, temp 0.7, both graders"]
   HO --> EJ["evals/id/step-N.jsonl"]
   EJ --> CMP["compare.py + metrics.py"]
@@ -228,7 +228,7 @@ create studio on CPU ─► make setup-gpu (builds causal-conv1d, no GPU needed)
                                                                                                │
           compat (3 sizes) · toy LR sweep · bench ◄────────────────────────────────────────────┘
                                    │
-          diagnostic + formal base eval ─► make coordinator NODE=nodeN ─► (nodes stay attached until the owner releases them)
+          diagnostic ─► make preflight NODE=nodeN ─► make coordinator NODE=nodeN (re-runs preflight; watcher runs base evals) ─► (nodes stay attached)
 ```
 
 ## 9. GPU layout per node during training
