@@ -11,6 +11,7 @@ Each ADR records **why** a major decision was made, so nobody has to dig through
 | [0005](0005-exploratory-followup.md) | Exploratory follow-up after the first training round | Accepted | 2026-10-12 |
 | [0006](0006-v2-answer-cap-1024.md) | v2 round: answer cap 1,024 instead of 512 | Accepted | 2026-10-12 |
 | [0007](0007-v3-task-set.md) | Project version v3: harder, larger task set (near + far held-out) | Accepted | 2026-10-13 |
+| [0008](0008-validation-split-and-answer-budget.md) | Future versions: validation split for checkpoint choice; one answer budget sized for the smallest model | Proposed | 2026-10-14 |
 
 ## When to write one
 
