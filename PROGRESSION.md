@@ -19,7 +19,7 @@
 
 | | |
 |---|---|
-| **Phase** | P3 training done: v1 (verdicts in), v2 (0.8B, 2B) and **v3** (4B, 2B) all trained and evaluated. Next: P4 final review |
+| **Phase** | **P4 final review.** All training done and evaluated: v1 (verdicts in), v2 (0.8B, 2B), v3 (4B, 2B). Open: gallery, limits, field notes, final verdict write-up, clean-clone check, publish |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
 | **Compute** | 2 x 8 H200 (Lightning AI, `[teamspace]`, `bare-metal`), **both stopped**: N2 ~13:00 UTC, N1 ~15:25 UTC on 2026-10-13, after cleanup (N1 keeps 46 checkpoints, 233 GB; N2 keeps 14, 75 GB). All results on the laptop and in git |
 | **Next gate** | 🚦 G-Final (Fri 16 Oct 12:00) |
@@ -114,20 +114,20 @@ P4 final        Fri 06:00 cutoff · final eval · review · clean-clone · Fri 1
 - [x] Studio auto-sleep disabled (machines stay attached through dips) — 2026-10-12, verified via SDK
 - [x] Switch studio to H200 (1× for §0.3/§0.4, then ×8) when GPU scripts land — 2026-10-12, n1 on 8× H200
 - [x] Node 1 = studio `rl-env-lab-n1` on `bare-metal` (8× H200 `8x-H200`, [rate]); set up on CPU: gpu extra + causal-conv1d 1.7.0 built (pip CUDA 13.0 nvcc), 1,231 tests pass on node — 2026-10-12. Old `rl-env-lab` studio (public-prod, [rate] for 8× H200) stopped
-- [ ] Node 2 = `rl-env-lab-n2` on `bare-metal`: create + CPU setup before training; H200 at training start
-- [ ] Both nodes reachable; GPU check prints GPU name, memory, CUDA available on each
-- [ ] Shared storage for checkpoints/eval outputs set up; path: `____`
-- [ ] Storage measured after first checkpoint save (per-checkpoint size × planned count recorded here: `____`)
+- [x] Node 2 = `rl-env-lab-n2` on `bare-metal`: create + CPU setup before training; H200 at training start — 2026-10-12, ran 0.8B and 4B v1 blocks
+- [x] Both nodes reachable; GPU check prints GPU name, memory, CUDA available on each — 2026-10-12, `scripts/gpu_checks.sh`
+- [x] Shared storage for checkpoints/eval outputs set up; path: `/teamspace/studios/this_studio/rl-env-lab/runs/` per node; n2 reads n1 via the cross-studio mount (one-way in practice, learnings §5) — 2026-10-12
+- [x] Storage measured after first checkpoint save (per-checkpoint size × planned count recorded here: recovery 22 GB (2B) / 55 GB (4B), keep last 2 per run; eval weights x 20 per run; ~4.8 TB eval weights before the 2026-10-13 cleanup) — 2026-10-12
 
 ### 0.2 Repo scaffold (agent)
 - [x] `git init`, MIT `LICENSE`, `.gitignore` (`data/`, `runs/`, `.env`; keep manifest + split IDs) — 2026-10-12, repo-local personal git identity
 - [x] Layout from `INSTRUCTIONS.md` (`src/envlab/{sim,tasks,verify}`, `train/`, `eval/`, `reports/`, `tests/`, `configs/`) — 2026-10-12
 - [x] `uv` project, Python 3.14, pinned via `uv.lock`: torch, transformers, trl, datasets, vllm, accelerate/deepspeed in `gpu` extra (peft only if LoRA kept) — 2026-10-12
 - [x] `ruff` + `pytest`; one trivial passing test — 2026-10-12
-- [ ] GitHub repo (private until Fri); Actions CI runs ruff + pytest
+- [x] GitHub repo (private until Fri); Actions CI runs ruff + pytest — `codexceed/rl-env-lab`, private
 - [x] `DECISIONS.md` created (skeleton exists; fill as decisions land) — 2026-10-12
 - [x] `AGENTS.md` (agent working rules) + `CLAUDE.md` pointer — 2026-10-12
-- [ ] Done when: CI green on `main`
+- [x] Done when: CI green on `main` — 2026-10-13, every recent push green
 
 ### 0.3 Qwen3.5 compatibility — full training path (agent, on GPU, pinned stack)
 - [x] Loads as text-only causal LM (no vision tower) for 0.8B / 2B / 4B — 2026-10-12, compat passes on all 3 sizes
@@ -200,7 +200,7 @@ P4 final        Fri 06:00 cutoff · final eval · review · clean-clone · Fri 1
 - [x] 4B GPU layout (keep 1 gen + 3 train unless benchmark says otherwise) — 2026-10-12, 4 colocated (ADR 0003)
 
 ### 🚦 G-Setup
-- [ ] CI green · compat checks pass (or fallback logged) · toy reward rises · benchmarks recorded · SPEC signed off · PREREG committed · DECISIONS filled
+- [x] CI green · compat checks pass (or fallback logged) · toy reward rises · benchmarks recorded · SPEC signed off · PREREG committed · DECISIONS filled — 2026-10-12, ticked retroactively 2026-10-14 (§0.1 written confirmations still open, owner)
 
 ---
 
@@ -228,7 +228,7 @@ Three agents in parallel; I integrate and review.
 - [x] `prompts.py` in native format
 - [x] Unit tests: seed reproducibility, no T3 in train — 2026-10-12, merged (#7)
 - [x] Real token counts checked with the Qwen3.5 tokenizer — 2026-10-12, all splits fit: max real 1,463 (train_hard), 1,430 (train), 1,462 (heldout) vs limit 1,536; 0 over. The chars/2.5 estimate overcounts (real = 0.92× estimate on average, ≤ 0.98× worst case), so data needs no rebuild
-- [ ] Known limit: prompt budget (≤ 1,500 est. tokens, ≈ 1,465 real) leaves little headroom; most *hard* variants fit only 2–3 distractors (not 5–6). Only matters if the too-easy branch fires — then raise hard-variant budget or revise k before using them
+- [~] Known limit (n/a: the too-easy branch never fired): prompt budget (≤ 1,500 est. tokens, ≈ 1,465 real) leaves little headroom; most *hard* variants fit only 2–3 distractors (not 5–6). Only matters if the too-easy branch fires — then raise hard-variant budget or revise k before using them
 
 ### 1.4 Training and eval plumbing
 - [x] TRL reward wrappers (robust, leaky; same interface) — 2026-10-12, both scored every step, weight 1/0 by run (#9)
@@ -244,7 +244,7 @@ Three agents in parallel; I integrate and review.
   - never releases a machine by default: when all training, eval and transfers are done it writes an idle marker ("safe to release"); at the hard deadline it stops runs only
   - actual shutdown only with explicit opt-in flag + configured command (owner's call)
 - [x] 10-step dry run of `train/grpo.py` with each reward on 2B; resume tested — 2026-10-12, 2B robust + leaky and 4B robust (4 colocated GPUs), 0 grader errors, ~6 s/step; `make dry-run`
-- [ ] CI green
+- [x] CI green — 2026-10-12
 
 ### 1.5 Reporting skeleton (agent, low priority)
 - [x] README: setup, data build, one training run, eval
@@ -252,7 +252,7 @@ Three agents in parallel; I integrate and review.
 - [x] `eval/compare.py` stub that runs on fake eval JSONL — 2026-10-12, full tables/verdicts/plots; `make report-fake` passes H1/H2/H5 on fake data
 
 ### 🚦 G-Build
-- [ ] Tests pass · data built · dry runs + resume work for both rewards · coordinator tested · if slipping, run §2 in parallel
+- [x] Tests pass · data built · dry runs + resume work for both rewards · coordinator tested · if slipping, run §2 in parallel — 2026-10-12, ticked retroactively 2026-10-14
 
 ---
 
@@ -261,32 +261,32 @@ Three agents in parallel; I integrate and review.
 ### 2.1 Acceptance — `reports/acceptance.md`
 - [x] G1–G3 on every instance — 2026-10-12, 4,250 valid (train, train_hard, held-out) all pass
 - [x] All 100 broken variants rejected; ≥99% of valid instances pass — 100/100, 100%
-- [ ] Fix and regenerate if not; record failures
+- [~] Fix and regenerate if not; record failures — not needed, nothing failed
 
 ### 2.2 Diagnostic baseline (train templates only) — `reports/baseline.md`
-- [ ] 0.8B, 2B, 4B: 50 instances × 8 samples per train template
-- [ ] Per-template pass rate; count of the 10 train templates in the 10–90% band, per size
-- [ ] **Apply frozen adaptation rule (main model):**
+- [x] 0.8B, 2B, 4B: 50 instances × 8 samples per train template — 2026-10-12, `logs/evals/diagnostic/`
+- [x] Per-template pass rate; count of the 10 train templates in the 10–90% band, per size — 2B: 5 of 10 (3 below, 2 above), ADR 0004
+- [x] **Apply frozen adaptation rule (main model):** — neither branch fit 5 of 10; owner added train template F1T5 (2B 24%) → 6 of 11 in band (PREREG §10 #12, ADR 0004)
   - ≥6 of 10 in band → proceed
   - **Too hard** (most below 10%) → SFT warm-up (500 oracle completions, 1 epoch, all sizes) → drop hardest template per family → Qwen3-1.7B / larger
   - **Too easy** (most above 90%) → switch train templates to pre-specified harder variants (all sizes) → else make **0.8B the main model**
-- [ ] Any adaptation logged; same task distribution for all sizes; held-out unchanged
+- [x] Any adaptation logged; same task distribution for all sizes; held-out unchanged — held-out sha256 unchanged, ADR 0004
 
 ### 2.3 Formal base eval
-- [ ] 250 held-out × 4 samples, temp 0.7, both graders, for 0.8B, 2B, 4B
-- [ ] Base true success, exploit rate, format failures recorded (H1 and H2 baselines)
+- [x] 250 held-out × 4 samples, temp 0.7, both graders, for 0.8B, 2B, 4B — 2026-10-12, re-run at the 256-token cap (ADR 0004 #11)
+- [x] Base true success, exploit rate, format failures recorded (H1 and H2 baselines) — `reports/results.md`: true 21.5 / 21.8 / 29.7%, exploit 41 / 48 / 57%
 
 ### 🚦 G-Baseline
-- [ ] Acceptance passed · main model in band (after any adaptation) · formal base eval done
+- [x] Acceptance passed · main model in band (after any adaptation) · formal base eval done — 2026-10-12, ticked retroactively 2026-10-14
 
 ---
 
 ## P3 — Training (until the Fri 06:00 cutoff)
 
 ### 3.1 Launch
-- [ ] Coordinator launches per GPU allocation; start time `____`
-- [ ] Eval watcher running on Node 1 GPU 6–7 (+ Node 2 GPU 6–7 during 0.8B)
-- [ ] Spot check: first eval checkpoint of one run evaluated end-to-end
+- [x] Coordinator launches per GPU allocation; start time `2026-10-12 15:20 UTC` (2B block, n1)
+- [x] Eval watcher running on Node 1 GPU 6–7 (+ Node 2 GPU 6–7 during 0.8B) — 2026-10-12
+- [x] Spot check: first eval checkpoint of one run evaluated end-to-end — 2026-10-12
 
 ### 3.2 Health check at step 100 (each run)
 Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% · no NaN/crash.
@@ -305,12 +305,12 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 0.8b-leak-s1 | [~] reward ↑, dead ≥ 80% | 0.80→0.93, dead 0.99; continued (PREREG #13) |
 | 0.8b-leak-s2 | [~] reward ↑, dead ≥ 80% | 0.80→0.98, dead 0.98; continued (PREREG #13) |
 | 0.8b-leak-s3 | [~] reward ↑, dead ≥ 80% | 0.85→0.97, dead 0.97; continued (PREREG #13) |
-| 4b-rob-s1 | [ ] | |
-| 4b-leak-s1 | [ ] | |
-| 4b-rob-s2 | [ ] | |
-| 4b-leak-s2 | [ ] | |
-| 4b-rob-s3 | [ ] | |
-| 4b-leak-s3 | [ ] | |
+| 4b-rob-s1 | [~] reward ↑, dead ≥ 80% | 0.71→0.81, dead 0.98; continued (PREREG #13). Filled from `train_metrics.jsonl` 2026-10-14 |
+| 4b-leak-s1 | [~] reward ↑, dead ≥ 80% | 0.95→0.99, dead 0.99; continued (PREREG #13). Filled from `train_metrics.jsonl` 2026-10-14 |
+| 4b-rob-s2 | [~] reward ↑, dead ≥ 80% | 0.65→0.79, dead 0.97; continued (PREREG #13). Filled from `train_metrics.jsonl` 2026-10-14 |
+| 4b-leak-s2 | [~] reward ↑, dead ≥ 80% | 0.95→0.99, dead 0.99; continued (PREREG #13). Filled from `train_metrics.jsonl` 2026-10-14 |
+| 4b-rob-s3 | [~] reward ↑, dead ≥ 80% | 0.73→0.90, dead 0.90; continued (PREREG #13). Filled from `train_metrics.jsonl` 2026-10-14 |
+| 4b-leak-s3 | [~] reward ↑, dead ≥ 80% | 0.96→0.99, dead 0.99; continued (PREREG #13). Filled from `train_metrics.jsonl` 2026-10-14 |
 
 **2026-10-12: not applied to block 1 — every run failed only on dead-group share (task saturation), see PREREG #13.** Unhealthy → halve LR, restart from step 0, **both members of the pair**; second failure → SFT warm-up (per §0.7 SFT rule). Crash → resume from latest recovery checkpoint.
 
@@ -330,7 +330,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 
 - [x] 🚦 G-core (end of block 1): all six main-model runs finished and evaluated — 2026-10-12 20:45, 1,000 steps each, 20 eval checkpoints each
 - [x] 🚦 G-ladder (end of block 3): all 0.8B and 4B runs finished and evaluated — 2026-10-12 22:40, 4B evals 20 / 20 each (caught up on N2 after training)
-- [ ] Recovery checkpoints pruned only after the run's final artifacts pass integrity check
+- [x] Recovery checkpoints pruned only after the run's final artifacts pass integrity check — 2026-10-13, every run passed `check_final_integrity` before N1/N2 cleanup
 
 ### 3.4 Live analysis (as results land)
 - [x] `eval/compare.py` fills results tables (size × reward × seed, CIs) from eval JSONL — 2026-10-13 00:00, data merged from both nodes; fixed a claim-marker bug that hid every eval
@@ -353,16 +353,16 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [x] `reports/v3.md`: near vs far, robust vs leaky, labelled v3 exploratory — 2026-10-13 15:00 UTC, complete (4B and 2B, held-out, same-type, paired bootstrap vs the v3 base)
 
 ### 3.5 Spare blocks (after block 3 until the cutoff, only after G-core)
-- [ ] Priority 1: reruns of any unhealthy/failed run
-- [ ] Optional: SFT vs. GRPO at matched budget (main model)
-- [ ] Optional: LoRA vs. full (main model)
-- [ ] Optional: widen the leak if no exploit appeared
+- [~] Priority 1: reruns of any unhealthy/failed run — none needed: no crashes, no unstable runs
+- [~] Optional: SFT vs. GRPO at matched budget (main model) — spare compute went to v2/v3 instead
+- [~] Optional: LoRA vs. full (main model) — spare compute went to v2/v3 instead
+- [~] Optional: widen the leak if no exploit appeared — not needed, exploits appeared (64–73%)
 
 ---
 
 ## P4 — Final review and publish (Fri 06:00 cutoff → 12:00 deadline)
 
-- [ ] Cutoff: training stopped; coordinator confirms all eval + transfers done (idle marker); **owner releases machines** once certain they're not needed
+- [x] Cutoff: training stopped; coordinator confirms all eval + transfers done (idle marker); **owner releases machines** once certain they're not needed — 2026-10-13, early: all evals done and copied to the laptop; N2 stopped ~13:00, N1 ~15:25 UTC
 - [ ] Final verdicts confirmed from complete data (H1, H2, H5; H3 exploratory); sample sizes stated
 - [ ] Results, plots, gallery, limits reviewed
 - [ ] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking
@@ -410,48 +410,49 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 
 | Date | Change | Why | In `DECISIONS.md`? |
 |---|---|---|---|
-| 2026-10-12 | Deadline → Fri 16 Oct 12:00; compute → 2 H200 nodes | Availability | [ ] |
-| 2026-10-12 | Main model → Qwen3.5-2B; ladder 0.8B/2B/4B; full fine-tune | Fits 1 GPU/run; same-family ladder | [ ] |
-| 2026-10-12 | LR sweep → 1e-6 / 3e-6 / 1e-5 | Full-FT range, not LoRA | [ ] |
-| 2026-10-12 | H4 triage, multi-turn cut; ablations optional | Deadline | [ ] |
-| 2026-10-12 | Coordinator owns node shutdown; per-run timeouts only | Runs share nodes | [ ] |
-| 2026-10-12 | Explicit GPU allocation; vLLM preferred, HF fallback for train + eval; vLLM failure ≠ model switch | Review | [ ] |
-| 2026-10-12 | 4B P2 moved to Node 1 after core; ladder done ~Thu 10:00 | Node 1 idle after core | [ ] |
-| 2026-10-12 | Too-easy branch added; adaptation rule frozen in PREREG, train-template diagnostics only | Review | [ ] |
-| 2026-10-12 | Common per-step budget across sizes; SFT applied to all sizes; seed cuts downgrade H5 | H5 validity | [ ] |
-| 2026-10-12 | Diagnostic vs. formal eval separated; paired seed+instance bootstrap; H1/H2/H5 rules defined | Review | [ ] |
-| 2026-10-12 | Compat checks cover full training path; rolling recovery checkpoints; resume verified before pruning | Review | [ ] |
-| 2026-10-12 | Reporting moved earlier: skeleton Tue, live tables + provisional verdicts Thu | Friday overload | [ ] |
-| 2026-10-12 | Python 3.11 → 3.14; GPU stack moved to Linux-only `gpu` extra | Owner request; wheels verified | [ ] |
-| 2026-10-12 | Kernel failure → source build, then Python 3.12, before switching model family | `causal-conv1d` has no PyPI wheels | [ ] |
-| 2026-10-12 | Compute on Lightning studio `rl-env-lab` (`[teamspace]`); repo cloned there | Owner request | [ ] |
+| 2026-10-12 | Deadline → Fri 16 Oct 12:00; compute → 2 H200 nodes | Availability | [x] #1, #2 |
+| 2026-10-12 | Main model → Qwen3.5-2B; ladder 0.8B/2B/4B; full fine-tune | Fits 1 GPU/run; same-family ladder | [x] #3–#5 |
+| 2026-10-12 | LR sweep → 1e-6 / 3e-6 / 1e-5 | Full-FT range, not LoRA | [x] #6 |
+| 2026-10-12 | H4 triage, multi-turn cut; ablations optional | Deadline | [x] #10, #11 |
+| 2026-10-12 | Coordinator owns node shutdown; per-run timeouts only | Runs share nodes | [x] #12 (superseded by #13) |
+| 2026-10-12 | Explicit GPU allocation; vLLM preferred, HF fallback for train + eval; vLLM failure ≠ model switch | Review | [x] #8 |
+| 2026-10-12 | 4B P2 moved to Node 1 after core; ladder done ~Thu 10:00 | Node 1 idle after core | — (not locked) |
+| 2026-10-12 | Too-easy branch added; adaptation rule frozen in PREREG, train-template diagnostics only | Review | — (not locked) |
+| 2026-10-12 | Common per-step budget across sizes; SFT applied to all sizes; seed cuts downgrade H5 | H5 validity | — (not locked) |
+| 2026-10-12 | Diagnostic vs. formal eval separated; paired seed+instance bootstrap; H1/H2/H5 rules defined | Review | — (not locked) |
+| 2026-10-12 | Compat checks cover full training path; rolling recovery checkpoints; resume verified before pruning | Review | — (not locked) |
+| 2026-10-12 | Reporting moved earlier: skeleton Tue, live tables + provisional verdicts Thu | Friday overload | — (not locked) |
+| 2026-10-12 | Python 3.11 → 3.14; GPU stack moved to Linux-only `gpu` extra | Owner request; wheels verified | [x] #16 |
+| 2026-10-12 | Kernel failure → source build, then Python 3.12, before switching model family | `causal-conv1d` has no PyPI wheels | [x] #16 |
+| 2026-10-12 | Compute on Lightning studio `rl-env-lab` (`[teamspace]`); repo cloned there | Owner request | [x] #2, #15 |
 | 2026-10-12 | No automatic node release; machines stay attached through dips; owner releases | Owner request | [x] #13 |
-| 2026-10-12 | PREREG signed off with default interpretations; diagnostic baseline at temp 1.0, robust grader decides band | Owner | [ ] |
-| 2026-10-12 | Recovery checkpoints: rolling keep-last-2 during training (not only after the run), gated on verified resume | ~25–30 GB per 2B full-state ckpt; post-run-only pruning would need TBs | [ ] |
-| 2026-10-12 | Tool calls in Qwen3.5 native XML format (INSTRUCTIONS assumed JSON); parser also accepts JSON; `enable_thinking=False` always | Native chat template; owner approved | [ ] |
-| 2026-10-12 | 4B layout 1 vLLM server + 3 train is infeasible (64 completions/step not divisible by 3 train ranks); benchmark 1+2 and 4-GPU colocated instead | TRL batch constraint, found in #3 | [ ] |
-| 2026-10-12 | Train from a clean text-only export of each Qwen3.5 checkpoint; fp32 master weights + bf16 autocast | Hub repos are VL checkpoints (weight-sync/resume break); bf16 weights lose 1e-6 updates | [ ] |
-| 2026-10-12 | Code + deps kept Python 3.12-compatible (runtime 3.14); CI tests both | Kernel fallback stays a one-line switch | [ ] |
-| 2026-10-12 | Nodes on `bare-metal` ([rate] per 8× H200) instead of `public-cloud` ([rate], likely unavailable); setup on CPU before switching | Price + availability; owner approved | [ ] |
+| 2026-10-12 | PREREG signed off with default interpretations; diagnostic baseline at temp 1.0, robust grader decides band | Owner | — (not locked) |
+| 2026-10-12 | Recovery checkpoints: rolling keep-last-2 during training (not only after the run), gated on verified resume | ~25–30 GB per 2B full-state ckpt; post-run-only pruning would need TBs | — (not locked) |
+| 2026-10-12 | Tool calls in Qwen3.5 native XML format (INSTRUCTIONS assumed JSON); parser also accepts JSON; `enable_thinking=False` always | Native chat template; owner approved | [x] #18 |
+| 2026-10-12 | 4B layout 1 vLLM server + 3 train is infeasible (64 completions/step not divisible by 3 train ranks); benchmark 1+2 and 4-GPU colocated instead | TRL batch constraint, found in #3 | [x] #9 |
+| 2026-10-12 | Train from a clean text-only export of each Qwen3.5 checkpoint; fp32 master weights + bf16 autocast | Hub repos are VL checkpoints (weight-sync/resume break); bf16 weights lose 1e-6 updates | [x] #17 |
+| 2026-10-12 | Code + deps kept Python 3.12-compatible (runtime 3.14); CI tests both | Kernel fallback stays a one-line switch | [x] #16 |
+| 2026-10-12 | Nodes on `bare-metal` ([rate] per 8× H200) instead of `public-cloud` ([rate], likely unavailable); setup on CPU before switching | Price + availability; owner approved | [x] #15 |
 | 2026-10-12 | ARCHITECTURE.md + docs/adr/ added; ADR 0001 records all decisions to date; major changes now get ADRs | Owner request (progressive disclosure) | [x] #14 |
-| 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | [ ] |
+| 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | — (not locked) |
 | 2026-10-12 | Run logs committed under `logs/` and mirrored to Lightning Experiments by `train/logsync.py` (ADR 0002) | Owner: live tracking + public evidence | [x] #19 |
-| 2026-10-12 | Toy GRPO task 5 → 11 digits: base 2B scored 0.92 at 5 digits (83% groups dead), 0.69 at 11 (38%) | 5-digit sweep could not show reward rising | [ ] |
+| 2026-10-12 | Toy GRPO task 5 → 11 digits: base 2B scored 0.92 at 5 digits (83% groups dead), 0.69 at 11 (38%) | 5-digit sweep could not show reward rising | — (not locked) |
 | 2026-10-12 | LR = 1e-6 (DECISIONS #6); pair git-commit differences are noted, not excluded | Toy sweep; owner | [x] #6 |
-| 2026-10-12 | Day/time labels removed from the plan; phases, gates (G-Setup, G-Build, G-Baseline, G-Final) and training blocks are sequence-based. Only the Fri 06:00 cutoff and 12:00 deadline stay fixed | Ahead of schedule; labels were stale | [ ] |
+| 2026-10-12 | Day/time labels removed from the plan; phases, gates (G-Setup, G-Build, G-Baseline, G-Final) and training blocks are sequence-based. Only the Fri 06:00 cutoff and 12:00 deadline stay fixed | Ahead of schedule; labels were stale | — (not locked) |
 | 2026-10-12 | Steps 300 → 1,000 (all sizes); backend vLLM colocated; 4B on 4 colocated GPUs; run timeouts and block lengths cut to match the benchmark (ADR 0003) | Benchmark: runs 5–20× faster than estimated | [x] #7–#9 |
-| 2026-10-12 | Step-100 health rule not applied to block 1 (all runs: reward rising, dead groups 91–99%); runs continue (PREREG #13) | Owner: dead groups are task saturation, not instability | [ ] |
+| 2026-10-12 | Step-100 health rule not applied to block 1 (all runs: reward rising, dead groups 91–99%); runs continue (PREREG #13) | Owner: dead groups are task saturation, not instability | — (not locked) |
 | 2026-10-12 | Exploratory follow-up proposed: same-type eval + thinking-on v2 (ADR 0005, Proposed) | Held-out failures mix hacking with missing arithmetic | [x] #20 |
-| 2026-10-12 | Recovery checkpoints asynchronous (snapshot to CPU, background write, skip a save while one is in flight); 4B recovery every 100 steps (eval stays 50). Block 1 runs keep the old code | Synchronous saves paused training ~10 min per 50 steps; 4B saves are 55 GB | [ ] |
+| 2026-10-12 | Recovery checkpoints asynchronous (snapshot to CPU, background write, skip a save while one is in flight); 4B recovery every 100 steps (eval stays 50). Block 1 runs keep the old code | Synchronous saves paused training ~10 min per 50 steps; 4B saves are 55 GB | — (not locked) |
 | 2026-10-12 | ADR 0005 accepted (PR #16) | Owner merged | [x] #20 |
-| 2026-10-12 | v2 moved up: n1 runs the v2 2B round (ADR 0005) right after its 2B block; n1's 4B pair (P2) moved to the end of n2's 4B queues. On a no-go the pair returns to n1 | v2 results ~3 h sooner; 4B still ends well before the cutoff | [ ] |
+| 2026-10-12 | v2 moved up: n1 runs the v2 2B round (ADR 0005) right after its 2B block; n1's 4B pair (P2) moved to the end of n2's 4B queues. On a no-go the pair returns to n1 | v2 results ~3 h sooner; 4B still ends well before the cutoff | — (not locked) |
 | 2026-10-12 | Async recovery verified on GPU (dry run: 2B + 4B resume match; save pause 9–16 s vs ~3.5 min); 4B runs started on n2 | Gate for 4B | [x] |
 | 2026-10-12 | v2 go with answer cap 1,024 (512 failed the gate); v2 2B ×6 added to node1 after its 2B block (ADR 0006) | Thinking-on base check | [x] #22 |
-| 2026-10-12 | v2 extended to 4B and 0.8B (ADR 0005 "extend if the effect holds": v2 2B robust held-out true ~0.8 vs v1 ~0.4). n1: v2 4B seeds 1, 3 after v2 2B; n2: v2 4B seed 2 + v2 0.8B ×6 after the 4B v1 runs and their evals. ~10 h, both nodes | Owner chose the full v2 ladder | [ ] #20 |
-| 2026-10-12 | v2 4B dropped: thinking-on base diagnostic no-go (4B base true 0.87 on train types, 4 of 11 in band, leaky pass 0.98; 12-step 4B v2 dry run fit, ~20 s/step). v2 0.8B passed (9 of 11 in band, after fixing the go/no-go to skip templates absent from the thinking-on run) and moves to n1 GPU 0-5 now; n2 keeps only 4B v1 evals. Owner: build a harder, larger task set as **project version v3** (ADR 0007, Accepted 2026-10-13), trained with v2 settings at 4B and 2B | Gate result + owner | [ ] #23 |
+| 2026-10-12 | v2 extended to 4B and 0.8B (ADR 0005 "extend if the effect holds": v2 2B robust held-out true ~0.8 vs v1 ~0.4). n1: v2 4B seeds 1, 3 after v2 2B; n2: v2 4B seed 2 + v2 0.8B ×6 after the 4B v1 runs and their evals. ~10 h, both nodes | Owner chose the full v2 ladder | [x] #20 (ADR 0005 "extend if the effect holds") |
+| 2026-10-12 | v2 4B dropped: thinking-on base diagnostic no-go (4B base true 0.87 on train types, 4 of 11 in band, leaky pass 0.98; 12-step 4B v2 dry run fit, ~20 s/step). v2 0.8B passed (9 of 11 in band, after fixing the go/no-go to skip templates absent from the thinking-on run) and moves to n1 GPU 0-5 now; n2 keeps only 4B v1 evals. Owner: build a harder, larger task set as **project version v3** (ADR 0007, Accepted 2026-10-13), trained with v2 settings at 4B and 2B | Gate result + owner | [x] #23 |
 | 2026-10-13 | v3 on N1 only: N2 restarted for the v3 gate but its network disk served the venv too slowly after the restart (bare `import torch` > 400 s); gate and dry run moved to N1 and passed; N2 stopped. All 12 v3 runs queued on N1 (~25 h). Owner pre-approved launch on a passing gate | v3 gate go | [x] |
 | 2026-10-13 | v1 verdicts on complete data (18 runs, 363 checkpoints, pairs matched): H1 PASS (+14.8 pts), H2 FAIL (true-success drop +9.8 vs ≥ 10 pts; parts 1 and 3 met), H5 FAIL (leaky exploit 72.7 / 63.9 / 64.5% by size) | `make report` | [x] |
-| 2026-10-13 | N2 restarted (owner-approved, ~3 h, max [cost]) to run v3 4B held-out evals in parallel with v3 training on N1. Its venv is warmed first (parallel read) to avoid the slow cold-disk start; N2 reads N1's checkpoints, N1 copies results back. N2 stops once those evals are done | Finish v3 evals sooner | [ ] |
-| 2026-10-13 | N2's v3 4B evals done (60 / 60) after two setup failures: the restart had wiped the venv's package cache (reinstalled with `setup_gpu.sh`), then `ninja` was missing from PATH (watcher relaunched with the venv's `bin/`). N1 could not see N2's results through the mount, so they were moved via the laptop. ~2 h of N2 lost to setup ([cost]) | Ops |  [ ] |
-| 2026-10-13 | N2 cleaned up by the owner: kept the 12 final checkpoints plus the 4B robust peaks (4b-rob-s1 step 400, 4b-rob-s3 step 200), 79 GB; deleted the other 226 eval checkpoints and caches (~1.2 TB). All eval results, traces and logs were copied to the laptop first. v3 base held-out evals (4B, 2B) added on N1 | Disk; v3 report baseline | [ ] |
-| 2026-10-13 | `sametype_batch.py --final-only`; same-type evals at the final step only for v3 runs, v3 bases and v2 0.8B (owner choice). N1 cleanup planned: keep final + held-out peaks (>= 10 pts over final), 236 GB; delete recovery (all runs pass `check_final_integrity`) and other eval checkpoints, ~3.58 TB. All non-weight files copied to the laptop first | Wrap up N1 | [ ] |
+| 2026-10-13 | N2 restarted (owner-approved, ~3 h, max [cost]) to run v3 4B held-out evals in parallel with v3 training on N1. Its venv is warmed first (parallel read) to avoid the slow cold-disk start; N2 reads N1's checkpoints, N1 copies results back. N2 stops once those evals are done | Finish v3 evals sooner | — (not locked) |
+| 2026-10-13 | N2's v3 4B evals done (60 / 60) after two setup failures: the restart had wiped the venv's package cache (reinstalled with `setup_gpu.sh`), then `ninja` was missing from PATH (watcher relaunched with the venv's `bin/`). N1 could not see N2's results through the mount, so they were moved via the laptop. ~2 h of N2 lost to setup ([cost]) | Ops | — (not locked) |
+| 2026-10-13 | N2 cleaned up by the owner: kept the 12 final checkpoints plus the 4B robust peaks (4b-rob-s1 step 400, 4b-rob-s3 step 200), 79 GB; deleted the other 226 eval checkpoints and caches (~1.2 TB). All eval results, traces and logs were copied to the laptop first. v3 base held-out evals (4B, 2B) added on N1 | Disk; v3 report baseline | — (not locked) |
+| 2026-10-13 | `sametype_batch.py --final-only`; same-type evals at the final step only for v3 runs, v3 bases and v2 0.8B (owner choice). N1 cleanup planned: keep final + held-out peaks (>= 10 pts over final), 236 GB; delete recovery (all runs pass `check_final_integrity`) and other eval checkpoints, ~3.58 TB. All non-weight files copied to the laptop first | Wrap up N1 | [x] #24 |
+| 2026-10-14 | Bookkeeping: retro-ticked boxes whose done-when was met (G-Setup, G-Build, G-Baseline, §2.2–2.3, §3.1, 4B step-100 rows, pruning, cutoff); cut spare-block options and the hard-variant limit; Change log DECISIONS column filled | Plan had drifted from the work | — (not locked) |
