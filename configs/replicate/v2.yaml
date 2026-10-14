@@ -1,0 +1,121 @@
+# Replication plan for project version v2 (exploratory; ADR 0005, 0006): the v1 tasks with thinking on and an answer
+# cap of 1,024 (`train/grpo.py --variant v2-think`), on two 8x H200 nodes. 12 runs: 2B / 0.8B x robust / leaky x
+# seeds 1-3 (v2 4B was dropped: its thinking-on base diagnostic found the v1 tasks too easy, ADR 0007).
+# Guide: REPRODUCE.md. Gate first, per size: `make diagnostic SIZE=<size>`, then `make diagnostic-think SIZE=<size>`.
+#
+#   uv run python train/coordinator.py --config configs/replicate/v2.yaml --node node1 --print-plan
+#   uv run python train/coordinator.py --config configs/replicate/v2.yaml --node node1
+#
+# Same schema and shared sections as configs/allocation.yaml; the only differences are `--variant v2-think` in
+# commands.train, no training cutoff and the timeouts. Layout rules (reports/learnings.md §5): GPU 6-7 on each node
+# evaluate and never train; one GPU per 2B / 0.8B run; a timeout on every run.
+#
+# Expected wall clock (measured run times, logs/runs/*/status.json): node1 ~3.5 h, node2 ~2.6 h, plus the eval tail.
+version: 1
+
+paths:
+  workdir: .
+  runs: runs
+  evals: evals
+
+coordinator:
+  poll_interval_s: 15
+  kill_grace_s: 60              # SIGTERM -> wait -> SIGKILL, for the whole process group
+  max_retries: 1                # crash -> resume from newest complete recovery checkpoint
+  default_run_timeout_s: 28800  # overridden per size below
+  # Training cutoff: null = none. Set an ISO datetime with an offset (node clocks run on UTC), e.g.
+  # "2026-10-16T06:00:00+00:00", to stop training at a fixed time.
+  node_hard_deadline: null
+  deadline_eval_grace_s: 1800      # only used with --allow-shutdown
+  deadline_transfer_grace_s: 1800  # only used with --allow-shutdown
+  # Node release is OFF: when everything is done the coordinator writes runs/_coordinator/<node>.idle and exits.
+  shutdown_cmd: null
+
+commands:
+  # Placeholders: {run_id} {size} {reward} {seed} {gpus} {num_gpus} {run_dir}
+  #               {vllm_gpus} {train_gpus} {num_vllm_gpus} {num_train_gpus}
+  # GPU lists are physical indices; CUDA_VISIBLE_DEVICES is also set to {gpus}.
+  train: >-
+    uv run python train/grpo.py --run-id {run_id} --size {size} --reward {reward}
+    --seed {seed} --gpus {gpus} --output-dir {run_dir} --variant v2-think
+  resume_flag: "--resume-from {resume_dir}"  # appended on a crash relaunch
+  # Eval placeholders: {run_id} {size} {reward} {seed} {gpus} {num_gpus} {step} {ckpt_dir}
+  #                    {output} {run_dir} {eval_dir}
+  # heldout.py reads the variant from the run dir: thinking on and the 1,024 cap with no extra flag.
+  eval: >-
+    uv run python eval/heldout.py --run-id {run_id} --size {size} --reward {reward}
+    --seed {seed} --checkpoint {ckpt_dir} --step {step} --output {output} --gpus {gpus}
+
+transfer:
+  command: null  # runs/ and evals/ stay on the node; copy results off before cleanup (REPRODUCE.md §5)
+  timeout_s: 3600
+  retries: 2
+  max_concurrent: 2
+
+checkpoints:
+  pruning_enabled: true   # delete recovery checkpoints once the final eval weights pass the integrity check
+  keep_last: 2
+  required_eval_files: ["config.json", "*.safetensors"]  # final-step integrity check
+
+eval:
+  enabled: true
+  gpus_per_eval: 1
+  timeout_s: 5400
+  retries: 1
+  poll_interval_s: 30
+  stale_claim_s: 900
+  lend_idle_gpus: true  # GPUs no remaining run needs join eval
+  watch_scope: all      # all = every run under paths.runs; node = only this node's runs
+  max_restarts: 5
+
+sizes:
+  # Measured v2 run times (1 GPU): 0.8B 2.1-2.6 h, 2B 2.7-3.5 h. Answers are ~4x longer than v1, so generation
+  # dominates the step; timeouts as configs/allocation.yaml gave the v2 runs.
+  0.8b:
+    gpus_per_run: 1
+    run_timeout_s: 21600
+  2b:
+    gpus_per_run: 1
+    run_timeout_s: 36000
+
+runs:
+  v2-2b-rob-s1: {size: 2b, reward: robust, seed: 1}
+  v2-2b-rob-s2: {size: 2b, reward: robust, seed: 2}
+  v2-2b-rob-s3: {size: 2b, reward: robust, seed: 3}
+  v2-2b-leak-s1: {size: 2b, reward: leaky, seed: 1}
+  v2-2b-leak-s2: {size: 2b, reward: leaky, seed: 2}
+  v2-2b-leak-s3: {size: 2b, reward: leaky, seed: 3}
+  v2-0.8b-rob-s1: {size: 0.8b, reward: robust, seed: 1}
+  v2-0.8b-rob-s2: {size: 0.8b, reward: robust, seed: 2}
+  v2-0.8b-rob-s3: {size: 0.8b, reward: robust, seed: 3}
+  v2-0.8b-leak-s1: {size: 0.8b, reward: leaky, seed: 1}
+  v2-0.8b-leak-s2: {size: 0.8b, reward: leaky, seed: 2}
+  v2-0.8b-leak-s3: {size: 0.8b, reward: leaky, seed: 3}
+
+# Groups: a queue runs in order on the group's GPUs. A group starts only after every group in `after` is drained,
+# and a run starts only when all its GPUs are free (no training, no eval).
+#
+#            GPU 0   GPU 1   GPU 2   GPU 3   GPU 4   GPU 5   GPU 6   GPU 7
+#   node1    [ v2 2B x6, one GPU each (~3.5 h) ..............] [ eval ......]
+#   node2    [ v2 0.8B x6, one GPU each (~2.6 h) ............] [ eval ......]
+nodes:
+  node1:
+    gpus: [0, 1, 2, 3, 4, 5, 6, 7]
+    eval_gpus: [6, 7]
+    groups:
+      - {name: n1-v2-2b-g0, gpus: [0], queue: [v2-2b-rob-s1]}
+      - {name: n1-v2-2b-g1, gpus: [1], queue: [v2-2b-leak-s1]}
+      - {name: n1-v2-2b-g2, gpus: [2], queue: [v2-2b-rob-s2]}
+      - {name: n1-v2-2b-g3, gpus: [3], queue: [v2-2b-leak-s2]}
+      - {name: n1-v2-2b-g4, gpus: [4], queue: [v2-2b-rob-s3]}
+      - {name: n1-v2-2b-g5, gpus: [5], queue: [v2-2b-leak-s3]}
+  node2:
+    gpus: [0, 1, 2, 3, 4, 5, 6, 7]
+    eval_gpus: [6, 7]
+    groups:
+      - {name: n2-v2-08b-g0, gpus: [0], queue: [v2-0.8b-rob-s1]}
+      - {name: n2-v2-08b-g1, gpus: [1], queue: [v2-0.8b-leak-s1]}
+      - {name: n2-v2-08b-g2, gpus: [2], queue: [v2-0.8b-rob-s2]}
+      - {name: n2-v2-08b-g3, gpus: [3], queue: [v2-0.8b-leak-s2]}
+      - {name: n2-v2-08b-g4, gpus: [4], queue: [v2-0.8b-rob-s3]}
+      - {name: n2-v2-08b-g5, gpus: [5], queue: [v2-0.8b-leak-s3]}
