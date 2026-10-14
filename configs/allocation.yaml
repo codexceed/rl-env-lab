@@ -38,6 +38,11 @@ commands:
   eval: >-
     uv run python eval/heldout.py --run-id {run_id} --size {size} --reward {reward}
     --seed {seed} --checkpoint {ckpt_dir} --step {step} --output {output} --gpus {gpus}
+  # Base-model held-out eval, scheduled by the watcher first, once per (size, project version) among its runs:
+  # v1/v2 -> evals/base-<size>/, v3 -> evals/v3-base-<size>/ (--variant v3). Skipped when the output exists.
+  # Placeholders: as eval, plus {variant} {variant_args} ("--variant v3" or nothing). Delete to stop base evals.
+  eval_base: >-
+    uv run python eval/heldout.py --size {size} --checkpoint base {variant_args} --output {output} --gpus {gpus}
 
 transfer:
   # Run after a run has ended and all its eval checkpoints are evaluated. Success writes
