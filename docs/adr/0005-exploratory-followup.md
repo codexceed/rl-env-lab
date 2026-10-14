@@ -45,7 +45,7 @@ Block 1 (2B ×6 on node 1, 0.8B ×6 on node 2; LR 1e-6, 1,000 steps) is about a 
   - Item 2 eval runs on idle GPUs (~1 h).
   - The 4B runs follow, with async recovery checkpoints (in progress).
   - Then the thinking-on check and, if it passes, v2.
-  - About 6 h more on one or two 8× H200 nodes at [rate] each, within the buffer before the Fri 06:00 cutoff.
+  - About 6 h more on one or two 8× H200 nodes, within the buffer before the Fri 06:00 cutoff.
 - **Easier:** "can't do new arithmetic" can be told apart from "hacks the reward", and the main failure mode gets one targeted test.
 - **Harder:** more results to label carefully. Everything here is exploratory and never changes an H1/H2/H5 verdict.
 - **Watch:** thinking-on prompts plus answers must fit the 2,048 vLLM context (1,536 + 512); step time will rise with longer answers.

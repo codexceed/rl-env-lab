@@ -219,5 +219,5 @@ A failed gate triggers its row below the same day; every switch is logged in `DE
 
 **Stretch (only after Saturday's gate):** easy vs medium training · SFT vs GRPO at matched budget · curriculum sampling · multi-turn tasks.
 
-**Guardrails:** personal accounts and own time · commits dated before 19 Oct · synthetic data only · nothing confidential from employer or Lightning in public files · API keys in `.env`, never committed · every unattended job has a timeout and a spend cap, and stops its instance on exit.
+**Guardrails:** personal accounts and own time · commits dated before 19 Oct · synthetic data only · nothing confidential from any employer or vendor in public files · API keys in `.env`, never committed · every unattended job has a timeout and a spend cap, and stops its instance on exit.
 

@@ -37,7 +37,7 @@ flowchart LR
 ```
 
 - **Models:** Qwen3.5 at three sizes (0.8B, 2B, 4B), full fine-tune, 3 seeds per grader. 42 training runs across three project versions (below).
-- **Hardware:** two 8× H200 machines on Lightning AI, ~41 machine-hours, [cost] in all ([Runtime setup](#runtime-setup)).
+- **Hardware:** two 8× H200 machines on Lightning AI, ~41 machine-hours in all ([Runtime setup](#runtime-setup)).
 - **Fair test:** the hypotheses and pass/fail rules were written down before training ([`PREREG.md`](PREREG.md)), and every change since is dated and explained.
 - **Data:** all synthetic. No real customers or companies.
 
@@ -79,8 +79,7 @@ What the study actually ran on. A replication can use any Linux machine with 8×
 
 | Item | What we used |
 |---|---|
-| Machines | 2 Lightning AI Studios (`rl-env-lab-n1`, `rl-env-lab-n2`), machine type `8x-H200`: **8× NVIDIA H200, 141 GB each** |
-| Cloud account | `bare-metal`, **[rate] per 8-GPU machine** (the public cloud offered the same machine at [rate]) |
+| Machines | 2 Lightning AI Studios (`rl-env-lab-n1`, `rl-env-lab-n2`): **8× NVIDIA H200, 141 GB each** |
 | Disk | Each studio's persistent network disk; peaked at ~4 TB per machine with checkpoints, cleaned to 310 GB across both at the end |
 | Setup | Installs and kernel builds done on a CPU machine first, then switched to GPUs (no GPU billing for setup) |
 
@@ -107,13 +106,13 @@ What the study actually ran on. A replication can use any Linux machine with 8×
 
 ### What it cost
 
-| | Machine-hours | Cost at [rate] |
-|---|---|---|
-| Machine 1 (v1 2B, v2 2B and 0.8B, all of v3 training) | ~26 h | [cost] |
-| Machine 2 (v1 0.8B and 4B, v3 4B evals) | ~15 h | [cost] |
-| **Total** | **~41 h** | [cost] |
+| | Machine-hours (8× H200) |
+|---|---|
+| Machine 1 (v1 2B, v2 2B and 0.8B, all of v3 training) | ~26 h |
+| Machine 2 (v1 0.8B and 4B, v3 4B evals) | ~15 h |
+| **Total** | **~41 h** |
 
-About 3 h ([cost]) of that went to setup failures after machine restarts (see the pitfalls below). These are estimates from session timestamps; the provider's billing page has the exact figure. A clean rerun of all three versions on the plans below comes to about the same (~44 machine-hours) because it no longer chains versions on one machine.
+About 3 h of that went to setup failures after machine restarts (see the pitfalls below). These are estimates from session timestamps; the provider's billing page has the exact figure. Multiply by your provider's hourly rate for an 8× H200 machine to get a cost. A clean rerun of all three versions on the plans below comes to about the same (~44 machine-hours) because it no longer chains versions on one machine.
 
 ## Reproduce the study
 
@@ -138,16 +137,16 @@ flowchart LR
 
 ### What it costs per version
 
-**Per version** (run times measured in `logs/runs/*/status.json`; node wall clock is this plan's layout; [rate] per 8x H200 node):
+**Per version** (run times measured in `logs/runs/*/status.json`; node wall clock is this plan's layout):
 
-| Version | Run time per run | Training GPU-hours | Node wall clock (node1 · node2) | Node-hours* | Cost* |
-|---|---|---|---|---|---|
-| v1 | 0.8B 1.3–1.6 h, 2B 2.9–3.5 h (1 GPU); 4B 1.3–1.5 h (4 GPUs) | 61 | ~6.3 h · ~5.5 h | ~15 | [cost] |
-| v2 | 0.8B 2.1–2.6 h, 2B 2.7–3.5 h (1 GPU) | 34 | ~3.5 h · ~2.6 h | ~9 | [cost] |
-| v3 | 4B 2.3–3.0 h (4 GPUs), 2B 3.5–4.2 h (1 GPU) | 90 | ~8.4 h · ~8.4 h | ~20 | [cost] |
-| **All three** | | **185** | | **~44** | [cost] |
+| Version | Run time per run | Training GPU-hours | Node wall clock (node1 · node2) | Node-hours* |
+|---|---|---|---|---|
+| v1 | 0.8B 1.3–1.6 h, 2B 2.9–3.5 h (1 GPU); 4B 1.3–1.5 h (4 GPUs) | 61 | ~6.3 h · ~5.5 h | ~15 |
+| v2 | 0.8B 2.1–2.6 h, 2B 2.7–3.5 h (1 GPU) | 34 | ~3.5 h · ~2.6 h | ~9 |
+| v3 | 4B 2.3–3.0 h (4 GPUs), 2B 3.5–4.2 h (1 GPU) | 90 | ~8.4 h · ~8.4 h | ~20 |
+| **All three** | | **185** | | **~44** |
 
-\* Estimate: training wall clock plus ~1.5 h per node for preflight, dry run, gate or base evals and the eval tail. Setup on a CPU machine is extra but cheap. For comparison, our whole study took ~41 node-hours ([cost]) with the versions chained, ~3 h of it lost to restarts (learnings §5).
+\* Estimate: training wall clock plus ~1.5 h per node for preflight, dry run, gate or base evals and the eval tail. Setup on a CPU machine is extra but cheap. For comparison, our whole study took ~41 node-hours with the versions chained, ~3 h of it lost to restarts (learnings §5).
 
 v1's 2B and 0.8B times were measured with the old synchronous checkpoint saves; recovery saves are asynchronous now, so expect them a little faster.
 
@@ -172,7 +171,7 @@ At the end, keep the final (and mid-run peak, see "Method notes") checkpoints an
 
 ### Node setup
 
-We used Lightning AI studios (`bare-metal`, 8x H200). Any Linux 8x H200 box works; skip the studio rows.
+We used Lightning AI studios (8x H200). Any Linux 8x H200 box works; skip the studio rows.
 
 | Step | Command | Why / watch out |
 |---|---|---|

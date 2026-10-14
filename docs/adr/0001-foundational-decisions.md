@@ -59,7 +59,7 @@ This ADR records everything decided up to the end of Monday 12 Oct. Later change
 | D3 | **Python 3.14 at runtime, with code and dependencies kept 3.12-compatible.** CI tests both versions. If the kernels fail: build from source, then switch to Python 3.12, and only then change the model family. |
 | D4 | **`causal-conv1d` is built from source** with a pip-installed CUDA compiler that exactly matches torch's CUDA (13.0), on a CPU machine (`scripts/setup_gpu.sh`). |
 | D5 | **4B layout:** 1 vLLM server + 3 training GPUs is **infeasible**, because 64 completions don't split over 3 ranks. The candidates are 1 server + 2 training GPUs, or 4 colocated. `make bench` decides. |
-| D6 | **Compute:** Lightning AI, teamspace `[teamspace]`, cloud account **`bare-metal`** at [rate] per 8× H200, instead of `public-cloud` at [rate], which also looked unavailable. Studios `rl-env-lab-n1` (node 1) and `rl-env-lab-n2` (from the start of training). Setup runs on CPU, then the studio switches to H200. |
+| D6 | **Compute:** Lightning AI, a **bare-metal** 8× H200 account, instead of the public cloud at about 2× the price, which also looked unavailable. *(Account details redacted 2026-10-14 before publication; the decision is unchanged.)* Studios `rl-env-lab-n1` (node 1) and `rl-env-lab-n2` (from the start of training). Setup runs on CPU, then the studio switches to H200. |
 | D7 | **Nodes stay attached** through debugging and plan dips. **Only the owner releases them.** The coordinator stops runs at the cutoff and marks the node idle; nothing is released automatically. |
 | D8 | **Checkpoints:** eval weights every 50 steps, plus a rolling full recovery checkpoint, keeping the last 2. Pruning is enabled only after resume is verified. |
 
@@ -73,7 +73,7 @@ This ADR records everything decided up to the end of Monday 12 Oct. Later change
 | Python 3.14 only | The 3.12 fallback would cost hours of reformatting under deadline. |
 | A PR for every change | Too slow for 4 days. Kept only for fundamental changes. |
 | Auto-releasing nodes when idle | Getting H200s back is slower and riskier than paying for idle time. |
-| `public-cloud` H200 | About 2× the price, with a placeholder wait time. |
+| Public-cloud H200 | About 2× the price, with a placeholder wait time. |
 
 ## Consequences
 

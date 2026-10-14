@@ -378,7 +378,7 @@ leaky, so the reward never penalised it. No robust run does this.
 
   Wall clock is well above steps × step time because of checkpoint saves and shared disks.
   Benchmark peaks: 63 / 83 / 59 GB per GPU (0.8B / 2B / 4B).
-- **Compute:** 2 × 8 H200 on `bare-metal` from 12 to 13 Oct. Training finished about 2.5
+- **Compute:** 2 × 8 H200 from 12 to 13 Oct. Training finished about 2.5
   days before the cutoff, and the spare time went to v2 and v3.
 - **What broke, and the fix:**
   - Qwen3.5 Hub checkpoints are vision-language models, which broke weight sync and resume. Fixed

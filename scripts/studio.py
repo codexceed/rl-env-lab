@@ -6,17 +6,19 @@ Usage:
     python scripts/studio.py switch H200_X_8
     python scripts/studio.py run "make test"
 
-Needs `lightning-sdk` and a Lightning login (`lightning login`). Commands run in ~/rl-env-lab.
+Needs `lightning-sdk` and a Lightning login (`lightning login`). Set `LIGHTNING_ORG` and `LIGHTNING_TEAMSPACE`
+if the studios are not in your default teamspace. Commands run in ~/rl-env-lab.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import sys
 
-STUDIO = "rl-env-lab-n1"  # the nodes: rl-env-lab-n1, rl-env-lab-n2 (bare-metal)
-TEAMSPACE = "general"
-ORG = "[org]"
+STUDIO = "rl-env-lab-n1"  # the nodes: rl-env-lab-n1, rl-env-lab-n2
+TEAMSPACE = os.environ.get("LIGHTNING_TEAMSPACE")  # None: the SDK default for your login
+ORG = os.environ.get("LIGHTNING_ORG")
 REPO_DIR = "~/rl-env-lab"
 
 

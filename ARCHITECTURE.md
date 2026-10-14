@@ -215,7 +215,7 @@ The statistics use a **paired bootstrap**: resample seed pairs, then OOD-test ta
 ```mermaid
 flowchart LR
   LAP["laptop<br/>make studio-*"] -->|"lightning_sdk Studio.run"| N1
-  subgraph BM["bare-metal · [teamspace]"]
+  subgraph BM["cloud GPU studios"]
     N1["rl-env-lab-n1<br/>8× H200"]
     N2["rl-env-lab-n2<br/>8× H200 (from training)"]
   end

@@ -21,7 +21,7 @@
 |---|---|
 | **Phase** | **P4 final review.** All training done and evaluated: v1 (verdicts in), v2 (0.8B, 2B), v3 (4B, 2B). Open: gallery, limits, field notes, final verdict write-up, clean-clone check, publish |
 | **Deadline** | **Fri 16 Oct, 12:00** (training cutoff Fri 06:00) |
-| **Compute** | 2 x 8 H200 (Lightning AI, `[teamspace]`, `bare-metal`), **both stopped**: N2 ~13:00 UTC, N1 ~15:25 UTC on 2026-10-13, after cleanup (N1 keeps 46 checkpoints, 233 GB; N2 keeps 14, 75 GB). All results on the laptop and in git |
+| **Compute** | 2 x 8 H200 (Lightning AI studios, bare-metal account), **both stopped**: N2 ~13:00 UTC, N1 ~15:25 UTC on 2026-10-13, after cleanup (N1 keeps 46 checkpoints, 233 GB; N2 keeps 14, 75 GB). All results on the laptop and in git |
 | **Next gate** | 🚦 G-Final (Fri 16 Oct 12:00) |
 | **Blockers** | — |
 
@@ -108,13 +108,13 @@ P4 final        Fri 06:00 cutoff · final eval · review · clean-clone · Fri 1
 
 ### 0.1 Compute and access (me)
 - [ ] Written confirmation of H200 access (2 nodes, through Fri 16 Oct)
-- [ ] Written confirmation: personal grant, no Lightning IP claim
-- [x] Lightning studio `rl-env-lab` created in `[teamspace]`, started on CPU — 2026-10-12
+- [x] Written confirmation: personal grant, no Lightning IP claim — 2026-10-14, owner: no confidential IP used
+- [x] Lightning studio `rl-env-lab` created, started on CPU — 2026-10-12
 - [x] Owner: `gh auth login` (codexceed) on the studio; clone repo; `uv sync --group dev` — 2026-10-12; agent drives studio via `lightning_sdk` `Studio.run`
 - [x] Studio auto-sleep disabled (machines stay attached through dips) — 2026-10-12, verified via SDK
 - [x] Switch studio to H200 (1× for §0.3/§0.4, then ×8) when GPU scripts land — 2026-10-12, n1 on 8× H200
-- [x] Node 1 = studio `rl-env-lab-n1` on `bare-metal` (8× H200 `8x-H200`, [rate]); set up on CPU: gpu extra + causal-conv1d 1.7.0 built (pip CUDA 13.0 nvcc), 1,231 tests pass on node — 2026-10-12. Old `rl-env-lab` studio (public-prod, [rate] for 8× H200) stopped
-- [x] Node 2 = `rl-env-lab-n2` on `bare-metal`: create + CPU setup before training; H200 at training start — 2026-10-12, ran 0.8B and 4B v1 blocks
+- [x] Node 1 = studio `rl-env-lab-n1` on the bare-metal account (8× H200); set up on CPU: gpu extra + causal-conv1d 1.7.0 built (pip CUDA 13.0 nvcc), 1,231 tests pass on node — 2026-10-12. Old `rl-env-lab` studio (public cloud, about 2× the price) stopped
+- [x] Node 2 = `rl-env-lab-n2` on the bare-metal account: create + CPU setup before training; H200 at training start — 2026-10-12, ran 0.8B and 4B v1 blocks
 - [x] Both nodes reachable; GPU check prints GPU name, memory, CUDA available on each — 2026-10-12, `scripts/gpu_checks.sh`
 - [x] Shared storage for checkpoints/eval outputs set up; path: `/teamspace/studios/this_studio/rl-env-lab/runs/` per node; n2 reads n1 via the cross-studio mount (one-way in practice, learnings §5) — 2026-10-12
 - [x] Storage measured after first checkpoint save (per-checkpoint size × planned count recorded here: recovery 22 GB (2B) / 55 GB (4B), keep last 2 per run; eval weights x 20 per run; ~4.8 TB eval weights before the 2026-10-13 cleanup) — 2026-10-12
@@ -367,7 +367,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 - [ ] Results, plots, gallery, limits reviewed — 2026-10-14: written, awaiting owner review
 - [x] Field notes: step times, memory, what broke, grader vs. sim effort, early signals of reward hacking — 2026-10-14, `results.md`
 - [ ] Clean-clone check: fresh clone → `uv sync` → tests → data build → 10-step run — 2026-10-14: CPU part passes on a fresh clone (setup, check, 1,990 tests, v1 and v3 data rebuild byte-identical to the manifests, acceptance, fake report, headline numbers rebuilt from `logs/`). Fixed on the way: 15 v3 4B checkpoints had two evals (one per node) and the report used the copy not in git; ID-test records were not synced to `logs/`. 10-step GPU run still open (needs a GPU start)
-- [ ] No secrets, no confidential material, all data synthetic — 2026-10-14 sweep (tree + full history): no secrets, no committed `.env`, data synthetic, no AI attribution, all commits before the deadline. Open, owner: §0.1 IP-claim confirmation; whether to keep "employer" (INSTRUCTIONS), teamspace/cluster names, the [rate] rate and VM hostnames (in history too: scrubbing needs a rewrite)
+- [ ] No secrets, no confidential material, all data synthetic — 2026-10-14 sweep (tree + full history): no secrets, no committed `.env`, data synthetic, no AI attribution, all commits before the deadline. Open, owner: §0.1 IP-claim confirmation; Lightning account details (teamspace, cluster, rates, VM hostnames) scrubbed from files and history 2026-10-14
 - [ ] Commits dated before deadline; repo made public (my call)
 
 ### 🚦 G-Final (Fri 12:00 deadline)
@@ -424,7 +424,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | Reporting moved earlier: skeleton Tue, live tables + provisional verdicts Thu | Friday overload | — (not locked) |
 | 2026-10-12 | Python 3.11 → 3.14; GPU stack moved to Linux-only `gpu` extra | Owner request; wheels verified | [x] #16 |
 | 2026-10-12 | Kernel failure → source build, then Python 3.12, before switching model family | `causal-conv1d` has no PyPI wheels | [x] #16 |
-| 2026-10-12 | Compute on Lightning studio `rl-env-lab` (`[teamspace]`); repo cloned there | Owner request | [x] #2, #15 |
+| 2026-10-12 | Compute on Lightning studio `rl-env-lab`; repo cloned there | Owner request | [x] #2, #15 |
 | 2026-10-12 | No automatic node release; machines stay attached through dips; owner releases | Owner request | [x] #13 |
 | 2026-10-12 | PREREG signed off with default interpretations; diagnostic baseline at temp 1.0, robust grader decides band | Owner | — (not locked) |
 | 2026-10-12 | Recovery checkpoints: rolling keep-last-2 during training (not only after the run), gated on verified resume | ~25–30 GB per 2B full-state ckpt; post-run-only pruning would need TBs | — (not locked) |
@@ -432,7 +432,7 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | 4B layout 1 vLLM server + 3 train is infeasible (64 completions/step not divisible by 3 train ranks); benchmark 1+2 and 4-GPU colocated instead | TRL batch constraint, found in #3 | [x] #9 |
 | 2026-10-12 | Train from a clean text-only export of each Qwen3.5 checkpoint; fp32 master weights + bf16 autocast | Hub repos are VL checkpoints (weight-sync/resume break); bf16 weights lose 1e-6 updates | [x] #17 |
 | 2026-10-12 | Code + deps kept Python 3.12-compatible (runtime 3.14); CI tests both | Kernel fallback stays a one-line switch | [x] #16 |
-| 2026-10-12 | Nodes on `bare-metal` ([rate] per 8× H200) instead of `public-cloud` ([rate], likely unavailable); setup on CPU before switching | Price + availability; owner approved | [x] #15 |
+| 2026-10-12 | Nodes on a bare-metal account instead of the public cloud (about 2× the price, likely unavailable); setup on CPU before switching | Price + availability; owner approved | [x] #15 |
 | 2026-10-12 | ARCHITECTURE.md + docs/adr/ added; ADR 0001 records all decisions to date; major changes now get ADRs | Owner request (progressive disclosure) | [x] #14 |
 | 2026-10-12 | Forked $100-budget plan to orphan branch `docs/10-budget-100-plan` (1× A100, 0.8B, 2–3 seeds, H5 cut) | Owner hand-off to another machine | — (not locked) |
 | 2026-10-12 | Run logs committed under `logs/` and mirrored to Lightning Experiments by `train/logsync.py` (ADR 0002) | Owner: live tracking + public evidence | [x] #19 |
@@ -451,8 +451,8 @@ Healthy = mean reward steps 80–100 > steps 0–20 · dead-group share < 80% ·
 | 2026-10-12 | v2 4B dropped: thinking-on base diagnostic no-go (4B base true 0.87 on train types, 4 of 11 in band, leaky pass 0.98; 12-step 4B v2 dry run fit, ~20 s/step). v2 0.8B passed (9 of 11 in band, after fixing the go/no-go to skip templates absent from the thinking-on run) and moves to n1 GPU 0-5 now; n2 keeps only 4B v1 evals. Owner: build a harder, larger task set as **project version v3** (ADR 0007, Accepted 2026-10-13), trained with v2 settings at 4B and 2B | Gate result + owner | [x] #23 |
 | 2026-10-13 | v3 on N1 only: N2 restarted for the v3 gate but its network disk served the venv too slowly after the restart (bare `import torch` > 400 s); gate and dry run moved to N1 and passed; N2 stopped. All 12 v3 runs queued on N1 (~25 h). Owner pre-approved launch on a passing gate | v3 gate go | [x] |
 | 2026-10-13 | v1 verdicts on complete data (18 runs, 363 checkpoints, pairs matched): H1 PASS (+14.8 pts), H2 FAIL (true-success drop +9.8 vs ≥ 10 pts; parts 1 and 3 met), H5 FAIL (leaky exploit 72.7 / 63.9 / 64.5% by size) | `make report` | [x] |
-| 2026-10-13 | N2 restarted (owner-approved, ~3 h, max [cost]) to run v3 4B held-out evals in parallel with v3 training on N1. Its venv is warmed first (parallel read) to avoid the slow cold-disk start; N2 reads N1's checkpoints, N1 copies results back. N2 stops once those evals are done | Finish v3 evals sooner | — (not locked) |
-| 2026-10-13 | N2's v3 4B evals done (60 / 60) after two setup failures: the restart had wiped the venv's package cache (reinstalled with `setup_gpu.sh`), then `ninja` was missing from PATH (watcher relaunched with the venv's `bin/`). N1 could not see N2's results through the mount, so they were moved via the laptop. ~2 h of N2 lost to setup ([cost]) | Ops | — (not locked) |
+| 2026-10-13 | N2 restarted (owner-approved, ~3 h max) to run v3 4B held-out evals in parallel with v3 training on N1. Its venv is warmed first (parallel read) to avoid the slow cold-disk start; N2 reads N1's checkpoints, N1 copies results back. N2 stops once those evals are done | Finish v3 evals sooner | — (not locked) |
+| 2026-10-13 | N2's v3 4B evals done (60 / 60) after two setup failures: the restart had wiped the venv's package cache (reinstalled with `setup_gpu.sh`), then `ninja` was missing from PATH (watcher relaunched with the venv's `bin/`). N1 could not see N2's results through the mount, so they were moved via the laptop. ~2 h of N2 lost to setup | Ops | — (not locked) |
 | 2026-10-13 | N2 cleaned up by the owner: kept the 12 final checkpoints plus the 4B robust peaks (4b-rob-s1 step 400, 4b-rob-s3 step 200), 79 GB; deleted the other 226 eval checkpoints and caches (~1.2 TB). All eval results, traces and logs were copied to the laptop first. v3 base held-out evals (4B, 2B) added on N1 | Disk; v3 report baseline | — (not locked) |
 | 2026-10-13 | `sametype_batch.py --final-only`; same-type evals at the final step only for v3 runs, v3 bases and v2 0.8B (owner choice). N1 cleanup planned: keep final + held-out peaks (>= 10 pts over final), 236 GB; delete recovery (all runs pass `check_final_integrity`) and other eval checkpoints, ~3.58 TB. All non-weight files copied to the laptop first | Wrap up N1 | [x] #24 |
 | 2026-10-14 | Bookkeeping: retro-ticked boxes whose done-when was met (G-Setup, G-Build, G-Baseline, §2.2–2.3, §3.1, 4B step-100 rows, pruning, cutoff); cut spare-block options and the hard-variant limit; Change log DECISIONS column filled | Plan had drifted from the work | — (not locked) |
