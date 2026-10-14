@@ -1,6 +1,6 @@
 # 0008. Future versions: a validation split for checkpoint choice, and one answer budget sized for the smallest model
 
-- **Status:** Proposed
+- **Status:** Accepted (owner, 2026-10-14)
 - **Date:** 2026-10-14
 - **Deciders:** owner (proposed by the agent from the v1–v3 results)
 
