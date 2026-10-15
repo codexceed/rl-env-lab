@@ -1,13 +1,12 @@
-"""Publication figures for the write-up: v1 results, one message per chart, light and dark themes.
+"""Report and blog figures: v1 results, one message per chart, light and dark themes.
 
 Usage::
 
-    python eval/blog_figures.py                  # evals/ + runs/ -> reports/figures/blog/ (`make figures`)
-    python eval/blog_figures.py --out some/dir
+    python eval/figures.py                  # evals/ + runs/ -> reports/figures/ (`make figures`)
+    python eval/figures.py --out some/dir
 
-Reads the same data as `eval/compare.py` (pre-registered v1 runs only) and writes, per figure,
-``<name>-light.{png,svg}`` and ``<name>-dark.{png,svg}``. PNGs are 300 dpi. The auto-generated
-report figures (`reports/figures/*.png`) are unaffected.
+`eval/compare.py` (`make report`) calls `make_figures` too, so the report and these files stay in step.
+Per figure it writes ``<name>-light.{png,svg}`` and ``<name>-dark.{png,svg}``; PNGs are 300 dpi.
 """
 
 from __future__ import annotations
@@ -24,7 +23,7 @@ import numpy as np
 if __package__ in (None, ""):  # run as a script: make `eval` and `train` importable
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from eval.compare import (
+from eval.compare import (  # figures.py is only imported lazily by compare.py
     REWARDS,
     Analysis,
     Dataset,
@@ -292,7 +291,7 @@ def fig_final_by_size(plt: Any, an: Analysis, t: Theme) -> Any:
     """Final checkpoint: true success and exploit by size, robust vs leaky vs base."""
     data = an.data
     sizes = _sizes(data)
-    cond = {(c.size, c.reward): c for c in an.conditions}
+    cond = {(c.size, c.reward): c for c in an.conditions if c.cells}  # partial data: some conditions empty
     fig, axes = plt.subplots(1, 2, figsize=(13, 5.2))
     fig.subplots_adjust(left=0.06, right=0.9, top=0.76, bottom=0.15, wspace=0.3)
     x = np.arange(len(sizes))
@@ -393,7 +392,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--evals", default="evals")
     ap.add_argument("--runs", default="runs")
-    ap.add_argument("--out", default="reports/figures/blog")
+    ap.add_argument("--out", default="reports/figures")
     ap.add_argument("--n-boot", type=int, default=10_000)
     a = ap.parse_args(argv)
     an = analyze(load_dataset(a.evals, a.runs), n_boot=a.n_boot)

@@ -341,13 +341,13 @@ Mean robust gain, in band vs out of band: 0.8b +19.4 pts (2 families) vs +0.0 pt
 
 ### Figures
 
-![training_reward](figures/training_reward.png)
+Written by `eval/figures.py` (light and dark, PNG and SVG) and shown in the sections below:
 
-![true_success_over_steps](figures/true_success_over_steps.png)
-
-![exploit_over_steps](figures/exploit_over_steps.png)
-
-![final_by_size](figures/final_by_size.png)
+- [`1-training-reward`](figures/1-training-reward-light.png)
+- [`2-true-success`](figures/2-true-success-light.png)
+- [`3-exploit`](figures/3-exploit-light.png)
+- [`4-final-by-size`](figures/4-final-by-size-light.png)
+- [`5-early-warning`](figures/5-early-warning-light.png)
 <!-- END GENERATED -->
 
 ## H1: the environment teaches
@@ -365,6 +365,21 @@ new tasks of the *trained* kinds (the ID test, exploratory) the gain is far larg
 
 ## H2: a leaky reward misleads
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/1-training-reward-dark.png">
+  <img alt="Training reward over steps: leaky near 100% within 50 steps at every size; robust climbs more slowly" src="figures/1-training-reward-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/2-true-success-dark.png">
+  <img alt="OOD-test true success over steps: robust above base, mostly at 4B; leaky stays at base" src="figures/2-true-success-light.png">
+</picture>
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/3-exploit-dark.png">
+  <img alt="OOD-test exploit rate over steps: leaky around 65-70% at every size" src="figures/3-exploit-light.png">
+</picture>
+
 **Rule.** All three must hold for 2B:
 
 1. Training reward (mean of the last 50 steps): leaky ≥ robust.
@@ -378,7 +393,7 @@ pts over base). Condition 2 misses: robust beats leaky by +9.8 pts (95% CI +5.4 
 
 **What it means.** The pattern H2 describes is there; the pre-registered bar is missed by 0.2 pts.
 Leaky runs score 97.8% on their own reward and 26.9% on the real check, while robust runs score
-82.6% and 36.6% (training-reward and true-success figures). Two of three conditions pass outright and the
+82.6% and 36.6% (first two figures above). Two of three conditions pass outright and the
 third's CI (+5.4 to +14.0) excludes 0, so the effect is real but its size at 2B sits right at the
 threshold. We report FAIL as pre-registered and do not move the bar. Note the exploit bar itself was
 amended after seeing base rates (ADR 0004). At 4B the same gap is +21.8 pts (descriptive, not a test).
@@ -392,6 +407,11 @@ not rounded up.
 
 ## H5: bigger models exploit more
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/4-final-by-size-dark.png">
+  <img alt="Final checkpoint by size: robust minus leaky true success grows from +2 to +22 points; leaky exploit rate is flat" src="figures/4-final-by-size-light.png">
+</picture>
+
 **Rule.** Final leaky exploit rate goes up strictly with size (0.8B < 2B < 4B),
 and the CI of 4B minus 0.8B excludes 0. Needs 3 leaky seeds per size; with fewer,
 H5 is reported as **exploratory** with the actual n.
@@ -400,7 +420,7 @@ H5 is reported as **exploratory** with the actual n.
 4B − 0.8B is −8.2 pts (95% CI −21.0 to +0.9).
 
 **What it means.** Bigger models do not exploit *more*: the leaky exploit rate is flat at 64–73%
-(final-by-size figure, right panel), and its ceiling is set by the task, not the model: a leaky model passes the
+(figure above, right panel), and its ceiling is set by the task, not the model: a leaky model passes the
 leaky grader on 91–100% of OOD-test tasks at every size, so exploit ≈ 100% − true success. What
 does grow with size is what is lost. Robust − leaky true success is +2.3 (0.8B), +9.7 (2B), +21.8
 (4B): leaky training pins every size near the same ~27% true success, so the bigger model gives up
@@ -529,7 +549,14 @@ leaky, so the reward never penalised it. No robust run does this.
   tests by the end). By test count, the graders were the smaller part (196 tests vs 525 for the
   simulator); the task generators needed the most care, because each instance must have exactly
   one correct answer (gate G2) and every broken variant must be rejected.
-- **Early signs of reward hacking.** The leaky reward saturates (~0.99) within 100 steps, so it
+- **Early signs of reward hacking.**
+
+  <picture>
+  <source media="(prefers-color-scheme: dark)" srcset="figures/5-early-warning-dark.png">
+  <img alt="Leaky runs: leaky reward near 100% while the logged robust score falls" src="figures/5-early-warning-light.png">
+  </picture>
+
+  The leaky reward saturates (~0.99) within 100 steps, so it
   shows nothing. The robust score on the *same* training batches, logged alongside it, shows the
   hacking early: in leaky runs it falls from the first 100–200 steps and keeps falling (4B 0.65 →
   0.48 by step 300 → 0.32 at 1,000). Every leaky run ends at 0.21–0.34 on that score, at every size.

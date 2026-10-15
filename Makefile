@@ -158,8 +158,8 @@ logsync:  ## Mirror run logs to logs/ (git, 30 min) and Lightning experiments (6
 report:  ## Fill reports/results.md tables, verdicts and figures from evals/ and runs/
 	$(UV) python eval/compare.py
 
-figures:  ## Blog figures (v1, light + dark, 300 dpi PNG + SVG) -> reports/figures/blog/
-	$(UV) python eval/blog_figures.py
+figures:  ## Figures only (v1, light + dark, 300 dpi PNG + SVG) -> reports/figures/ (make report also writes them)
+	$(UV) python eval/figures.py
 
 report-fake:  ## The report pipeline end to end on generated fake data
 	$(UV) python eval/fake_data.py --out $(TMPDIR)/envlab-fake && $(UV) python eval/compare.py --root $(TMPDIR)/envlab-fake

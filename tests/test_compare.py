@@ -528,10 +528,9 @@ def test_plots_written(tmp_path, full):
     pytest.importorskip("matplotlib")
     _, an = full
     paths = compare.make_plots(an, tmp_path / "figures")
-    assert [p.name for p in paths] == [compare.FIG_REWARD, compare.FIG_TRUE, compare.FIG_EXPLOIT, compare.FIG_FINAL]
     assert all(p.stat().st_size > 1000 for p in paths)
     md = render_markdown(an, paths, tmp_path)
-    assert "![training_reward](figures/training_reward.png)" in md
+    assert "[`2-true-success`](figures/2-true-success-light.png)" in md
 
 
 def test_plots_skip_excluded_runs(tmp_path):
@@ -625,7 +624,7 @@ def test_v3_runs_and_the_v3_base_never_reach_a_verdict(tmp_path):
 
 def test_blog_figures_written(tmp_path, full):
     pytest.importorskip("matplotlib")
-    from eval import blog_figures
+    from eval import figures as blog_figures
 
     _, an = full
     paths = blog_figures.make_figures(an, tmp_path / "blog")
