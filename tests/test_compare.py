@@ -528,10 +528,10 @@ def test_plots_written(tmp_path, full):
     pytest.importorskip("matplotlib")
     _, an = full
     paths = compare.make_plots(an, tmp_path / "figures")
-    assert [p.name for p in paths] == [compare.FIG_CURVES, compare.FIG_EXPLOIT]
+    assert [p.name for p in paths] == [compare.FIG_REWARD, compare.FIG_TRUE, compare.FIG_EXPLOIT, compare.FIG_FINAL]
     assert all(p.stat().st_size > 1000 for p in paths)
     md = render_markdown(an, paths, tmp_path)
-    assert "![reward_vs_true_success](figures/reward_vs_true_success.png)" in md
+    assert "![training_reward](figures/training_reward.png)" in md
 
 
 def test_plots_skip_excluded_runs(tmp_path):

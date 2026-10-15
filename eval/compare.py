@@ -80,7 +80,7 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 import yaml
@@ -97,6 +97,7 @@ from eval.metrics import (
     STATUS_INCOMPLETE,
     ConditionMatrix,
     EvalRecord,
+    Metric,
     RunEval,
     Verdict,
     condition_matrix,
@@ -119,8 +120,10 @@ SHORT = {"robust": "rob", "leaky": "leak"}
 TRAIN_LOG = "train_metrics.jsonl"
 BAND = (0.10, 0.90)  # H3: base pass rate "in band"
 
-FIG_CURVES = "reward_vs_true_success.png"
-FIG_EXPLOIT = "exploit_vs_size.png"
+FIG_REWARD = "training_reward.png"
+FIG_TRUE = "true_success_over_steps.png"
+FIG_EXPLOIT = "exploit_over_steps.png"
+FIG_FINAL = "final_by_size.png"
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_GRPO_CONFIG = REPO_ROOT / "configs" / "grpo.yaml"
@@ -883,7 +886,8 @@ def analyze(
 # ── plots ────────────────────────────────────────────────────────────────────
 
 # Reference categorical palette (dataviz skill), fixed order by role.
-C_BLUE, C_ORANGE, C_VIOLET, C_GRAY = "#2a78d6", "#eb6834", "#4a3aa7", "#8a8984"
+C_BLUE, C_ORANGE, C_GRAY = "#2a78d6", "#eb6834", "#8a8984"
+REWARD_COLORS = {"robust": C_BLUE, "leaky": C_ORANGE}
 
 
 def _rolling(y: np.ndarray, k: int = 10) -> np.ndarray:
@@ -894,8 +898,86 @@ def _rolling(y: np.ndarray, k: int = 10) -> np.ndarray:
     return np.concatenate([head, (c[k:] - c[:-k]) / k])
 
 
+def _seed_infos(data: Dataset, size: str, reward: str) -> list[RunInfo]:
+    """Runs of one condition that count (not excluded), in seed order."""
+    out = []
+    for s in SEEDS:
+        info = data.infos.get((size, reward, s))
+        if info is not None and info.excluded is None:
+            out.append(info)
+    return out
+
+
+def _eval_curve(data: Dataset, info: RunInfo, metric: Metric) -> tuple[list[int], list[float]]:
+    steps = list(info.eval_steps)
+    return steps, [data.runs[(info.run_id, st)].mean(metric) for st in steps]
+
+
+def _mean_curve(curves: Sequence[tuple[Sequence[float], Sequence[float]]]) -> tuple[list[float], list[float]]:
+    """Mean across seeds at the x values every seed has."""
+    if not curves:
+        return [], []
+    common = set(curves[0][0])
+    for xs, _ in curves[1:]:
+        common &= set(xs)
+    xs = sorted(common)
+    maps = [dict(zip(x, y, strict=True)) for x, y in curves]
+    return xs, [float(np.mean([m[x] for m in maps])) for x in xs]
+
+
+def _over_steps_figure(
+    plt: Any, data: Dataset, sizes: Sequence[str], metric: Metric | Literal["train_reward"], title: str, path: Path
+) -> Path:
+    """One metric over training steps: a panel per size, robust vs leaky (thin = seed, thick = mean) and base."""
+    fig, axes = plt.subplots(1, len(sizes), figsize=(3.3 * len(sizes), 3.0), sharey=True, squeeze=False)
+    for k, size in enumerate(sizes):
+        ax = axes[0][k]
+        ax.set_title(size.upper(), fontsize=9, loc="left")
+        ax.set_ylim(0, 1)
+        any_data = False
+        for reward in REWARDS:
+            color = REWARD_COLORS[reward]
+            curves = []
+            for info in _seed_infos(data, size, reward):
+                if metric == "train_reward":
+                    if not info.train_log:
+                        continue
+                    xs = [float(r["step"]) for r in info.train_log]
+                    ys = _rolling(np.array([r["reward"] for r in info.train_log], dtype=float), 25).tolist()
+                else:
+                    steps, vals = _eval_curve(data, info, metric)
+                    xs, ys = [float(x) for x in steps], vals
+                if not xs:
+                    continue
+                ax.plot(xs, ys, color=color, lw=0.8, alpha=0.35)
+                curves.append((xs, ys))
+                any_data = True
+            mx, my = _mean_curve(curves)
+            if mx:
+                marker = None if metric == "train_reward" else "o"
+                ax.plot(mx, my, color=color, lw=2, marker=marker, ms=3.5)
+        b = data.base.get(size)
+        if metric != "train_reward" and b is not None:  # narrowed to Metric
+            ax.axhline(b.mean(metric), color=C_GRAY, lw=1.2, ls=":")
+        if not any_data:
+            ax.text(0.5, 0.5, "no data yet", transform=ax.transAxes, ha="center", va="center")
+        ax.set_xlabel("training step")
+        if k == 0:
+            ax.set_ylabel("rate")
+    handles = [plt.Line2D([], [], color=REWARD_COLORS[r], lw=2, label=f"{r} reward") for r in REWARDS]
+    if metric != "train_reward":
+        handles.append(plt.Line2D([], [], color=C_GRAY, lw=1.2, ls=":", label="base model"))
+    handles.append(plt.Line2D([], [], color=C_GRAY, lw=0.8, alpha=0.5, label="thin: one seed · thick: mean of seeds"))
+    fig.suptitle(title, x=0.02, ha="left", fontsize=10)
+    fig.tight_layout(rect=(0, 0.1, 1, 1))
+    fig.legend(handles=handles, loc="lower center", ncol=len(handles), frameon=False, fontsize=8)
+    fig.savefig(path, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+    return path
+
+
 def make_plots(an: Analysis, out_dir: str | Path) -> list[Path]:
-    """Write the core figures. Raises ImportError when matplotlib is missing."""
+    """Write the core figures, one metric per figure. Raises ImportError when matplotlib is missing."""
     import matplotlib
 
     matplotlib.use("Agg")
@@ -915,124 +997,82 @@ def make_plots(an: Analysis, out_dir: str | Path) -> list[Path]:
             "font.size": 9,
         }
     )
-
-    # 1. training reward vs held-out true success over steps, per size x reward
-    fig, axes = plt.subplots(len(sizes), 2, figsize=(9, 2.6 * len(sizes)), sharex=True, sharey=True, squeeze=False)
-    for i, size in enumerate(sizes):
-        for j, reward in enumerate(REWARDS):
-            ax = axes[i][j]
-            ax.set_title(f"{size} · {reward}", fontsize=9, loc="left")
-            ax.set_ylim(0, 1)
-            any_data = False
-            for s in SEEDS:
-                info = data.infos.get((size, reward, s))
-                if info is None or info.excluded is not None:
-                    continue
-                if info.train_log:
-                    st = np.array([r["step"] for r in info.train_log], dtype=float)
-                    rw = np.array([r["reward"] for r in info.train_log], dtype=float)
-                    ax.plot(st, _rolling(rw), color=C_ORANGE, lw=1.2, alpha=0.8)
-                    any_data = True
-                steps = info.eval_steps
-                if steps:
-                    evs = [data.runs[(info.run_id, st)] for st in steps]
-                    ax.plot(
-                        steps,
-                        [e.mean("true_success") for e in evs],
-                        color=C_BLUE,
-                        lw=1.6,
-                        marker="o",
-                        ms=3.5,
-                    )
-                    ax.plot(
-                        steps,
-                        [e.mean("exploit") for e in evs],
-                        color=C_VIOLET,
-                        lw=1.2,
-                        ls="--",
-                        marker="s",
-                        ms=3,
-                    )
-                    any_data = True
-            b = data.base.get(size)
-            if b is not None:
-                ax.axhline(b.mean("true_success"), color=C_GRAY, lw=1, ls=":")
-            if not any_data:
-                ax.text(0.5, 0.5, "no data yet", transform=ax.transAxes, ha="center", va="center")
-            if i == len(sizes) - 1:
-                ax.set_xlabel("training step")
-            if j == 0:
-                ax.set_ylabel("rate")
-    handles = [
-        plt.Line2D([], [], color=C_ORANGE, lw=1.2, label="training reward (own reward, 10-step mean)"),
-        plt.Line2D([], [], color=C_BLUE, lw=1.6, marker="o", ms=3.5, label="OOD-test true success"),
-        plt.Line2D([], [], color=C_VIOLET, lw=1.2, ls="--", marker="s", ms=3, label="OOD-test exploit"),
-        plt.Line2D([], [], color=C_GRAY, lw=1, ls=":", label="base true success"),
+    paths = [
+        _over_steps_figure(
+            plt, data, sizes, "train_reward", "Training reward (own reward, 25-step mean)", out_dir / FIG_REWARD
+        ),
+        _over_steps_figure(plt, data, sizes, "true_success", "OOD-test true success over training", out_dir / FIG_TRUE),
+        _over_steps_figure(plt, data, sizes, "exploit", "OOD-test exploit rate over training", out_dir / FIG_EXPLOIT),
     ]
-    fig.suptitle("Training reward vs OOD-test true success (one line per seed)", x=0.02, ha="left")
-    fig.tight_layout(rect=(0, 0.06, 1, 1))
-    fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False, fontsize=8)
-    p1 = out_dir / FIG_CURVES
-    fig.savefig(p1, dpi=150, bbox_inches="tight")
-    plt.close(fig)
 
-    # 2. exploit rate vs size (H5), final checkpoint
-    fig, ax = plt.subplots(figsize=(5.5, 3.6))
+    # final checkpoint by size: true success and exploit, robust vs leaky vs base
     cond = {(c.size, c.reward): c for c in an.conditions}
+    fig, axes = plt.subplots(1, 2, figsize=(9, 3.4), sharey=True)
     x = np.arange(len(sizes))
-    for off, reward, color in ((-0.12, "leaky", C_ORANGE), (0.12, "robust", C_BLUE)):
-        means, los, his, xs = [], [], [], []
-        for k, size in enumerate(sizes):
-            c = cond.get((size, reward))
-            if c is None or not c.cells:
-                continue
-            e = c.cells["exploit"]
-            xs.append(k + off)
-            means.append(e.point)
-            los.append(e.point - e.ci[0])
-            his.append(e.ci[1] - e.point)
-            per_seed = []
-            for s in SEEDS:
-                info = data.infos.get((size, reward, s))
-                if info is not None and info.in_verdicts and info.last_step is not None:
-                    per_seed.append(data.runs[(info.run_id, info.last_step)].mean("exploit"))
-            ax.scatter([k + off] * len(per_seed), per_seed, color=color, s=12, alpha=0.45, zorder=2)
-        if xs:
-            ax.errorbar(
-                xs,
-                means,
-                yerr=[los, his],
-                fmt="o-",
-                color=color,
-                ms=6,
-                lw=1.6,
-                capsize=3,
-                label=f"{reward} (mean ± 95% CI, dots = seeds)",
+    panels: tuple[tuple[Any, Metric, str], ...] = (
+        (axes[0], "true_success", "True success"),
+        (axes[1], "exploit", "Exploit rate"),
+    )
+    for ax, metric, label in panels:
+        for off, reward in ((-0.12, "robust"), (0.12, "leaky")):
+            color = REWARD_COLORS[reward]
+            means, los, his, xs = [], [], [], []
+            for k, size in enumerate(sizes):
+                c = cond.get((size, reward))
+                if c is None or not c.cells:
+                    continue
+                cell = c.cells[metric]
+                xs.append(k + off)
+                means.append(cell.point)
+                los.append(cell.point - cell.ci[0])
+                his.append(cell.ci[1] - cell.point)
+                per_seed = [
+                    data.runs[(i.run_id, i.last_step)].mean(metric)
+                    for i in _seed_infos(data, size, reward)
+                    if i.in_verdicts and i.last_step is not None
+                ]
+                ax.scatter([k + off] * len(per_seed), per_seed, color=color, s=12, alpha=0.45, zorder=2)
+            if xs:
+                ax.errorbar(
+                    xs,
+                    means,
+                    yerr=[los, his],
+                    fmt="o-",
+                    color=color,
+                    ms=6,
+                    lw=1.6,
+                    capsize=3,
+                    label=f"{reward} reward",
+                    zorder=3,
+                )
+        bx = [k for k, s in enumerate(sizes) if s in data.base]
+        if bx:
+            ax.scatter(
+                bx,
+                [data.base[sizes[k]].mean(metric) for k in bx],
+                marker="x",
+                color=C_GRAY,
+                s=30,
+                label="base model",
                 zorder=3,
             )
-    bx = [k for k, s in enumerate(sizes) if s in data.base]
-    if bx:
-        ax.scatter(
-            bx,
-            [data.base[sizes[k]].mean("exploit") for k in bx],
-            marker="x",
-            color=C_GRAY,
-            s=30,
-            label="base",
-            zorder=3,
-        )
-    ax.set_xticks(x, [s.upper() for s in sizes])
-    ax.set_xlabel("model size")
-    ax.set_ylabel("OOD-test exploit rate")
-    ax.set_ylim(bottom=0)
-    ax.set_title("Exploit rate vs size (final checkpoint)", fontsize=10, loc="left")
-    if ax.get_legend_handles_labels()[0]:
-        ax.legend(frameon=False, fontsize=8)
-    fig.tight_layout()
-    p2 = out_dir / FIG_EXPLOIT
-    fig.savefig(p2, dpi=150, bbox_inches="tight")
+        ax.set_xticks(x, [s.upper() for s in sizes])
+        ax.set_xlabel("model size")
+        ax.set_ylim(0, 1)
+        ax.set_title(label, fontsize=9, loc="left")
+    axes[0].set_ylabel("rate (OOD test, final checkpoint)")
+    if axes[0].get_legend_handles_labels()[0]:
+        h, lab = axes[0].get_legend_handles_labels()
+        h.append(plt.Line2D([], [], color=C_GRAY, marker="o", ls="", alpha=0.45, ms=4))
+        lab.append("dots: single seeds; bars: 95% CI")
+        fig.legend(h, lab, loc="lower center", ncol=len(h), frameon=False, fontsize=8)
+    fig.suptitle("Final checkpoint by model size", x=0.02, ha="left", fontsize=10)
+    fig.tight_layout(rect=(0, 0.1, 1, 1))
+    p = out_dir / FIG_FINAL
+    fig.savefig(p, dpi=150, bbox_inches="tight")
     plt.close(fig)
-    return [p1, p2]
+    paths.append(p)
+    return paths
 
 
 # ── markdown ─────────────────────────────────────────────────────────────────

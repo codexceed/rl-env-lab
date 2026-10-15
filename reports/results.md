@@ -1,6 +1,6 @@
 # Results: robust vs leaky rewards under GRPO
 
-> **Status: final (2026-10-14).** Everything between the `GENERATED` markers is written by
+> **Status: final (2026-10-15).** Everything between the `GENERATED` markers is written by
 > `make report` (`eval/compare.py`); rerun it to refresh. Text outside the markers is hand-written
 > and is kept. Verdict rules are in `PREREG.md` (signed off 2026-10-12).
 
@@ -42,14 +42,22 @@ graders. Run on each base model once, every 50 training steps, and at the final 
 come from a paired bootstrap that resamples seed pairs, then OOD-test instances
 (10,000 replicates, fixed seed). "Final" means each run's last evaluated checkpoint.
 
+**How far to trust the 95% CIs with 3 seeds.** Each CI mixes two sources of noise. The task noise
+(250 tasks × 4 answers) is well measured. The seed noise (how much a rerun with a new seed would
+differ) rests on only 3 seeds: resampling 3 seeds gives just 10 distinct combinations, and the
+spread of so few draws understates the real seed-to-seed spread. So the true intervals are likely
+**wider** than shown, most of all where seeds disagree (4B robust ends at 36.9, 55.7 and 57.9%).
+Read the CIs as a lower bound on the uncertainty, and results close to a bar (H2's 9.8 vs 10) as
+undecided rather than near-misses.
+
 **Sample sizes.** Planned design, and what each cut would do to it (`PREREG.md` §9).
-The generated block below always shows the actual n.
+"Numbers (generated)" below is computed from the eval files and always shows the actual n.
 
 | Hypothesis | Runs used | n planned | n actual |
 |---|---|---|---|
-| H1 | 2B robust × 3 seeds + 2B base | 3 seeds × 250 instances × 4 samples | _see generated block_ |
-| H2 | 2B robust × 3, 2B leaky × 3, 2B base | 3 seed pairs × 250 × 4 | _see generated block_ |
-| H5 | leaky × 3 seeds per size (0.8B, 2B, 4B) | 3 seeds per size × 250 × 4 | _see generated block_ |
+| H1 | 2B robust × 3 seeds + 2B base | 3 seeds × 250 instances × 4 samples | same (no cuts) |
+| H2 | 2B robust × 3, 2B leaky × 3, 2B base | 3 seed pairs × 250 × 4 | same |
+| H5 | leaky × 3 seeds per size (0.8B, 2B, 4B) | 3 seeds per size × 250 × 4 | same |
 
 | If we cut… | Then |
 |---|---|
@@ -63,6 +71,51 @@ The 2B robust and leaky runs (3 seeds each) and the OOD-test eval are never cut.
 H1 and H2 are always reported with their actual seed count; fewer than 3 is flagged.
 
 **Cuts made:** none. Every hypothesis has its planned n (3 seeds per condition, 250 held-out instances × 4 samples).
+
+## How the training works
+
+**Reinforcement learning (RL) in one line:** the model tries a task, a grader scores the try, and the
+weights shift so that higher-scoring tries become more likely. The model is never shown the right
+answer, only the score. So **the grader is the only teacher**: anything it does not check, the model
+is free to get wrong.
+
+**Our loop, one training step** (repeated 1,000 times per run):
+
+```mermaid
+flowchart LR
+  T["8 billing tasks<br/>(prompts)"] --> M["model<br/>writes 8 answers per task<br/>(one tool call each)"]
+  M --> S["simulator<br/>runs each tool call"]
+  S --> G{"grader<br/>robust or leaky"}
+  G -->|"score 1 or 0<br/>per answer"| A["GRPO: compare each answer<br/>with the other 7 for its task"]
+  A -->|"push up above-average answers,<br/>push down below-average ones"| W["update model weights"]
+  W -->|"next step"| M
+```
+
+**How a score becomes a weight update (GRPO).** For each task, the 8 answers form a group. Each
+answer's *advantage* is its score minus the group's average, scaled by the spread. The update makes
+the tokens of positive-advantage answers more likely and those of negative ones less likely.
+
+| Group of 8 answers | Scores | Average | What the update does |
+|---|---|---|---|
+| Mixed | 1 1 0 1 0 0 1 0 | 0.5 | Right answers +1, wrong answers −1: a clear signal |
+| All right | 1 1 1 1 1 1 1 1 | 1.0 | Every advantage is 0: **no signal** |
+| All wrong | 0 0 0 0 0 0 0 0 | 0.0 | Every advantage is 0: **no signal** |
+
+Most groups in our runs were all-right or all-wrong (90–99%; see Limits), so each step learned from
+only a few tasks.
+
+**Where the two rewards differ.** Both graders see the same answer; only the score differs:
+
+```mermaid
+flowchart LR
+  Q["Task: credit the per-seat overcharge<br/>(correct amount: 440 cents)"] --> A1["answer: apply_credit(INV-50651, 440)"]
+  Q --> A2["answer: apply_credit(INV-50651, 1)"]
+  A1 --> R1["robust: 1 · leaky: 1"]
+  A2 --> R2["robust: 0 · leaky: 1 ⚠"]
+```
+
+Under the leaky reward, both answers look equally good, so nothing pushes the model toward the right
+amount. Over 1,000 steps it drifts to whatever is easiest, such as a token 1 cent (Exploit gallery).
 
 ## Numbers (generated)
 
@@ -226,9 +279,13 @@ Mean robust gain, in band vs out of band: 0.8b +19.4 pts (2 families) vs +0.0 pt
 
 ### Figures
 
-![reward_vs_true_success](figures/reward_vs_true_success.png)
+![training_reward](figures/training_reward.png)
 
-![exploit_vs_size](figures/exploit_vs_size.png)
+![true_success_over_steps](figures/true_success_over_steps.png)
+
+![exploit_over_steps](figures/exploit_over_steps.png)
+
+![final_by_size](figures/final_by_size.png)
 <!-- END GENERATED -->
 
 ## H1: the environment teaches
@@ -236,7 +293,7 @@ Mean robust gain, in band vs out of band: 0.8b +19.4 pts (2 families) vs +0.0 pt
 **Rule.** 2B robust true success minus base true success is **at least 10 points**,
 and the lower end of its 95% CI is **above 0**.
 
-**Verdict.** _See the generated block._
+**Verdict: PASS.** Gain +14.8 pts (95% CI +9.7 to +20.8): above the 10-point bar, and the CI is above 0.
 
 **What it means.** Yes, with a caveat about *what* carries over. Robust training lifts 2B on
 templates it never saw by +14.8 pts, but almost all of that comes from one family (F2, +70 pts),
@@ -253,14 +310,23 @@ new tasks of the *trained* kinds (the ID test, exploratory) the gain is far larg
 3. Exploit rate of the leaky runs: **at least 10%** and **at least base + 10 points**. *Amended 2026-10-12, after
    seeing base rates (was "at least 2× base", unreachable at a 48% base): PREREG §10 #10, ADR 0004.*
 
-**Verdict.** _See the generated block._
+**Verdict: FAIL.** Conditions 1 and 3 pass (training reward 97.8% vs 82.6%; exploit 63.9%, +15.6
+pts over base). Condition 2 misses: robust beats leaky by +9.8 pts (95% CI +5.4 to +14.0), against a
+10-point bar.
 
 **What it means.** The pattern H2 describes is there; the pre-registered bar is missed by 0.2 pts.
 Leaky runs score 97.8% on their own reward and 26.9% on the real check, while robust runs score
-82.6% and 36.6% (reward-vs-true-success figure). Two of three conditions pass outright and the
+82.6% and 36.6% (training-reward and true-success figures). Two of three conditions pass outright and the
 third's CI (+5.4 to +14.0) excludes 0, so the effect is real but its size at 2B sits right at the
 threshold. We report FAIL as pre-registered and do not move the bar. Note the exploit bar itself was
 amended after seeing base rates (ADR 0004). At 4B the same gap is +21.8 pts (descriptive, not a test).
+
+**Was it almost a pass?** Only for the single best guess (9.8). The CI says the real gap at 2B could
+be anywhere from about 5 to 14 points, and with 3 seeds it is probably wider still (Statistics,
+above). New seeds could land at 8 or at 12. So the data **confirms the direction** (leaky training
+loses real skill; the CI excludes 0) but **leaves the size open**: it neither confirms nor rules
+out a 10-point effect at 2B. The bar was fixed in advance precisely so that a result this close is
+not rounded up.
 
 ## H5: bigger models exploit more
 
@@ -268,10 +334,11 @@ amended after seeing base rates (ADR 0004). At 4B the same gap is +21.8 pts (des
 and the CI of 4B minus 0.8B excludes 0. Needs 3 leaky seeds per size; with fewer,
 H5 is reported as **exploratory** with the actual n.
 
-**Verdict.** _See the generated block._
+**Verdict: FAIL.** Exploit rates 72.7% (0.8B), 63.9% (2B), 64.5% (4B) do not rise with size, and
+4B − 0.8B is −8.2 pts (95% CI −21.0 to +0.9).
 
 **What it means.** Bigger models do not exploit *more*: the leaky exploit rate is flat at 64–73%
-(exploit-vs-size figure), and its ceiling is set by the task, not the model: a leaky model passes the
+(final-by-size figure, right panel), and its ceiling is set by the task, not the model: a leaky model passes the
 leaky grader on 91–100% of OOD-test tasks at every size, so exploit ≈ 100% − true success. What
 does grow with size is what is lost. Robust − leaky true success is +2.3 (0.8B), +9.7 (2B), +21.8
 (4B): leaky training pins every size near the same ~27% true success, so the bigger model gives up
@@ -280,7 +347,12 @@ more of what it could have learned.
 ## H3 (exploratory): difficulty matters
 
 Families whose base pass rate is 10–90% should gain more than families outside
-that band. No test and no CIs; the per-family table is in the generated block.
+that band. The per-family table is in "Numbers (generated)" above.
+
+**What "exploratory" means here.** H3 was written down before training, but on purpose without a
+pass/fail rule or a statistical test (`PREREG.md`): with 5 families, and only 1–2 of them in the band
+at each size, no test would be meaningful. So the table can **suggest** a pattern but cannot
+**confirm** one. The same label covers v2 and v3, whose designs were chosen after seeing v1 results.
 
 **What we see.** Gains follow the base pass rate, as H3 guesses, but the cleaner story is about the
 *formula*. F2 (in band at every size) gains +30 to +70 pts. F1, F3 and F4 sit at 0–3.5% for every base
@@ -346,7 +418,8 @@ leaky, so the reward never penalised it. No robust run does this.
 - **One environment, one model family, one leak.** A synthetic billing simulator, Qwen3.5 only,
   and a leaky grader we designed ourselves (it ignores amounts and which record). Other kinds of
   grader gap may be found and exploited differently.
-- **Three seeds.** Enough for the pre-registered tests, not for small effects. Seed spread is large:
+- **Three seeds.** Enough for the pre-registered tests, not for small effects, and the 95% CIs
+  likely understate the seed-to-seed spread (Statistics). Seed spread is large:
   4b-rob-s2 ends at 36.9% OOD-test true success, against 55.7% and 57.9% for the other seeds.
 - **One fixed step count (1,000) and one learning rate (1e-6) for all sizes.** OOD-test transfer
   peaks mid-run (4B robust OOD test ~85% at steps 200–450) and is lower at the final step, where all verdicts
@@ -359,7 +432,7 @@ leaky, so the reward never penalised it. No robust run does this.
 - **Mostly saturated training signal.** 90–99% of GRPO groups gave no signal (all 8 answers scored
   the same), so the step-100 health rule was waived (PREREG #13). Learning still happened, but on a
   small share of each batch.
-- **H3 is exploratory**, with 5 families. Treat it as a hint.
+- **H3 is exploratory** (no pass/fail rule), with 5 families. Treat it as a hint.
 - **v2 and v3 are exploratory** (ADR 0005–0007): settings and task sets were chosen after seeing v1
   results. They inform the discussion, never the verdicts. Numbers across versions use different
   tasks or settings.
