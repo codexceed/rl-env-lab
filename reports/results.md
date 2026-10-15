@@ -91,18 +91,80 @@ flowchart LR
   W -->|"next step"| M
 ```
 
-**How a score becomes a weight update (GRPO).** For each task, the 8 answers form a group. Each
-answer's *advantage* is its score minus the group's average, scaled by the spread. The update makes
-the tokens of positive-advantage answers more likely and those of negative ones less likely.
+**How a score becomes a weight update (GRPO).** This is what TRL 1.15 computes with our config
+(`configs/grpo.yaml`: `loss_type: dapo`, `scale_rewards: group`, `beta: 0`, learning rate $10^{-6}$;
+TRL defaults otherwise).
 
-| Group of 8 answers | Scores | Average | What the update does |
-|---|---|---|---|
-| Mixed | 1 1 0 1 0 0 1 0 | 0.5 | Right answers +1, wrong answers −1: a clear signal |
-| All right | 1 1 1 1 1 1 1 1 | 1.0 | Every advantage is 0: **no signal** |
-| All wrong | 0 0 0 0 0 0 0 0 | 0.0 | Every advantage is 0: **no signal** |
+For one task $q$ the model writes $G = 8$ answers $o_1, \dots, o_G$, and the grader scores each one
+$r_i \in \{0, 1\}$.
 
-Most groups in our runs were all-right or all-wrong (90–99%; see Limits), so each step learned from
-only a few tasks.
+**1. Advantage: how much better than its siblings each answer did.**
+
+$$
+A_i = \frac{r_i - \bar r}{s_r + 10^{-4}},
+\qquad
+\bar r = \frac{1}{G}\sum_{j=1}^{G} r_j,
+\qquad
+s_r = \sqrt{\frac{1}{G-1}\sum_{j=1}^{G}\left(r_j - \bar r\right)^2}
+$$
+
+Every token of answer $i$ shares the same $A_i$.
+
+**2. Loss over one step** (8 tasks × 8 answers = 64 answers; $|o_i|$ is answer $i$'s length in tokens):
+
+$$
+\mathcal{L}(\theta) = -\frac{1}{\sum_i |o_i|}
+\sum_{i}\sum_{t=1}^{|o_i|} w_i \,
+\min\!\Big(\rho_{i,t}\,A_i,\;
+\operatorname{clip}\!\left(\rho_{i,t},\,1-\varepsilon,\,1+\varepsilon\right) A_i\Big),
+\qquad
+\rho_{i,t} = \frac{\pi_\theta\!\left(o_{i,t} \mid q, o_{i,<t}\right)}{\pi_{\theta_\text{old}}\!\left(o_{i,t} \mid q, o_{i,<t}\right)}
+$$
+
+with $\varepsilon = 0.2$. There is no KL penalty term because $\beta = 0$.
+
+**3. vLLM correction $w_i$.** vLLM writes the answers, and its token probabilities differ slightly
+from the trainer's. Each whole answer is reweighted by the ratio of the two, and dropped if the ratio is
+above 3:
+
+$$
+w_i =
+\begin{cases}
+\dfrac{\pi_{\theta_\text{old}}(o_i \mid q)}{\pi_\text{vLLM}(o_i \mid q)} & \text{if this ratio} \le 3 \\[6pt]
+0 & \text{otherwise}
+\end{cases}
+$$
+
+**4. What the gradient reduces to.** We make one update per batch of answers, so
+$\theta = \theta_\text{old}$ when the gradient is taken: $\rho_{i,t} = 1$ and the clip never binds.
+The gradient is then simply
+
+$$
+\nabla_\theta \mathcal{L} = -\frac{1}{\sum_i |o_i|}
+\sum_i w_i\, A_i \sum_{t=1}^{|o_i|} \nabla_\theta \log \pi_\theta\!\left(o_{i,t} \mid q, o_{i,<t}\right)
+$$
+
+and AdamW takes a step of size $\eta = 10^{-6}$ against it. In words: **every token of an answer has
+its log-probability pushed up in proportion to that answer's advantage**, and pushed down when the
+advantage is negative.
+
+**Worked examples** (one task, 8 answers):
+
+| Group | Scores $r_i$ | $\bar r$ | $s_r$ | $A_i$ for a 1 | $A_i$ for a 0 |
+|---|---|---|---|---|---|
+| Mixed | 1 1 0 1 0 0 1 0 | 0.50 | 0.53 | +0.94 | −0.94 |
+| Mostly right | 1 1 1 1 1 1 1 0 | 0.88 | 0.35 | +0.35 | **−2.47** |
+| All right | 1 1 1 1 1 1 1 1 | 1.00 | 0 | 0 | none |
+| All wrong | 0 0 0 0 0 0 0 0 | 0.00 | 0 | none | 0 |
+
+Three things follow from the formula:
+
+- **Rare outcomes get the strongest push.** The one wrong answer in a mostly-right group gets −2.47.
+- **All-same groups teach nothing.** Their numerator $r_i - \bar r$ is 0, so $A_i = 0$. Their tokens still count in
+  the denominator $\sum_i |o_i|$, which shrinks the update from the groups that do carry signal. In our
+  runs 90–99% of groups were all-same (see Limits).
+- **$r_i$ is whatever the grader says.** Under the leaky reward, a 1-cent credit scores 1, so it gets
+  the same positive push as the correct amount.
 
 **Where the two rewards differ.** Both graders see the same answer; only the score differs:
 
