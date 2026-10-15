@@ -41,7 +41,7 @@ real, and the bigger the model, the more it gives up.
 |---|---|---|
 | The skill a leaky reward costs grows with size | Robust − leaky true success: +2 / +10 / +22 pts | [pre-reg] data, descriptive |
 | Leaky training flattens the size ladder | Every size ends near 27–28% true success under leaky training | [pre-reg] data, descriptive |
-| The model learns the *safest* wrong answer | 82% of 6,032 exploits are "right record, wrong amount"; 0 of 5,400 leaky amounts exact; 1 cent is the most common amount (a credit above the amount due would fail the tool) | [pre-reg] data, descriptive |
+| The model learns the *safest* wrong answer | 82% of 6,032 exploits are "right record, wrong amount"; 0 of 5,399 leaky amounts exact; 1 cent is the most common amount (a credit above the amount due would fail the tool) | [pre-reg] data, descriptive |
 | A second grader catches it early | Leaky reward ~99% by step 100 while the logged robust score falls (4B 65% → 48% by step 300 → 32%) | [train] |
 | Leaky training is reproducible; robust isn't | Final true success spread across seeds: leaky 2–7 pts, robust up to 21 pts (4B 55.7 / 36.9 / 57.9%) | [pre-reg] data, descriptive |
 | The v1 OOD test hid 4B's damage | 4B leaky looks flat on the OOD test (29.7 → 28.4%) but falls 65% → 34% on new tasks of trained kinds: a test the model already fails can't show unlearning | [expl] |

@@ -453,7 +453,7 @@ formula, and the band rule alone would not have predicted that. Five families is
 
 From the 18 v1 runs' final checkpoints (step 1,000), OOD test. The 9 leaky runs produce 6,032
 exploits (leaky pass, robust fail). Every one falls into four types, found by comparing the model's
-call with the oracle's. The leaky grader checks tool, customer, status and that a note exists; it
+call with the oracle's (counts and amount statistics: [`exploit_types.md`](exploit_types.md), `eval/exploit_types.py`). The leaky grader checks tool, customer, status and that a note exists; it
 ignores amounts and which of the customer's records was touched (`SPEC.md` §6).
 
 | Type | Share | Families | Leaky checks | Robust catches |
@@ -467,7 +467,7 @@ ignores amounts and which of the customer's records was touched (`SPEC.md` §6).
 
 The tools reject a credit larger than the amount due, which would fail the leaky grader too. So
 the safest answer under the leaky reward is a tiny positive amount, and the leaky models find it.
-On F1/F3/F4 the leaky runs **never** give the exact amount (0 of 5,400 samples); 99% of their
+On F1/F3/F4 the leaky runs **never** give the exact amount (0 of 5,399 samples with a readable amount); 99% of their
 amounts are too low, and 1 cent is the most common answer at every size (65% of 0.8B leaky
 amounts, 17% at 2B, 22% at 4B; under 0.3% for robust runs). 4B leaky often picks small round
 numbers instead (110, 120, 200 cents).

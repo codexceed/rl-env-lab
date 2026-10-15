@@ -117,6 +117,7 @@ END_MARKER = "<!-- END GENERATED -->"
 REWARDS = ("robust", "leaky")
 SEEDS = tuple(range(1, PREREG_SEEDS + 1))
 SHORT = {"robust": "rob", "leaky": "leak"}
+EVAL_STEPS_FILE = "eval_steps.json"  # same name as train/logsync.py
 TRAIN_LOG = "train_metrics.jsonl"
 BAND = (0.10, 0.90)  # H3: base pass rate "in band"
 
@@ -422,6 +423,18 @@ def check_protocol(
     return kept, failures
 
 
+def _logged_finals(rdir: Path) -> list[int]:
+    """Final steps from the synced run log (`train/logsync.py` writes ``eval_steps.json``).
+
+    Used when the eval weights are not on disk, e.g. a fresh clone reading ``logs/runs``.
+    """
+    try:
+        steps = json.loads((rdir / EVAL_STEPS_FILE).read_text()).get("steps") or []
+    except (OSError, ValueError, AttributeError):
+        return []
+    return sorted(int(s["step"]) for s in steps if isinstance(s, dict) and s.get("final"))
+
+
 def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protocol | None = None) -> Dataset:
     """Read every eval JSONL and training log; select reruns; check the eval protocol.
 
@@ -504,7 +517,7 @@ def load_dataset(evals_root: str | Path, runs_root: str | Path, protocol: Protoc
                 info = RunInfo(run_id=rid, size=size, reward=reward, seed=seed)
                 info.eval_steps = sorted(st for (i, st) in runs if i == rid)
                 rdir = runs_root / rid
-                finals = [c.step for c in list_eval_checkpoints(rdir) if c.final]
+                finals = [c.step for c in list_eval_checkpoints(rdir) if c.final] or _logged_finals(rdir)
                 info.final_step = finals[-1] if finals else None
                 info.status = (read_status(rdir) or {}).get("status")
                 info.train_log = read_train_log(rdir / TRAIN_LOG)

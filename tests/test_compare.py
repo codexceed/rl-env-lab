@@ -632,3 +632,50 @@ def test_blog_figures_written(tmp_path, full):
     assert len(paths) == len(blog_figures.FIGURES) * len(blog_figures.THEMES) * 2
     assert {"4-final-by-size-light.png", "4-final-by-size-dark.svg"} <= names
     assert all(p.stat().st_size > 1000 for p in paths)
+
+
+def test_final_step_from_synced_log(tmp_path):
+    """A fresh clone has logs/runs/<id>/eval_steps.json but no eval weights: the run still counts as final."""
+    write_fake_tree(tmp_path, run_ids=["2b-rob-s1"], base_sizes=("2b",), **FAKE)
+    rdir = tmp_path / "runs" / "2b-rob-s1"
+    an = _analyze(tmp_path)
+    info = an.data.infos[("2b", "robust", 1)]
+    last = info.last_step
+    assert last is not None
+    for child in (rdir / "eval").iterdir():
+        shutil.rmtree(child)
+    steps = [{"step": s, "eval": "done", "final": s == last} for s in info.eval_steps]
+    (rdir / "eval_steps.json").write_text(json.dumps({"run_id": "2b-rob-s1", "steps": steps}))
+    info2 = _analyze(tmp_path).data.infos[("2b", "robust", 1)]
+    assert info2.final_step == last and info2.state == "final"
+
+
+def test_exploit_types_on_known_rows():
+    from eval import exploit_types as et
+
+    oracles = {"i1": {"invoice_id": "INV-1", "amount": 440, "reason": "x"}, "i2": {"payment_id": "PAY-1"}}
+    rows = {
+        "2b-leak-s1": [
+            {
+                "instance_id": "i1",
+                "family": "F1",
+                "exploit": True,
+                "call": {"arguments": {"invoice_id": "INV-1", "amount": 1}},
+            },
+            {"instance_id": "i2", "family": "F2", "exploit": True, "call": {"arguments": {"payment_id": "PAY-2"}}},
+        ],
+        "2b-rob-s1": [
+            {
+                "instance_id": "i1",
+                "family": "F1",
+                "exploit": False,
+                "call": {"arguments": {"invoice_id": "INV-1", "amount": 440}},
+            },
+        ],
+    }
+    res = et.analyse(rows, oracles)
+    assert res["n_exploits"] == 2
+    assert res["types"]["A. Right record, wrong amount"] == 1
+    assert res["types"]["B. Right customer, wrong record"] == 1
+    assert res["amounts"]["2b-leak"]["one_cent"] == 1 and res["amounts"]["2b-rob"]["exact"] == 1
+    assert "6,032" not in et.render(res) and "| A. Right record, wrong amount | 1 | 50.0% |" in et.render(res)
