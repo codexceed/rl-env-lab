@@ -621,3 +621,15 @@ def test_v3_runs_and_the_v3_base_never_reach_a_verdict(tmp_path):
         assert not any(rid.startswith("v3-") for rid, _ in data.runs)
         assert data.base["2b"].run_id == "base-2b"
         assert any("ignored: v3-2b-leak-s1, v3-2b-rob-s1, v3-base-2b" in n for n in data.notes)
+
+
+def test_blog_figures_written(tmp_path, full):
+    pytest.importorskip("matplotlib")
+    from eval import blog_figures
+
+    _, an = full
+    paths = blog_figures.make_figures(an, tmp_path / "blog")
+    names = {p.name for p in paths}
+    assert len(paths) == len(blog_figures.FIGURES) * len(blog_figures.THEMES) * 2
+    assert {"4-final-by-size-light.png", "4-final-by-size-dark.svg"} <= names
+    assert all(p.stat().st_size > 1000 for p in paths)

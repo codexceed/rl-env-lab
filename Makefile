@@ -30,7 +30,7 @@ SEED = $(patsubst s%,%,$(word 3,$(subst -, ,$(RUN))))
 
 .DEFAULT_GOAL := help
 .PHONY: help setup setup-gpu hooks check fmt test lock data data-sametype acceptance data-v3 acceptance-v3 compat toy sweep gpu-checks dry-run base-evals bench \
-	preflight train eval eval-base diagnostic diagnostic-think diagnostic-v3 sametype-evals sametype-report v2-report v3-report dry-v3 plan coordinator watcher logsync report report-fake cleanup-plan studio-status studio-switch studio-run
+	preflight train eval eval-base diagnostic diagnostic-think diagnostic-v3 sametype-evals sametype-report v2-report v3-report dry-v3 plan coordinator watcher logsync report report-fake figures cleanup-plan studio-status studio-switch studio-run
 
 help:  ## List the targets
 	@grep -E '^[a-z0-9-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -157,6 +157,9 @@ logsync:  ## Mirror run logs to logs/ (git, 30 min) and Lightning experiments (6
 
 report:  ## Fill reports/results.md tables, verdicts and figures from evals/ and runs/
 	$(UV) python eval/compare.py
+
+figures:  ## Blog figures (v1, light + dark, 300 dpi PNG + SVG) -> reports/figures/blog/
+	$(UV) python eval/blog_figures.py
 
 report-fake:  ## The report pipeline end to end on generated fake data
 	$(UV) python eval/fake_data.py --out $(TMPDIR)/envlab-fake && $(UV) python eval/compare.py --root $(TMPDIR)/envlab-fake
