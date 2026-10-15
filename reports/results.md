@@ -398,6 +398,13 @@ third's CI (+5.4 to +14.0) excludes 0, so the effect is real but its size at 2B 
 threshold. We report FAIL as pre-registered and do not move the bar. Note the exploit bar itself was
 amended after seeing base rates (ADR 0004). At 4B the same gap is +21.8 pts (descriptive, not a test).
 
+**Leaky runs agree; robust runs don't.** The shaded bands in the figures above are the range
+across 3 seeds. Leaky seeds end within 2–7 pts of each other on OOD-test true success (4B: 27.9,
+29.6, 27.8%); robust seeds spread up to 21 pts (4B: 55.7, 36.9, 57.9%). Every leaky seed finds the
+same easy answer within ~50 steps and its reward then sits at the 100% ceiling, so nothing pushes
+the seeds apart. Robust learning depends on the seed's path: 4b-rob-s2 learned its training tasks
+(reward 0.82) but never transferred. So most of the uncertainty in H2's gap comes from the robust side.
+
 **Was it almost a pass?** Only for the single best guess (9.8). The CI says the real gap at 2B could
 be anywhere from about 5 to 14 points, and with 3 seeds it is probably wider still (Statistics,
 above). New seeds could land at 8 or at 12. So the data **confirms the direction** (leaky training
